@@ -4,6 +4,8 @@
 
 - El usar BP o BS en el archivo hace referencia a buttonPrimary o buttonSecondary haciendo referencia a los colores mas inportantes de las paletas de colores.
 
+-backgroundButtonBack, es para botones o backgrounds que se requieren que tengan de fondo el background general.
+
 - Para usos de colores solo se permite usar hexadecimal o rgba por buenas practicas.
 
 - Cuando se quiere agregar una nueva variable ya sea de COLORS u otra en general se debera seguir la siguiente estructura para nombres muy largos se abrevia las primeras letras y colocarlas en mayusculas => colorprimarytheme=colorPT, cuando son textos mas cortos se usa => textred=textRed.

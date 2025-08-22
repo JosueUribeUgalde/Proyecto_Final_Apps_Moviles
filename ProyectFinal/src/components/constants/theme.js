@@ -1,13 +1,17 @@
 export const COLORS = {
-    primary: '#1282ED',
-    secondary: '#ffffff',
-    background: '#dfe6e9',
-    backgroundBP: '#1282ED',
-    backgroundBS: '#ffffff',
-    textBlack: '#333333',
-    textWhite: '#ffffff',
+    primary: '#178C72',
+    secondary: '#CDE6DC',
+    background: '#F4F8F6',
+    backgroundBP: '#178C72',
+    backgroundBS: '#CDE6DC',
+    backgroundButtonBack: '#F4F8F6',
+    backgroundWhite: '#FFFFFF',
+    textBlack: '#0F1720',
+    textWhite: '#FFFFFF',
+    textGray: '#6B7A73',
+    textGreen: '#178C72',
     borderGray: 'rgba(178, 190, 195, 0.4)',
-    error: '#e53935',
+    error: '#D0342C',
 };
 
 export const FONTS = {
@@ -18,9 +22,9 @@ export const FONTS = {
 };
 
 export const RADIUS = {
-    sm: 5,
-    md: 10,
-    lg: 20,
+    sm: 10,
+    md: 12,
+    lg: 15,
 };
 
 export const SHADOWS = {
