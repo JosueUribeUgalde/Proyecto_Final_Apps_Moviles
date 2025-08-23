@@ -11,6 +11,7 @@ export const COLORS = {
     textGray: '#6B7A73',
     textGreen: '#178C72',
     borderGray: 'rgba(178, 190, 195, 0.4)',
+    borderSecondary:'#CDE6DC',
     error: '#D0342C',
 };
 
