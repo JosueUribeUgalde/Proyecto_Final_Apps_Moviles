@@ -8,10 +8,10 @@ export default StyleSheet.create({
     gap: 115,
     width: '100%',
     paddingTop: 20,
-    paddingBottom:25,
+    paddingBottom:20,
     borderBottomColor: COLORS.secondary,
     borderBottomWidth: 1,
-    marginBottom: 25,
+    marginBottom: 15,
   },
   title: {
     fontSize: FONTS.large,
