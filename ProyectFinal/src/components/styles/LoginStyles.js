@@ -34,7 +34,11 @@ export default StyleSheet.create({
   },
   welcomeContainer: {
     alignItems: 'center',
-    paddingBottom: 80,
+  },
+  bannerContainer: {
+    width: '100%',    
+    height: 60,
+    justifyContent: 'center',
   },
   logoImage: {
     width: 120,
@@ -46,5 +50,44 @@ export default StyleSheet.create({
     fontSize: FONTS.large,
     fontWeight: 'bold',
     color: COLORS.textBlack,
+  },
+  registerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  registerText: {
+    color: COLORS.textGray,
+        fontWeight: '500',
+    fontSize: FONTS.small,
+  },
+  registerTextClick: {
+    color: COLORS.textGreen,
+        fontWeight: '500',
+    fontSize: FONTS.small,
+  },
+  forgotPassword: {
+    color: COLORS.textGreen,
+    fontSize: FONTS.small,
+    paddingBottom: 8,
+    fontWeight: '500',
+    textAlign: 'right',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 10,
+    width: '80%',
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.borderGray,
+  },
+  dividerText: {
+    marginHorizontal: 8,
+    color: COLORS.textGray,
+    fontSize: FONTS.small,
   },
 });
