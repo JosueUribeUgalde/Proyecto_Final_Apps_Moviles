@@ -1,0 +1,52 @@
+HeaderScreen - Documentación de Componente
+
+Descripción:
+-------------
+HeaderScreen es un componente de cabecera reutilizable para pantallas en React Native. Permite mostrar un título y dos iconos (izquierda y derecha), además de una línea decorativa debajo del título. Es ideal para mantener la consistencia visual en todas las vistas principales de la app.
+
+Props:
+------
+- title (string o JSX): Título que se muestra en el centro de la cabecera. Puede ser texto simple o un elemento JSX (por ejemplo, texto con icono).
+- leftIcon (React Element): Icono que se muestra en el extremo izquierdo.
+- rightIcon (React Element): Icono que se muestra en el extremo derecho.
+- onLeftPress (function): Función que se ejecuta al presionar el icono izquierdo.
+- onRightPress (function): Función que se ejecuta al presionar el icono derecho.
+
+Uso básico:
+-----------
+import HeaderScreen from '../components/HeaderScreen';
+import { Ionicons } from '@expo/vector-icons';
+
+<HeaderScreen
+  title="Login"
+  leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
+  rightIcon={<Ionicons name="settings" size={24} color="black" />}
+  onLeftPress={() => { /* acción al presionar atrás */ }}
+  onRightPress={() => { /* acción al presionar settings */ }}
+/>
+
+Uso con título y icono juntos:
+------------------------------
+<HeaderScreen
+  title={
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <Text style={styles.title}>Login</Text>
+      <Ionicons name="person" size={24} color="black" style={{ marginLeft: 8 }} />
+    </View>
+  }
+  leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
+  rightIcon={<Ionicons name="settings" size={24} color="black" />}
+  onLeftPress={() => {}}
+  onRightPress={() => {}}
+/>
+
+Notas:
+------
+- El componente utiliza los estilos definidos en HeaderScreenStyles.js.
+- Puedes personalizar el diseño modificando HeaderScreenStyles.js.
+- El título puede ser texto simple o un elemento JSX para mayor flexibilidad.
+- Los iconos deben ser elementos React válidos (ejemplo: <Ionicons ... />).
+
+Ubicación:
+----------
+src/components/HeaderScreen.js
