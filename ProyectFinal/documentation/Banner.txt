@@ -1,0 +1,44 @@
+Banner - Documentación de Componente
+
+Descripción:
+-------------
+Banner es un componente para mostrar mensajes informativos, de error o éxito en la parte superior de la pantalla en React Native. Incluye animación de aparición/desaparición, iconos según el tipo de mensaje y estilos personalizables.
+
+Props:
+------
+- message (string): Texto que se muestra en el banner.
+- type (string): Tipo de mensaje, puede ser 'error' o 'success'. Cambia el color e icono del banner.
+- visible (boolean): Controla si el banner se muestra o no.
+- onHide (function): Función callback que se ejecuta cuando el banner termina su animación de ocultarse.
+
+Uso básico:
+-----------
+import Banner from '../components/Banner';
+
+<Banner
+  message="Credenciales incorrectas"
+  type="error"
+  visible={showBanner}
+  onHide={() => setShowBanner(false)}
+/>
+
+Uso para mensaje de éxito:
+--------------------------
+<Banner
+  message="Registro exitoso"
+  type="success"
+  visible={showBanner}
+  onHide={() => setShowBanner(false)}
+/>
+
+Notas:
+------
+- El banner se oculta automáticamente después de 3 segundos.
+- El componente utiliza los estilos definidos en BannerStyles.js.
+- El icono cambia según el tipo de mensaje ('error' muestra un ícono de alerta, 'success' uno de check).
+- Puedes personalizar los estilos y duración modificando BannerStyles.js y el componente.
+- Es reutilizable en cualquier pantalla de la app.
+
+Ubicación:
+----------
+src/components/Banner.js

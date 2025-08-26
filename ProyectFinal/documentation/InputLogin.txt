@@ -1,0 +1,30 @@
+InputLogin - Documentación de Componente
+
+Descripción:
+-------------
+InputLogin es un componente de campo de texto personalizado para React Native, pensado para usarse en formularios de autenticación y otras entradas de usuario. Permite mostrar un placeholder y configurar el modo seguro para contraseñas.
+
+Props:
+------
+- msj (string): Texto que se muestra como placeholder en el campo de entrada.
+- secureTextEntry (boolean): Si es true, el campo oculta el texto (ideal para contraseñas).
+
+Uso básico:
+-----------
+import InputLogin from '../components/InputLogin';
+
+<InputLogin msj="ejemplo@correo.com" />
+
+Uso como campo de contraseña:
+-----------------------------
+<InputLogin msj="Contraseña" secureTextEntry />
+
+Notas:
+------
+- El componente utiliza los estilos definidos en InputStyles.js.
+- Puedes personalizar los estilos modificando InputStyles.js.
+- Es compatible con cualquier pantalla o formulario de la app.
+
+Ubicación:
+----------
+src/components/InputLogin.js

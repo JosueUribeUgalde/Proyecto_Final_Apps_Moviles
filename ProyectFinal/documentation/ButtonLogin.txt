@@ -1,0 +1,79 @@
+ButtonLogin - Documentación de Componente
+
+Descripción:
+-------------
+ButtonLogin es un componente de botón personalizado para React Native, diseñado para ser reutilizable y altamente configurable. Permite mostrar un icono, personalizar el color de fondo, el color del texto y decidir si el botón tiene borde o no.
+
+Props:
+------
+- title (string): Texto que se muestra en el botón.
+- onPress (function): Función que se ejecuta al presionar el botón.
+- icon (React Element): Icono que se muestra a la izquierda del texto.
+- backgroundColor (string): Color de fondo personalizado para el botón.
+- textColor (string): Color personalizado para el texto del botón.
+- showBorder (boolean): Si es false, el botón no muestra borde. Por defecto es true.
+
+Uso básico:
+-----------
+import ButtonLogin from '../components/ButtonLogin';
+
+<ButtonLogin
+  title="Login"
+  onPress={handleLogin}
+/>
+
+Uso con icono:
+--------------
+import { Ionicons } from '@expo/vector-icons';
+
+<ButtonLogin
+  title="Login"
+  onPress={handleLogin}
+  icon={<Ionicons name="log-in-outline" size={24} color="white" />}
+/>
+
+Uso con color de fondo y texto personalizado:
+---------------------------------------------
+import { COLORS } from '../components/constants/theme';
+
+<ButtonLogin
+  title="Registrarse"
+  onPress={handleRegister}
+  backgroundColor={COLORS.primary}
+  textColor={COLORS.textWhite}
+/>
+
+Uso sin borde:
+--------------
+<ButtonLogin
+  title="Login"
+  onPress={handleLogin}
+  showBorder={false}
+/>
+
+Uso con imagen como icono:
+--------------------------
+import { Image } from 'react-native';
+
+<ButtonLogin
+  title="Login with Google"
+  onPress={handleGoogleLogin}
+  icon={
+    <Image
+      source={require('../../assets/icon_google1.png')}
+      style={{ width: 24, height: 24 }}
+    />
+  }
+  backgroundColor={COLORS.backgroundWhite}
+  textColor={COLORS.textBlack}
+/>
+
+Notas:
+------
+- Si no se especifica backgroundColor o textColor, se usan los valores por defecto definidos en ButtonStyle.js.
+- El icono debe ser un elemento React válido (ejemplo: <Ionicons ... /> o <Image ... />).
+- El botón es totalmente compatible con estilos personalizados y puede usarse en cualquier pantalla de la app.
+
+Ubicación:
+----------
+src/components/ButtonLogin.js
