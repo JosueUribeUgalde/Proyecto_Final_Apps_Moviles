@@ -11,27 +11,21 @@ export default StyleSheet.create({
   },
 
   // Marca "ShiftFlow"
-  brandWrap: {
-    alignItems: "center",
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  brandTitle: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: COLORS.primary,
-    letterSpacing: 0.2,
-    textAlign: "center",
+  logoImage: {
+    width: 120,
+    height: 120,
+    marginBottom: 16,
+    resizeMode: 'contain', // esto mantiene la proporción de la imagen
   },
 
-  // Subtítulo ("Crear Cuenta")
-  subtitle: {
+  // Contenedor y subtitulo de crear cuenta
+  welcomeContainer: {
+    alignItems: 'center',
+  },
+  welcomeText: {
     fontSize: FONTS.large,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     color: COLORS.textBlack,
-    marginTop: 20,
-    marginBottom: 16,
-    textAlign: "center",
   },
 
   // Grupo de cada campo
@@ -69,4 +63,9 @@ export default StyleSheet.create({
     color: COLORS.textGreen,
     marginLeft: 5,
   },
+  block: {
+    width: "80%",
+    marginBottom: 12,
+    marginTop: 20,
+  }
 });

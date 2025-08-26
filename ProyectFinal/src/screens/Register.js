@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text } from "react-native";
+import { View, Text, Image} from "react-native";
 import HeaderScreen from "../components/HeaderScreen";
 import InputLogin from "../components/InputLogin";
 import ButtonLogin from "../components/ButtonLogin";
@@ -22,13 +22,16 @@ return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
     {/*Header con el titulo al igual que la barra separadora*/}
         <HeaderScreen title="Registrarse" />
-    {/*Marca*/}
-    <View style={styles.brandWrap}>
-        <Text style={styles.brandTitle}>ShiftFlow</Text>
+    {/*Marca con crear cuenta*/}
+    <View style={styles.welcomeContainer}>
+        <Image
+            source={require('../../assets/logoSF.png')}
+            style={styles.logoImage}
+        />
+        <Text style={styles.welcomeText}>Crear cuenta</Text>
     </View>
-
-        <Text style={styles.subtitle}>Crear Cuenta</Text>
     {/*Grupo de cada campo: nombre, correo, contraseña, confirmar contraseña*/}
+    <View style={styles.block}>
     <View style={styles.group}>
         <Text style={styles.label}>Nombre Completo</Text>
         <InputLogin msj="Tu nombre" />
@@ -47,6 +50,7 @@ return (
     <View style={styles.group}>
         <Text style={styles.label}>Confirmar Contraseña</Text>
         <InputLogin msj="••••••" secureTextEntry />
+    </View>
     </View>
     {/*Boton crear cuenta personalizado*/}
     <View style={styles.buttonContainer}>
