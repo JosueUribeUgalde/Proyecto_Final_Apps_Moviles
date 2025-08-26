@@ -1,0 +1,52 @@
+theme.js - Guía de Uso
+
+Descripción:
+-------------
+El archivo theme.js centraliza los valores de colores, tamaños de fuente y radios de borde para toda la aplicación. Usar theme.js permite mantener la coherencia visual, facilitar cambios globales y mejorar la mantenibilidad del código.
+
+Contenido:
+----------
+- COLORS: Paleta de colores principal y secundaria, fondos, textos, bordes y colores de error.
+- FONTS: Tamaños de fuente estandarizados (small, regular, large, big).
+- RADIUS: Radios de borde para esquinas redondeadas (sm, md, lg).
+
+Cómo usar theme.js en componentes:
+----------------------------------
+1. Importa los valores que necesitas:
+   import { COLORS, FONTS, RADIUS } from '../components/constants/theme';
+
+2. Úsalos en tus estilos:
+   Ejemplo en un archivo de estilos:
+   import { StyleSheet } from 'react-native';
+   import { COLORS, FONTS, RADIUS } from '../components/constants/theme';
+
+   export default StyleSheet.create({
+     container: {
+       backgroundColor: COLORS.background,
+       borderRadius: RADIUS.md,
+     },
+     title: {
+       color: COLORS.primary,
+       fontSize: FONTS.big,
+     },
+   });
+
+3. Úsalos en componentes directamente:
+   <Text style={{ color: COLORS.textBlack, fontSize: FONTS.large }}>
+     Bienvenido
+   </Text>
+
+Ventajas:
+---------
+- Cambia el color, tamaño o radio en theme.js y se actualiza en toda la app.
+- Evita duplicar valores y errores de consistencia.
+- Facilita la adaptación a modo oscuro o temas personalizados.
+
+Notas:
+------
+- No modifiques los valores directamente en los estilos de cada componente; importa siempre desde theme.js.
+- Puedes agregar nuevos colores, tamaños o radios según las necesidades del proyecto.
+- Si usas modo oscuro, puedes crear otro archivo themeDark.js y cambiar el import según el modo.
+
+Ubicación:
+src/components/constants/theme.js
