@@ -74,7 +74,11 @@ export default function Login() {
         title='Login'
         onPress={handleLogin}
         icon={<Ionicons name="log-in-outline" size={24} color="white" />}
-        showBorder={false} />
+        showBorder={false} 
+        />
+
+
+
       <View style={styles.dividerContainer}>
         <View style={styles.dividerLine} />
         <Text style={styles.dividerText}>OR</Text>
