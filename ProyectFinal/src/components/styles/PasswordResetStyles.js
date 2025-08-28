@@ -5,7 +5,7 @@ export default StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.backgroundWhite,
-    paddingHorizontal: 20,
+    alignItems: 'center',
   },
   welcomeContainer: {
     alignItems: 'center',
@@ -23,6 +23,8 @@ export default StyleSheet.create({
     marginVertical: 20,
     borderWidth: 1,
     borderColor: COLORS.borderGray,
+    width: '80%',
+    alignSelf: 'center',
   },
   infoRow: {
     flexDirection: 'row',
@@ -47,7 +49,9 @@ export default StyleSheet.create({
     lineHeight: 20,
   },
   group: {
+    width: '80%',
     marginBottom: 20,
+    alignSelf: 'center',
   },
   label: {
     marginBottom: 8,
@@ -56,12 +60,12 @@ export default StyleSheet.create({
     fontWeight: '600',
   },
   buttonContainer: {
-    width: '100%',
+    width: '80%',
     alignItems: 'center',
     marginBottom: 16,
   },
   secondaryButtonContainer: {
-    width: '100%',
+    width: '80%',
     alignItems: 'center',
     marginBottom: 20,
   },
@@ -71,6 +75,7 @@ export default StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 30,
+    width: '80%',
   },
   bannerContainer: {
     width: '100%',    
