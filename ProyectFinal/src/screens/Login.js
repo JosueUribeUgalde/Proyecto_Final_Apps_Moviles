@@ -31,7 +31,7 @@ export default function Login({ navigation }) {
 
   return (
 
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <HeaderScreen
         title="Login"
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}

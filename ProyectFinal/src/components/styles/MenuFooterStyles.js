@@ -11,7 +11,7 @@ export default StyleSheet.create({
         justifyContent: 'space-between', // Cambiado de center a space-between
         alignItems: 'center',
         backgroundColor: COLORS.background,
-        paddingVertical: 8, // Añadido padding vertical
+        paddingVertical: 4, // Añadido padding vertical
         borderTopWidth: 1,
         borderTopColor: COLORS.borderSecondary,
         width: '100%',

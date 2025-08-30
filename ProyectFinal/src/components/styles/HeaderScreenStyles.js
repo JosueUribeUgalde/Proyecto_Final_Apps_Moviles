@@ -4,11 +4,11 @@ import { COLORS, FONTS } from '../constants/theme';
 export default StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
-    justifyContent:'center',
-    gap: 115,
+    justifyContent: 'space-between', // Cambia center a space-between
+    alignItems: 'center',            // Añade alineación vertical
     width: '100%',
-    paddingTop: 20,
-    paddingBottom:20,
+    paddingHorizontal: 20,          // Añade padding horizontal
+    paddingVertical: 15, // Reemplazado paddingTop y paddingBottom por paddingVertical
     borderBottomColor: COLORS.secondary,
     borderBottomWidth: 1,
     marginBottom: 15,
