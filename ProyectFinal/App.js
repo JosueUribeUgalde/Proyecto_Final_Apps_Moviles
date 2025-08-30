@@ -4,6 +4,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Login from "./src/screens/Login";
 import Register from "./src/screens/Register";
 import History from "./src/screens/History";
+import PasswordReset from "./src/screens/PasswordReset";
+
 
 const Stack = createNativeStackNavigator();
 
