@@ -1,16 +1,19 @@
-import { useState } from 'react'; // Agregar este import
-import styles from "../components/styles/LoginStyles";
-import { Text, View, Image, TouchableOpacity } from "react-native";
+// 1. Paquetes core de React/React Native
+import { useState } from 'react';
+import { Text, View, Image, Pressable } from "react-native";
+// 2. Bibliotecas de terceros
 import { SafeAreaView } from "react-native-safe-area-context";
-import ButtonLogin from "../components/ButtonLogin";
-import InputLogin from "../components/InputLogin";
-import HeaderScreen from "../components/HeaderScreen";
-import Banner from "../components/Banner";
-import { COLORS } from '../components/constants/theme';
 import { Ionicons } from '@expo/vector-icons'; // libreria de expo para iconos https://icons.expo.fyi/Index
-
+// 3. Componentes propios
+import { ButtonLogin, InputLogin, HeaderScreen, Banner } from "../components";
+// 4. Constantes y utilidades
+import { COLORS } from '../components/constants/theme';
+// 5. Estilos
+import styles from "../components/styles/LoginStyles";
+// 6. Archivos estáticos
 import LogoSF from '../../assets/logoSF.png';
 import LogoGoogle from '../../assets/icon_google1.png';
+
 export default function Login({ navigation }) {
   const [showBanner, setShowBanner] = useState(false);
 
@@ -23,8 +26,7 @@ export default function Login({ navigation }) {
   };
 
   const handleForgotPassword = () => {
-    // TODO: Implementar lógica para recuperar contraseña
-    //console.log('Forgot password clicked');
+    navigation.navigate('PasswordReset');
   };
 
   return (
@@ -70,11 +72,17 @@ export default function Login({ navigation }) {
           Password
         </Text>
         <InputLogin msj="password" secureTextEntry />
-        <TouchableOpacity onPress={handleForgotPassword}>
+        <Pressable 
+          onPress={handleForgotPassword}
+          style={({pressed}) => [
+            styles.forgotPasswordContainer,
+            pressed && {opacity: 0.5}
+          ]}
+        >
           <Text style={styles.forgotPassword}>
             Forgot Password?
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <ButtonLogin
@@ -107,11 +115,14 @@ export default function Login({ navigation }) {
         <Text style={styles.registerText}>
           No tienes cuenta?
         </Text>
-        <TouchableOpacity onPress={handleRegister}>
+        <Pressable 
+          onPress={handleRegister}
+          style={({ pressed }) => pressed && { opacity: 0.5 }}
+        >
           <Text style={styles.registerTextClick}>
             {' '}Regístrate
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </SafeAreaView>
   );
