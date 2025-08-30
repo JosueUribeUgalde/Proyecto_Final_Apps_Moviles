@@ -1,0 +1,121 @@
+SafeAreaView - Documentación de Uso
+
+Descripción:
+-------------
+SafeAreaView es un componente de React Native Safe Area Context que renderiza contenido dentro de las áreas seguras de la pantalla del dispositivo, evitando obstáculos como el notch, la barra de estado, el indicador de inicio y otras áreas del sistema.
+
+Instalación:
+-----------
+npm install react-native-safe-area-context
+
+Configuración Básica:
+-------------------
+Primero, envuelve tu aplicación con SafeAreaProvider:
+
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      {/* Tu app aquí */}
+    </SafeAreaProvider>
+  );
+}
+
+Props Principales:
+----------------
+
+edges:
+Define en qué bordes se aplican los insets de área segura:
+
+- 'top': Aplica padding en la parte superior (evita la barra de estado/notch)
+- 'bottom': Aplica padding en la parte inferior (evita el home indicator)
+- 'left': Aplica padding en el lado izquierdo
+- 'right': Aplica padding en el lado derecho
+- 'all': Aplica padding en todos los lados (valor predeterminado)
+
+Ejemplos de Uso:
+--------------
+
+Ejemplo 1: Protección completa (comportamiento predeterminado)
+
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+export default function Screen() {
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+      {/* Todo el contenido está en área segura */}
+    </SafeAreaView>
+  );
+}
+
+Ejemplo 2: Solo protección superior e inferior
+
+<SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+  <HeaderScreen title="Mi Pantalla" />
+  <View style={styles.content}>
+    {/* Contenido principal */}
+  </View>
+  <MenuFooter />
+</SafeAreaView>
+
+Ejemplo 3: Solo protección superior (útil con footer personalizado)
+
+<SafeAreaView style={styles.container} edges={['top']}>
+  <HeaderScreen title="Mi Pantalla" />
+  <View style={styles.content}>
+    {/* Contenido principal */}
+  </View>
+  <FooterCustom />  {/* Footer que debe tocar el borde inferior */}
+</SafeAreaView>
+
+Ejemplo 4: Sin protección en los bordes (modo inmersivo)
+
+<SafeAreaView style={styles.container} edges={[]}>
+  {/* Contenido que ocupa toda la pantalla */}
+</SafeAreaView>
+
+Casos de uso comunes:
+-------------------
+
+1. Pantalla con header y footer
+
+<SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+  <Header />
+  <ScrollView>{/* contenido */}</ScrollView>
+  <Footer />
+</SafeAreaView>
+
+2. Pantalla con tabs en la parte inferior
+
+<SafeAreaView style={styles.container} edges={['top']}>
+  <Header />
+  <Content />
+  <TabNavigator /> {/* Los tabs suelen manejar su propia área segura */}
+</SafeAreaView>
+
+3. Pantalla de cámara o inmersiva
+
+<View style={{ flex: 1 }}>
+  <Camera style={{ flex: 1 }} />
+  <SafeAreaView edges={['top']} style={{ position: 'absolute', width: '100%' }}>
+    <CloseButton onPress={() => navigation.goBack()} />
+  </SafeAreaView>
+</View>
+
+Ventajas:
+--------
+- Padding dinámico adaptado a cada dispositivo
+- Manejo automático de diferentes tamaños de notch y home indicators
+- Funciona en todas las orientaciones de pantalla
+- Elimina la necesidad de paddings manuales hardcodeados
+
+Consideraciones:
+--------------
+- Asegúrate de tener siempre un SafeAreaProvider envolviendo tu aplicación
+- El color de fondo del SafeAreaView debe coincidir con el diseño para evitar contrastes no deseados
+- En algunas pantallas específicas (como cámara), puedes querer deshabilitar completamente las áreas seguras
+
+Referencias:
+----------
+- Documentación oficial: https://github.com/th3rdwave/react-native-safe-area-

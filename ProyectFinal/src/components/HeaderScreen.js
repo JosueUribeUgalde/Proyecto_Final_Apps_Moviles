@@ -1,19 +1,22 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import styles from "./styles/HeaderScreenStyles";
 
 export default function HeaderScreen({ title, leftIcon, rightIcon, onLeftPress, onRightPress }) {
   return (
-
-      <View style={styles.headerRow}>
-        <TouchableOpacity onPress={onLeftPress}>
-          {leftIcon}
-        </TouchableOpacity>
-        <Text style={styles.title}>{title}</Text>
-        <TouchableOpacity onPress={onRightPress}>
-          {rightIcon}
-        </TouchableOpacity>
-      </View>
- 
-    
+    <View style={styles.headerRow}>
+      <Pressable 
+        onPress={onLeftPress}
+        style={({ pressed }) => pressed && { opacity: 0.5 }}
+      >
+        {leftIcon}
+      </Pressable>
+      <Text style={styles.title}>{title}</Text>
+      <Pressable 
+        onPress={onRightPress}
+        style={({ pressed }) => pressed && { opacity: 0.5 }}
+      >
+        {rightIcon}
+      </Pressable>
+    </View>
   );
 }

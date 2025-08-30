@@ -1,34 +1,59 @@
-import { View, TouchableOpacity, Text } from "react-native";
+import { View, Pressable, Text } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import styles from "./styles/MenuFooterStyles";
 
 export default function MenuFooter() {
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.button}>
+      <Pressable 
+        style={({ pressed }) => [
+          styles.button,
+          pressed && { opacity: 0.5 }
+        ]}
+      >
         <Ionicons name="home" size={24} color="gray" />
         <Text style={styles.buttonText}>Home</Text>
-      </TouchableOpacity>
+      </Pressable>
       
-      <TouchableOpacity style={styles.button}>
+      <Pressable 
+        style={({ pressed }) => [
+          styles.button,
+          pressed && { opacity: 0.5 }
+        ]}
+      >
         <Ionicons name="calendar-outline" size={24} color="gray" />
-        <Text style={styles.buttonText}>Calendario</Text>
-      </TouchableOpacity>
+        <Text style={styles.buttonText}>Agenda</Text>
+      </Pressable>
       
-      <TouchableOpacity style={styles.button}>
+      <Pressable 
+        style={({ pressed }) => [
+          styles.button,
+          pressed && { opacity: 0.5 }
+        ]}
+      >
         <Ionicons name="add-circle" size={32} color="gray" />
-        <Text style={styles.buttonText}>Reportar</Text>
-      </TouchableOpacity>
+        <Text style={styles.buttonText}>Añadir</Text>
+      </Pressable>
       
-      <TouchableOpacity style={styles.button}>
+      <Pressable 
+        style={({ pressed }) => [
+          styles.button,
+          pressed && { opacity: 0.5 }
+        ]}
+      >
         <Ionicons name="file-tray-full-outline" size={24} color="gray" />
         <Text style={styles.buttonText}>Historial</Text>
-      </TouchableOpacity>
+      </Pressable>
       
-      <TouchableOpacity style={styles.button}>
+      <Pressable 
+        style={({ pressed }) => [
+          styles.button,
+          pressed && { opacity: 0.5 }
+        ]}
+      >
         <Ionicons name="person-outline" size={24} color="gray" />
         <Text style={styles.buttonText}>Perfil</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }

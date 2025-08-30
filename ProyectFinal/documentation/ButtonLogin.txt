@@ -2,7 +2,7 @@ ButtonLogin - Documentación de Componente
 
 Descripción:
 -------------
-ButtonLogin es un componente de botón personalizado para React Native, diseñado para ser reutilizable y altamente configurable. Permite mostrar un icono, personalizar el color de fondo, el color del texto y decidir si el botón tiene borde o no.
+ButtonLogin es un componente de botón personalizado para React Native, diseñado para ser reutilizable y altamente configurable. Implementado con Pressable para mejor rendimiento y accesibilidad. Permite mostrar un icono, personalizar el color de fondo, el color del texto y decidir si el botón tiene borde o no.
 
 Props:
 ------
@@ -73,6 +73,12 @@ Notas:
 - Si no se especifica backgroundColor o textColor, se usan los valores por defecto definidos en ButtonStyle.js.
 - El icono debe ser un elemento React válido (ejemplo: <Ionicons ... /> o <Image ... />).
 - El botón es totalmente compatible con estilos personalizados y puede usarse en cualquier pantalla de la app.
+- Implementado con Pressable en lugar de TouchableOpacity para mejor rendimiento y personalización.
+
+Comportamiento visual:
+----------------------
+- Reduce su opacidad a 0.5 cuando se presiona
+- En Android, muestra efecto ripple al presionar
 
 Ubicación:
 ----------
