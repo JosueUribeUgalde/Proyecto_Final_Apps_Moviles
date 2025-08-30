@@ -9,17 +9,22 @@ import Banner from "../components/Banner";
 import { COLORS } from '../components/constants/theme';
 import { Ionicons } from '@expo/vector-icons'; // libreria de expo para iconos https://icons.expo.fyi/Index
 
-export default function Login() {
+import LogoSF from '../../assets/logoSF.png';
+import LogoGoogle from '../../assets/icon_google1.png';
+export default function Login({ navigation }) {
   const [showBanner, setShowBanner] = useState(false);
 
   const handleLogin = () => {
-    setShowBanner(true);
-    // El banner se ocultará automáticamente después de 3 segundos
+    navigation.navigate('History');
+  };
+
+  const handleRegister = () => {
+    navigation.navigate('Register');
   };
 
   const handleForgotPassword = () => {
     // TODO: Implementar lógica para recuperar contraseña
-    console.log('Forgot password clicked');
+    //console.log('Forgot password clicked');
   };
 
   return (
@@ -34,14 +39,15 @@ export default function Login() {
       />
       <View style={styles.welcomeContainer}>
         <Image
-          source={require('../../assets/logoSF.png')}
+          source={LogoSF}
           style={styles.logoImage}
         />
         <Text style={styles.welcomeText}>Welcome back</Text>
 
       </View>
+
+{/*Se agrego este banner al button login solo como test*/}
       <View style={styles.bannerContainer}>
-        {/*Se agrego este banner al button login solo como test*/}
         <Banner
           message="Credenciales incorrectas"
           type="error"
@@ -49,6 +55,7 @@ export default function Login() {
           onHide={() => setShowBanner(false)}
         />
       </View>
+
       {/* Grupo Email */}
       <View style={styles.group}>
         <Text style={styles.label}>
@@ -90,7 +97,7 @@ export default function Login() {
         onPress={() => { }}
         icon={
           <Image
-            source={require('../../assets/icon_google1.png')}
+            source={LogoGoogle}
             style={{ width: 24, height: 24 }}
           />
         }
@@ -100,7 +107,7 @@ export default function Login() {
         <Text style={styles.registerText}>
           No tienes cuenta?
         </Text>
-        <TouchableOpacity onPress={handleForgotPassword}>
+        <TouchableOpacity onPress={handleRegister}>
           <Text style={styles.registerTextClick}>
             {' '}Regístrate
           </Text>
