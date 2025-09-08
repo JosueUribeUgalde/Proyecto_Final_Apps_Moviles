@@ -18,7 +18,7 @@ export default function Login({ navigation }) {
   const [showBanner, setShowBanner] = useState(false);
 
   const handleLogin = () => {
-    navigation.navigate('History');
+    navigation.navigate('Home');
   };
 
   const handleRegister = () => {
