@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, Image} from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import HeaderScreen from "../components/HeaderScreen";
 import InputLogin from "../components/InputLogin";
 import ButtonLogin from "../components/ButtonLogin";
@@ -9,6 +10,7 @@ import { COLORS } from "../components/constants/theme";
 import styles from "../components/styles/RegisterStyles";
 
 export default function Register() {
+    const navigation = useNavigation();
     // Controlador dse visibilidad del banner
 const [showBanner, setShowBanner] = useState(false);
 
@@ -18,9 +20,7 @@ const handleRegister = () => {
 };
 
 return (
-    // Contenedor principal, edges es para que no se superponga con la barra de estado
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-    {/*Header con el titulo al igual que la barra separadora*/}
+    <SafeAreaView style={styles.container}>
         <HeaderScreen title="Registrarse" />
     {/*Marca con crear cuenta*/}
     <View style={styles.welcomeContainer}>
@@ -67,7 +67,7 @@ return (
         <Text style={styles.footerText}>¿Ya tienes cuenta?</Text>
         <Text
             style={styles.footerLink}
-            onPress={() => navigation.replace("src\screens\Login.js")}>
+            onPress={() => navigation.navigate('Login')}>
             Inicia sesión
         </Text>
     </View>
