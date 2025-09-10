@@ -2,7 +2,7 @@ import { View, Pressable, Text } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import styles from "./styles/MenuFooterStyles";
-
+import { useNavigation } from '@react-navigation/native';
 export default function MenuFooter() {
   const navigation = useNavigation();
 
@@ -13,7 +13,6 @@ export default function MenuFooter() {
           styles.button,
           pressed && { opacity: 0.5 }
         ]}
-        onPress={() => navigation.navigate('Home')}
       >
         <Ionicons name="home" size={24} color="gray" />
         <Text style={styles.buttonText}>Home</Text>
@@ -46,7 +45,6 @@ export default function MenuFooter() {
           styles.button,
           pressed && { opacity: 0.5 }
         ]}
-        onPress={() => navigation.navigate('History')}
       >
         <Ionicons name="file-tray-full-outline" size={24} color="gray" />
         <Text style={styles.buttonText}>Historial</Text>

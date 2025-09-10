@@ -3,20 +3,37 @@ import styles from "./styles/HeaderScreenStyles";
 
 export default function HeaderScreen({ title, leftIcon, rightIcon, onLeftPress, onRightPress }) {
   return (
-    <View style={styles.headerRow}>
-      <Pressable 
-        onPress={onLeftPress}
-        style={({ pressed }) => pressed && { opacity: 0.5 }}
-      >
-        {leftIcon}
-      </Pressable>
-      <Text style={styles.title}>{title}</Text>
-      <Pressable 
-        onPress={onRightPress}
-        style={({ pressed }) => pressed && { opacity: 0.5 }}
-      >
-        {rightIcon}
-      </Pressable>
+    <View>
+      <View style={styles.headerRow}>
+        {/* Icono izquierdo */}
+        {leftIcon && (
+          <Pressable 
+            onPress={onLeftPress}
+            style={({ pressed }) => [
+              styles.leftIcon,
+              pressed && { opacity: 0.5 }
+            ]}
+          >
+            {leftIcon}
+          </Pressable>
+        )}
+        
+        {/* Título siempre centrado */}
+        <Text style={styles.title}>{title}</Text>
+        
+        {/* Icono derecho */}
+        {rightIcon && (
+          <Pressable 
+            onPress={onRightPress}
+            style={({ pressed }) => [
+              styles.rightIcon,
+              pressed && { opacity: 0.5 }
+            ]}
+          >
+            {rightIcon}
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
