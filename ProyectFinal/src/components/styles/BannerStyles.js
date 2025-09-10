@@ -3,6 +3,11 @@ import { COLORS, FONTS, RADIUS } from '../constants/theme';
 
 export default StyleSheet.create({
   container: {
+    position: 'absolute',
+    top: '5%',
+    left: '10%',
+    right: '10%',
+    zIndex: 999,
     borderRadius: RADIUS.sm,
     padding: 10,
     width: '80%',
