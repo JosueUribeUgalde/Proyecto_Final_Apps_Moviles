@@ -25,7 +25,7 @@ return (
     {/*Marca con crear cuenta*/}
     <View style={styles.welcomeContainer}>
         <Image
-            source={require('../../assets/logoSF.png')}
+            source={require('../../assets/LogoTM.png')}
             style={styles.logoImage}
         />
         <Text style={styles.welcomeText}>Crear cuenta</Text>
