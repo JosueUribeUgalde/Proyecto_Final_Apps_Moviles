@@ -11,7 +11,7 @@ import { COLORS } from '../components/constants/theme';
 // 5. Estilos
 import styles from "../components/styles/LoginStyles";
 // 6. Archivos estáticos
-import LogoSF from '../../assets/logoSF.png';
+import LogoSF from '../../assets/LogoTM.png';
 import LogoGoogle from '../../assets/icon_google1.png';
 
 export default function Login({ navigation }) {
