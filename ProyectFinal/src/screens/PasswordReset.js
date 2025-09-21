@@ -40,7 +40,7 @@ export default function PasswordReset() {
 
             <View style={styles.welcomeContainer}>
                 <Image
-                    source={require('../../assets/logoSF.png')}
+                    source={require('../../assets/LogoTM.png')}
                     style={styles.logoImage}
                 />
             </View>
