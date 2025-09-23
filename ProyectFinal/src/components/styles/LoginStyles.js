@@ -41,8 +41,8 @@ export default StyleSheet.create({
     justifyContent: 'center',
   },
   logoImage: {
-    width: 120,
-    height: 120,
+    width: 140,
+    height: 140,
     marginBottom: 16,
     resizeMode: 'contain', // esto mantiene la proporción de la imagen
   },

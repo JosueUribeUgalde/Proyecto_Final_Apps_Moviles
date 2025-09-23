@@ -28,6 +28,12 @@ export const RADIUS = {
     lg: 15,
 };
 
+export const AVATAR = {
+    sizeSm: 48,
+    sizeMd: 80,
+    sizeLg: 112,
+};
+
 export const SHADOWS = {
     light: {
         shadowColor: '#000',
