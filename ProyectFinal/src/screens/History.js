@@ -12,7 +12,7 @@ export default function History() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <HeaderScreen
         title="Historial"
-        leftIcon={<Ionicons name="chevron-back-sharp" size={24} color="black" />}
+        leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
         rightIcon={<Ionicons name="notifications-outline" size={24} color="black" />}
         onLeftPress={() => {navigation.goBack()}}
         //Aqui se va a agregar las notificaciones (funcionalidad futura por ahora no hace nada)
