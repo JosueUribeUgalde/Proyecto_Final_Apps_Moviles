@@ -1,9 +1,10 @@
 // 1. Paquetes core de React/React Native
-import { useState } from 'react';
-import { Text, View, Image, Pressable } from "react-native";
+import { useState, useEffect } from 'react';
+import { Text, View, Image, Pressable, Alert } from "react-native";
 // 2. Bibliotecas de terceros
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from '@expo/vector-icons'; // libreria de expo para iconos https://icons.expo.fyi/Index
+import { Ionicons } from '@expo/vector-icons';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 // 3. Componentes propios
 import { ButtonLogin, InputLogin, HeaderScreen, Banner } from "../components";
 // 4. Constantes y utilidades
@@ -16,6 +17,15 @@ import LogoGoogle from '../../assets/icon_google1.png';
 
 export default function Login({ navigation }) {
   const [showBanner, setShowBanner] = useState(false);
+  const [bannerMessage, setBannerMessage] = useState('');
+  const [bannerType, setBannerType] = useState('error');
+
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: '154945832096-cg30sjdppgqk8hamf3j7ihofcv1cl3ip.apps.googleusercontent.com', // Tu web client ID
+      offlineAccess: true,
+    });
+  }, []);
 
   const handleLogin = () => {
     navigation.navigate('Home');
@@ -27,6 +37,61 @@ export default function Login({ navigation }) {
 
   const handleForgotPassword = () => {
     navigation.navigate('PasswordReset');
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      console.log('Iniciando Google Sign-In...');
+      
+      // Verificar que Google Play Services esté disponible
+      await GoogleSignin.hasPlayServices();
+      console.log('Google Play Services disponible');
+      
+      // Realizar el sign in
+      const userInfo = await GoogleSignin.signIn();
+      console.log('User data completa:', JSON.stringify(userInfo, null, 2));
+      
+      // Acceso a los datos del usuario - probando diferentes estructuras
+      const user = userInfo.user || userInfo.data?.user || userInfo;
+      console.log('User extraído:', user);
+      
+      if (user && (user.name || user.email)) {
+        // Mostrar mensaje de éxito
+        setBannerMessage(`¡Bienvenido ${user.name || user.email}!`);
+        setBannerType('success');
+        setShowBanner(true);
+        
+        // Navegar a Home después de un breve delay
+        setTimeout(() => {
+          navigation.navigate('Home');
+        }, 1500);
+      } else {
+        setBannerMessage('Error: No se pudieron obtener los datos del usuario');
+        setBannerType('error');
+        setShowBanner(true);
+      }
+      
+    } catch (error) {
+      console.error('Google Sign-In Error completo:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      
+      let errorMessage = 'Error al iniciar sesión con Google';
+      
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        errorMessage = 'Login cancelado por el usuario';
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        errorMessage = 'Login en progreso...';
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        errorMessage = 'Google Play Services no disponible';
+      } else if (error.code) {
+        errorMessage = `Error código: ${error.code}`;
+      }
+      
+      setBannerMessage(errorMessage);
+      setBannerType('error');
+      setShowBanner(true);
+    }
   };
 
   return (
@@ -48,11 +113,11 @@ export default function Login({ navigation }) {
 
       </View>
 
-{/*Se agrego este banner al button login solo como test*/}
+      {/* Banner para mensajes */}
       <View style={styles.bannerContainer}>
         <Banner
-          message="Credenciales incorrectas"
-          type="error"
+          message={bannerMessage}
+          type={bannerType}
           visible={showBanner}
           onHide={() => setShowBanner(false)}
         />
@@ -95,6 +160,7 @@ export default function Login({ navigation }) {
 
 
       <View style={styles.dividerContainer}>
+        
         <View style={styles.dividerLine} />
         <Text style={styles.dividerText}>OR</Text>
         <View style={styles.dividerLine} />
@@ -102,7 +168,7 @@ export default function Login({ navigation }) {
 
       <ButtonLogin
         title='Login with Google'
-        onPress={() => { }}
+        onPress={handleGoogleSignIn} // Cambiado para usar la función de Google Sign-In
         icon={
           <Image
             source={LogoGoogle}
@@ -110,7 +176,9 @@ export default function Login({ navigation }) {
           />
         }
         backgroundColor={COLORS.backgroundWhite}
-        textColor={COLORS.textBlack} />
+        textColor={COLORS.textBlack} 
+      />
+      
       <View style={styles.registerContainer}>
         <Text style={styles.registerText}>
           No tienes cuenta?
