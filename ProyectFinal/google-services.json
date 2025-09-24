@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "154945832096",
+    "project_id": "turnmate-d6b6f",
+    "storage_bucket": "turnmate-d6b6f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:154945832096:android:83426387aff2c292ab75c5",
+        "android_client_info": {
+          "package_name": "com.tunombre.turnmate"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "154945832096-35pfqdlbna2957d753l5hvhp5bd3hn4c.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tunombre.turnmate",
+            "certificate_hash": "29092bae3694890a8f6fef162279d7d35a1701ae"
+          }
+        },
+        {
+          "client_id": "154945832096-cg30sjdppgqk8hamf3j7ihofcv1cl3ip.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtpxR5q5fKK2Z4OqSaBZxQt3sftY1pZyw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "154945832096-cg30sjdppgqk8hamf3j7ihofcv1cl3ip.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
