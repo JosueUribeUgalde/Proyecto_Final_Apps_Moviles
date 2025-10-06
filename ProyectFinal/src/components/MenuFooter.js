@@ -23,10 +23,10 @@ export default function MenuFooter() {
           styles.button,
           pressed && { opacity: 0.5 }
         ]}
-        onPress={() => navigation.navigate('Agenda')}
+        onPress={() => navigation.navigate('Calendar')}
       >
         <Ionicons name="calendar-outline" size={24} color="gray" />
-        <Text style={styles.buttonText}>Agenda</Text>
+        <Text style={styles.buttonText}>Calendario</Text>
       </Pressable>
       
       <Pressable 
