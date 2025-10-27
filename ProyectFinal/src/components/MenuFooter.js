@@ -34,7 +34,7 @@ export default function MenuFooter() {
           styles.button,
           pressed && { opacity: 0.5 }
         ]}
-        onPress={() => navigation.navigate('Add')}
+        onPress={() => navigation.navigate('AddReport')}
       >
         <Ionicons name="add-circle" size={32} color="gray" />
         <Text style={styles.buttonText}>Añadir</Text>

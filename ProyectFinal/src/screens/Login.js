@@ -109,7 +109,7 @@ export default function Login({ navigation }) {
     <SafeAreaView edges={['top']} style={styles.container}>
       <HeaderScreen
         title="Login"
-        leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
+        // leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
        // rightIcon={<Ionicons name="settings" size={24} color="black" />}
         onLeftPress={() => { }}
         onRightPress={() => { }}
