@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { COLORS, FONTS, RADIUS, SHADOWS, AVATAR } from '../constants/theme';
 
-export default StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -192,4 +192,57 @@ export default StyleSheet.create({
     fontSize: FONTS.regular,
     color: COLORS.textGray,
   },
+  toggleContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  /* ================== (NUEVO) Modal ================== */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.lg,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: FONTS.large,
+    fontWeight: 'bold',
+    color: COLORS.textBlack,
+    marginBottom: 20,
+  },
+  regionOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderRadius: RADIUS.md,
+  },
+  regionOptionSelected: {
+    backgroundColor: COLORS.secondary,
+  },
+  regionOptionText: {
+    fontSize: FONTS.regular,
+    color: COLORS.textBlack,
+  },
+  regionOptionTextSelected: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
 });
+
+export default styles;
+
+export const TOGGLE_COLORS = {
+  on: COLORS.secondary,
+  off: COLORS.borderGray,
+  thumb: COLORS.textWhite,
+};

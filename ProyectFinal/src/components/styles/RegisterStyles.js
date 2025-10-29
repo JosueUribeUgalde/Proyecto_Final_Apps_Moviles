@@ -2,23 +2,25 @@ import { StyleSheet } from "react-native";
 import { COLORS, FONTS } from "../constants/theme";
 
 export default StyleSheet.create({
-  // Contenedor principal (aplicado al SafeAreaView)
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  contentContainer: {
+    flex: 1,
     paddingHorizontal: 20,
     alignItems: "center",
   },
-
-  // Marca "ShiftFlow"
+  scrollContent: {
+    flexGrow: 1,
+    width: '100%',
+  },
   logoImage: {
     width: 140,
     height: 140,
     marginBottom: 16,
-    resizeMode: 'contain', // esto mantiene la proporción de la imagen
+    resizeMode: 'contain',
   },
-
-  // Contenedor y subtitulo de crear cuenta
   welcomeContainer: {
     alignItems: 'center',
   },
@@ -27,8 +29,6 @@ export default StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.textBlack,
   },
-
-  // Grupo de cada campo
   group: {
     width: "100%",
     marginBottom: 12,
@@ -40,18 +40,21 @@ export default StyleSheet.create({
     marginBottom: 4,
   },
 
-  // Botón
   buttonContainer: {
     marginTop: 20,
     width: "100%",
     alignItems: "center",
   },
-
-  // Footer (¿Ya tienes cuenta? Inicia sesión)
   footer: {
+    width: '100%',
+    paddingVertical: 16,
+    paddingBottom: 24, // Extra padding para dispositivos con notch
+    backgroundColor: COLORS.background,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderGray,
     flexDirection: "row",
-    marginTop: 16,
     justifyContent: "center",
+    alignItems: 'center',
   },
   footerText: {
     fontSize: FONTS.small,
