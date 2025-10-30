@@ -16,7 +16,7 @@ import { HeaderScreen, Banner, MenuFooter, RazonOption, ButtonLogin } from "../c
 import { COLORS } from '../components/constants/theme';
 
 // 5. Estilos - Deberás crear este archivo para tu pantalla
-import styles from "../components/styles/AddReportStyles";
+import styles from "../components/stylesScreensAdmin/AddReportStyles";
 
 export default function ScreenTemplate({ navigation }) {
   const [showBanner, setShowBanner] = useState(false);
