@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import HeaderScreen from "../components/HeaderScreen";
 import styles from '../components/styles/HelpStyles';
 import { COLORS } from '../components/constants/theme';
@@ -26,8 +25,7 @@ const FAQ_DATA = [
   },
 ];
 
-export default function Help() {
-  const navigation = useNavigation();
+export default function Help({ navigation }) {
   const [expandedItem, setExpandedItem] = useState(null);
 
   const handleContactSupport = () => {
@@ -39,7 +37,7 @@ export default function Help() {
       <HeaderScreen
         title="Ayuda"
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
-        onPressLeft={() => navigation.goBack()}
+        onLeftPress={() => navigation.goBack()}
       />
 
       <ScrollView style={styles.content}>

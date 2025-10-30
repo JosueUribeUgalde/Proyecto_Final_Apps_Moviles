@@ -10,7 +10,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 
 // 3. Componentes propios
-import { HeaderScreen, Banner, MenuFooter, RazonOption } from "../components";
+import { HeaderScreen, Banner, MenuFooter, RazonOption, ButtonLogin } from "../components";
 
 // 4. Constantes y utilidades
 import { COLORS } from '../components/constants/theme';
@@ -106,12 +106,48 @@ export default function ScreenTemplate({ navigation }) {
     }
   ];
 
+  const enviarReporte = () => {
+    // Validación básica
+    if (!razonSeleccionada) {
+      alert('Por favor selecciona una razón');
+      return;
+    }
+    
+    if (!detalles.trim()) {
+      alert('Por favor proporciona detalles del incidente');
+      return;
+    }
+
+    // Aquí iría la lógica para enviar el reporte
+    const razonInfo = razones.find(r => r.id === razonSeleccionada);
+    const reporte = {
+      fecha: fecha.toISOString(),
+      hora: hora.toISOString(),
+      razon: razonInfo,
+      detalles: detalles,
+      documentoAdjunto: documentoAdjunto,
+      visibleManager: visibleManager
+    };
+    
+    console.log('Reporte enviado:', reporte);
+    // TODO: Aquí conectarías con tu API o base de datos
+    
+    // Navegar a la pantalla de confirmación
+    navigation.navigate('ConfirmationReplace', {
+      empleado: 'Usuario',
+      fechaInicio: fecha.toLocaleDateString('es-ES'),
+      fechaFin: fecha.toLocaleDateString('es-ES'),
+      motivo: razonInfo.title
+    });
+  };
+
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
       <HeaderScreen
         title="Reportes"
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
         onLeftPress={() => navigation.goBack()}
+          rightIcon={<Ionicons name="notifications-outline" size={24} color="black" />}
       />
       
       {/* Banner para mensajes (opcional)
@@ -250,6 +286,16 @@ export default function ScreenTemplate({ navigation }) {
               </Pressable>
             </View>
           )}
+        </View>
+
+        {/* Botón de envío */}
+        <View style={styles.botonEnviarContainer}>
+          <ButtonLogin 
+            title="Enviar Reporte"
+            onPress={enviarReporte}
+            backgroundColor={COLORS.primary}
+            textColor={COLORS.backgroundWhite}
+          />
         </View>
         
       </ScrollView>

@@ -78,11 +78,15 @@ export default StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 8,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   botonAdjuntar: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 8,
+    flex: 1,
+    minWidth: '40%',
   },
   textoBotonAdjuntar: {
     fontSize: FONTS.regular,
@@ -104,6 +108,7 @@ export default StyleSheet.create({
     borderRadius: RADIUS.sm,
     borderWidth: 1,
     borderColor: COLORS.borderGray,
+    flexShrink: 0,
   },
   botonVisibilidadActivo: {
     backgroundColor: COLORS.backgroundSuccess,
@@ -131,5 +136,10 @@ export default StyleSheet.create({
     flex: 1,
     fontSize: FONTS.regular,
     color: COLORS.textBlack,
+  },
+  botonEnviarContainer: {
+    marginVertical: 20,
+    width: '100%',
+    alignItems: 'center',
   },
 });
