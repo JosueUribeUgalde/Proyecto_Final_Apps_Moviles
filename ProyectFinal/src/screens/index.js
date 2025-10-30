@@ -9,6 +9,6 @@ export { default as EditProfile } from './EditProfile';
 export { default as ConfirmationReplace } from './ConfirmationReplace';
 export { default as Calendar } from './Calendar';
 export { default as ListAdmin } from './ListAdmin';
-export { default as ReportScreen } from './ReportScreen';
+export { default as ReportScreen } from '../screensAdmin/ReportScreen';
 export { default as AddReport } from './AddReport';
 export { default as Help } from './Help';
