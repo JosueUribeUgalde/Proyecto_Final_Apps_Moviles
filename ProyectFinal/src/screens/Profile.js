@@ -47,8 +47,9 @@ export default function Profile() {
     <SafeAreaView style={styles.container}>
       <HeaderScreen
         title="Perfil"
+        rightIcon={<Ionicons name="notifications-outline" size={24} color="black" />}
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
-        onPressLeft={() => navigation.goBack()}
+        onLeftPress={() => navigation.goBack()}
       />
       
       <ScrollView>
