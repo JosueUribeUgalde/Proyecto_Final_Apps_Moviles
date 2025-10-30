@@ -10,4 +10,3 @@ export { default as ConfirmationReplace } from './ConfirmationReplace';
 export { default as Calendar } from './Calendar';
 export { default as AddReport } from './AddReport';
 export { default as Help } from './Help';
-

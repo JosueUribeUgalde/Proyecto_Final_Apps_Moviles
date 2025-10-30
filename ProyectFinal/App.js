@@ -13,7 +13,8 @@ export default function App() {
         <Stack.Navigator 
           initialRouteName="Login"
           screenOptions={{
-            headerShown: false
+            headerShown: false,
+            animation: 'fade_from_bottom', // Esta animación es más suave tanto al avanzar como al retroceder
           }}
         >
           <Stack.Screen name="Login" component={Login} />
@@ -28,7 +29,6 @@ export default function App() {
           <Stack.Screen name="Calendar" component={Calendar} />
           <Stack.Screen name="AddReport" component={AddReport} />
           <Stack.Screen name="Help" component={Help} />
-
 
         </Stack.Navigator>
       </NavigationContainer>
