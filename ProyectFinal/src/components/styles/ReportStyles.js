@@ -86,4 +86,50 @@ export default StyleSheet.create({
     fontWeight: '700',
     color: COLORS.textBlack,
   },
+  // Filter Section
+  filterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterText: {
+    fontSize: FONTS.small,
+    color: COLORS.textGray,
+    fontWeight: '500',
+  },
+  // Chart Section
+  chartPlaceholder: {
+    height: 120,
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+  },
+  chartPlaceholderText: {
+    fontSize: FONTS.regular,
+    color: COLORS.textGray,
+  },
+  chartDescription: {
+    color: COLORS.textGray,
+    fontSize: FONTS.small,
+    marginTop: 6,
+  },
+  // Button Row
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  // Top Metrics Section
+  topMetricsContainer: {
+    marginTop: 10,
+  },
+  topMetricsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
 });
