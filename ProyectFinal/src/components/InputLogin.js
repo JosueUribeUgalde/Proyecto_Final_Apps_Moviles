@@ -1,5 +1,5 @@
 import { TextInput } from "react-native";
-import styles from "./styles/InputStyles";
+import styles from "../styles/components/InputStyles";
 export default function InputLogin({ msj, secureTextEntry }) {
   return (
     <TextInput

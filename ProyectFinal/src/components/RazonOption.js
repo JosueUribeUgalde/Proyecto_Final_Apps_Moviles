@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
-import styles from "./styles/RazonOptionStyles";
+import styles from "../styles/components/RazonOptionStyles";
 
 export default function RazonOption({ title, description, iconName, isSelected, onSelect }) {
   return (
