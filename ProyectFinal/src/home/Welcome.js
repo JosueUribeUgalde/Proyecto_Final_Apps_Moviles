@@ -13,8 +13,7 @@ export default function Welcome({ navigation }) {
         alert('Login de Empresa próximamente');
         break;
       case 'admin':
-        // TODO: Navegar al login de administrador cuando esté implementado
-        alert('Login de Administrador próximamente');
+        navigation.navigate('LoginAdmin');
         break;
       case 'user':
         navigation.navigate('Login');

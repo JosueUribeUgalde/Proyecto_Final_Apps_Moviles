@@ -1,5 +1,6 @@
 export { default as Welcome } from '../home/Welcome';
 export { default as Login } from './Login';
+export { default as LoginAdmin } from '../screensAdmin/LoginAdmin';
 export { default as Register } from './Register';
 export { default as History } from './History';
 export { default as PasswordReset } from './PasswordReset';

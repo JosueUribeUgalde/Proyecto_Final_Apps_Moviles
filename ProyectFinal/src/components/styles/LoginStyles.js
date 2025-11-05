@@ -90,4 +90,18 @@ export default StyleSheet.create({
     color: COLORS.textGray,
     fontSize: FONTS.small,
   },
+  infoButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 8,
+    gap: 8,
+  },
+  infoButtonText: {
+    color: COLORS.primary,
+    fontSize: FONTS.regular,
+    fontWeight: '500',
+  },
 });
