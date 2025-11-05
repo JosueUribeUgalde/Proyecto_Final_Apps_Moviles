@@ -1,5 +1,5 @@
 import { Text, Pressable, View } from "react-native";
-import styles from "./styles/ButtonStyle";
+import styles from "../styles/components/ButtonStyles";
 
 export default function ButtonLogin({ 
   title, 

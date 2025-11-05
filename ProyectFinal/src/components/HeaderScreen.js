@@ -1,5 +1,5 @@
 import { View, Text, Pressable } from "react-native";
-import styles from "./styles/HeaderScreenStyles";
+import styles from "../styles/components/HeaderScreenStyles";
 
 export default function HeaderScreen({ title, leftIcon, rightIcon, onLeftPress, onRightPress }) {
   return (

@@ -1,6 +1,6 @@
 import { View, Text, Animated } from 'react-native';
 import { useState, useEffect } from 'react';
-import styles from './styles/BannerStyles';
+import styles from '../styles/components/BannerStyles';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function Banner({ message, type = 'error', visible, onHide }) {

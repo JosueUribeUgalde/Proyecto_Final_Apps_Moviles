@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import styles from './styles/InfoModalStyles';
+import styles from '../styles/components/InfoModalStyles';
 import { COLORS } from './constants/theme';
 
 export default function InfoModal({ 
