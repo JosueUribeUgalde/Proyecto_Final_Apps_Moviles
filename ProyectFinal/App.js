@@ -1,7 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Login, Register, History, PasswordReset, Logout,Home, Profile, EditProfile, ConfirmationReplace, Calendar, ListAdmin, ReportScreen, AddReport, Help } from "./src/screens";
+import { Welcome, Login, Register, History, PasswordReset, Logout,Home, Profile, EditProfile, ConfirmationReplace, Calendar, ListAdmin, ReportScreen, AddReport, Help } from "./src/screens";
 
 
 const Stack = createNativeStackNavigator();
@@ -11,12 +11,13 @@ export default function App() {
     <SafeAreaProvider>
       <NavigationContainer>
         <Stack.Navigator 
-          initialRouteName="Login"
+          initialRouteName="Welcome"
           screenOptions={{
             headerShown: false,
             animation: 'fade_from_bottom', // Esta animación es más suave tanto al avanzar como al retroceder
           }}
         >
+          <Stack.Screen name="Welcome" component={Welcome} />
           <Stack.Screen name="Login" component={Login} />
           <Stack.Screen name="Register" component={Register} />
           <Stack.Screen name="Home" component={Home} />
