@@ -13,7 +13,7 @@ import { HeaderScreen, Banner, MenuFooterAdmin } from "../../components";
 import { COLORS } from '../../components/constants/theme';
 
 // 5. Estilos
-import styles from "../../styles/screens/admin/ListAdminStyles";
+import styles from "../../styles/screens/admin/RequestStyles";
 
 export default function ListAdmin({ navigation }) {
   const [showBanner, setShowBanner] = useState(false);
@@ -95,12 +95,12 @@ export default function ListAdmin({ navigation }) {
       <HeaderScreen
         title="Requests"
         leftIcon={<Ionicons name="arrow-back" size={24} color={COLORS.textBlack} />}
-        rightIcon={<Ionicons name="add" size={28} color={COLORS.textBlack} />}
+        // rightIcon={<Ionicons name="add" size={28} color={COLORS.textBlack} />}
         onLeftPress={() => navigation.goBack()}
-        onRightPress={() => {
-          // TODO: Navigate to add request screen
-          console.log('Add new request');
-        }}
+        // onRightPress={() => {
+        //   // TODO: Navigate to add request screen
+        //   console.log('Add new request');
+        // }}
       />
 
       {showBanner && (
