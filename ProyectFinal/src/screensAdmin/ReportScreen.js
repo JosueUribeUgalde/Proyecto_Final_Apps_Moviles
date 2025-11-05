@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Text, View, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { HeaderScreen, Banner, MenuFooter, ButtonLogin } from "../components";
+import { HeaderScreen, Banner, MenuFooterAdmin, ButtonLogin } from "../components";
 import { COLORS } from "../components/constants/theme";
 import styles from "../components/styles/ReportStyles";
 
@@ -31,9 +31,10 @@ export default function ReportScreen({ navigation }) {
         <SafeAreaView edges={["top", "bottom"]} style={styles.container}>
             <HeaderScreen
                 title="Reports"
-                rightIcon={<Ionicons name="download-outline" size={24} color="black" />}
-                onRightPress={() => handlePress('export')}
+                leftIcon={<Ionicons name="arrow-back" size={24} color={COLORS.textBlack} />}
+                rightIcon={<Ionicons name="download-outline" size={24} color={COLORS.textBlack} />}
                 onLeftPress={() => navigation.goBack()}
+                onRightPress={() => handlePress('export')}
             />
 
             <View style={styles.bannerContainer}>
@@ -94,11 +95,11 @@ export default function ReportScreen({ navigation }) {
                             icon={<Ionicons name="filter-outline" size={20} color="white" />}
                         />
                     </View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                        <Text>This week</Text>
-                        <Text>Last 30 Days</Text>
-                        <Text>Quarter</Text>
-                        <Text>Year</Text>
+                    <View style={styles.filterRow}>
+                        <Text style={styles.filterText}>This week</Text>
+                        <Text style={styles.filterText}>Last 30 Days</Text>
+                        <Text style={styles.filterText}>Quarter</Text>
+                        <Text style={styles.filterText}>Year</Text>
                     </View>
                 </View>
 
@@ -106,7 +107,7 @@ export default function ReportScreen({ navigation }) {
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Attendance Trend</Text>
-                        <View style={{ flexDirection: 'row' }}>
+                        <View style={styles.buttonRow}>
                             <ButtonLogin
                                 title="Line"
                                 onPress={() => handlePress('line')}
@@ -121,10 +122,10 @@ export default function ReportScreen({ navigation }) {
                     </View>
 
                     <View>
-                        <View style={{ height: 120, backgroundColor: COLORS.backgroundWhite, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}>
-                            <Text>Chart placeholder</Text>
+                        <View style={styles.chartPlaceholder}>
+                            <Text style={styles.chartPlaceholderText}>Chart placeholder</Text>
                         </View>
-                        <Text style={{ color: COLORS.textGray, marginTop: 6 }}>Shows daily attendance vs target</Text>
+                        <Text style={styles.chartDescription}>Shows daily attendance vs target</Text>
                     </View>
                 </View>
 
@@ -153,8 +154,8 @@ export default function ReportScreen({ navigation }) {
                         </View>
                     </View>
 
-                    <View style={{ marginTop: 10 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={styles.topMetricsContainer}>
+                        <View style={styles.topMetricsHeader}>
                             <Text style={styles.sectionTitle}>Top Metrics</Text>
                             <ButtonLogin
                                 title="Pin"
@@ -193,7 +194,7 @@ export default function ReportScreen({ navigation }) {
             </ScrollView>
 
             <View style={styles.footerContainer}>
-                <MenuFooter />
+                <MenuFooterAdmin />
             </View>
         </SafeAreaView>
     );
