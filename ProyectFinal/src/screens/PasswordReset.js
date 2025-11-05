@@ -9,7 +9,7 @@ import { COLORS } from "../components/constants/theme";
 import { Ionicons } from '@expo/vector-icons';
 import styles from "../components/styles/PasswordResetStyles";
 
-export default function PasswordReset() {
+export default function PasswordReset({ navigation }) {
     const [showBanner, setShowBanner] = useState(false);
     const [bannerType, setBannerType] = useState('error');
     const [bannerMessage, setBannerMessage] = useState('');
@@ -25,7 +25,7 @@ export default function PasswordReset() {
     };
 
     const handleBackToLogin = () => {
-        console.log('Back to login clicked');
+        navigation.goBack();
     };
 
     return (
@@ -33,7 +33,7 @@ export default function PasswordReset() {
             <HeaderScreen 
                 title="Recuperar contraseña"
                 leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
-                rightIcon={<Ionicons name="settings" size={24} color="black" />}
+                // rightIcon={<Ionicons name="settings" size={24} color="black" />}
                 onLeftPress={handleBackToLogin}
                 onRightPress={() => { }}
             />
