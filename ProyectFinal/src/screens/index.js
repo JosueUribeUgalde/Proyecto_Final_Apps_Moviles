@@ -17,5 +17,6 @@ export { default as Help } from './user/Help';
 
 // Admin screens
 export { default as LoginAdmin } from './admin/LoginAdmin';
+export { default as DashboardAdmin } from './admin/DashboardAdmin';
 export { default as ListAdmin } from './admin/RequestScreen';
 export { default as ReportScreen } from './admin/ReportScreen';

@@ -22,7 +22,7 @@ export default function LoginAdmin({ navigation }) {
 
   const handleLogin = () => {
     // TODO: Implementar lógica de autenticación de admin
-    navigation.navigate('ListAdmin'); // Navegar a pantalla de admin
+    navigation.navigate('DashboardAdmin'); // Navegar a dashboard de admin
   };
 
   const handleForgotPassword = () => {
