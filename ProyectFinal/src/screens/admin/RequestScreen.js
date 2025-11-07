@@ -15,7 +15,7 @@ import { COLORS } from '../../components/constants/theme';
 // 5. Estilos
 import styles from "../../styles/screens/admin/RequestStyles";
 
-export default function ListAdmin({ navigation }) {
+export default function RequestScreen({ navigation }) {
   const [showBanner, setShowBanner] = useState(false);
   const [bannerMessage, setBannerMessage] = useState('');
   const [bannerType, setBannerType] = useState('success');
