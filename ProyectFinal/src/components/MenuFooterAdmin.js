@@ -24,10 +24,10 @@ export default function MenuFooterAdmin() {
           styles.button,
           pressed && { opacity: 0.5 }
         ]}
-        onPress={() => navigation.navigate('Calendar')}
+        onPress={() => navigation.navigate('CalendarAdmin')}
       >
         <Ionicons name="calendar-outline" size={24} color="gray" />
-        <Text style={styles.buttonText}>Calendar</Text>
+        <Text style={styles.buttonText}>Calendario</Text>
       </Pressable>
 
       <Pressable
@@ -38,7 +38,7 @@ export default function MenuFooterAdmin() {
         onPress={() => navigation.navigate('Members')}
       >
         <Ionicons name="people-outline" size={24} color="gray" />
-        <Text style={styles.buttonText}>Members</Text>
+        <Text style={styles.buttonText}>Miembros</Text>
       </Pressable>
 
       <Pressable
@@ -46,10 +46,10 @@ export default function MenuFooterAdmin() {
           styles.button,
           pressed && { opacity: 0.5 }
         ]}
-        onPress={() => navigation.navigate('ListAdmin')}
+        onPress={() => navigation.navigate('RequestScreen')}
       >
         <Ionicons name="mail-outline" size={24} color="gray" />
-        <Text style={styles.buttonText}>Requests</Text>
+        <Text style={styles.buttonText}>Peticiones</Text>
       </Pressable>
 
       <Pressable
@@ -57,10 +57,10 @@ export default function MenuFooterAdmin() {
           styles.button,
           pressed && { opacity: 0.5 }
         ]}
-        onPress={() => navigation.navigate('ReportScreen')}
+        onPress={() => navigation.navigate('ProfileAdmin')}
       >
-        <Ionicons name="stats-chart-outline" size={24} color="gray" />
-        <Text style={styles.buttonText}>Reports</Text>
+        <Ionicons name="person-outline" size={24} color="gray" />
+        <Text style={styles.buttonText}>Perfil</Text>
       </Pressable>
     </View>
   );
