@@ -116,7 +116,7 @@ export default StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: RADIUS.sm,
-    backgroundColor: '#FFF4E5',
+    backgroundColor: COLORS.statusPending,
   },
   statusApproved: {
     paddingHorizontal: 12,
@@ -128,7 +128,7 @@ export default StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: RADIUS.sm,
-    backgroundColor: '#FFE5E5',
+    backgroundColor: COLORS.statusRejected,
   },
   statusText: {
     fontSize: 12,
