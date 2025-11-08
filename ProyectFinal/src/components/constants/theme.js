@@ -13,6 +13,8 @@ export const COLORS = {
     borderGray: 'rgba(178, 190, 195, 0.4)',
     borderSecondary:'#CDE6DC',
     error: '#D0342C',
+    statusPending: '#FFF4E5',
+    statusRejected: '#FFE5E5',
 };
 
 export const FONTS = {
