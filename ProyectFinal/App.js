@@ -1,7 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Welcome, Login, LoginAdmin, DashboardAdmin, Register, History, PasswordReset, Logout,Home, Profile, EditProfile, ConfirmationReplace, Calendar, ListAdmin, ReportScreen, AddReport, Help } from "./src/screens";
+import { Welcome, Login, LoginAdmin, DashboardAdmin, Register, History, PasswordReset, Logout,Home, Profile, EditProfile, ConfirmationReplace, Calendar, RequestScreen, ReportScreen, CalendarAdmin, ProfileAdmin, EditProfileAdmin, AddReport, Help } from "./src/screens";
 
 
 const Stack = createNativeStackNavigator();
@@ -30,8 +30,11 @@ export default function App() {
           <Stack.Screen name="EditProfile" component={EditProfile} />
           <Stack.Screen name="ConfirmationReplace" component={ConfirmationReplace} />
           <Stack.Screen name="Calendar" component={Calendar} />
-          <Stack.Screen name="ListAdmin" component={ListAdmin} />
+          <Stack.Screen name="RequestScreen" component={RequestScreen} />
           <Stack.Screen name="ReportScreen" component={ReportScreen} />
+          <Stack.Screen name="CalendarAdmin" component={CalendarAdmin} />
+          <Stack.Screen name="ProfileAdmin" component={ProfileAdmin} />
+          <Stack.Screen name="EditProfileAdmin" component={EditProfileAdmin} />
           <Stack.Screen name="AddReport" component={AddReport} />
           <Stack.Screen name="Help" component={Help} />
 
