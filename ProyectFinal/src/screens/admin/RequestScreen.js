@@ -7,7 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 
 // 3. Componentes propios
-import { HeaderScreen, Banner, MenuFooterAdmin } from "../../components";
+import { HeaderScreen, Banner, MenuFooterAdmin, ButtonRequest } from "../../components";
 
 // 4. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
@@ -191,32 +191,48 @@ export default function RequestScreen({ navigation }) {
         {pendingRequests.map((request) => (
           <View key={request.id} style={styles.requestCard}>
             <View style={styles.requestHeader}>
-              <View style={styles.requestUserInfo}>
-                <Text style={styles.requestUserName}>{request.name}</Text>
+              <View>
+                <Text style={styles.requestName}>{request.name}</Text>
                 <Text style={styles.requestPosition}>{request.position}</Text>
-                <Text style={styles.requestDateTime}>{request.date}</Text>
-                <Text style={styles.requestDateTime}>{request.reason}</Text>
               </View>
-              <View style={styles.requestActions}>
-                <Pressable
-                  style={[styles.actionButton, styles.approveButton]}
-                  onPress={() => handleApprove(request.id)}
-                >
-                  <Text style={styles.actionButtonText}>Approve</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.actionButton, styles.rejectButton]}
-                  onPress={() => handleReject(request.id)}
-                >
-                  <Text style={styles.actionButtonText}>Reject</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.actionButton, styles.messageButton]}
-                  onPress={() => handleMessage(request.id)}
-                >
-                  <Text style={styles.actionButtonText}>Message</Text>
-                </Pressable>
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusText}>Pendiente</Text>
               </View>
+            </View>
+            
+            <View style={styles.requestDetails}>
+              <View style={styles.detailRow}>
+                <Ionicons name="time-outline" size={16} color={COLORS.textGray} />
+                <Text style={styles.detailText}>{request.date}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="information-circle-outline" size={16} color={COLORS.textGray} />
+                <Text style={styles.detailText}>{request.reason}</Text>
+              </View>
+            </View>
+
+            <View style={styles.actionButtons}>
+              <ButtonRequest
+                title="Aprobar"
+                icon="checkmark-circle-outline"
+                iconColor={COLORS.textGreen}
+                textColor={COLORS.textGreen}
+                backgroundColor={COLORS.backgroundBS}
+                borderColor={COLORS.borderSecondary}
+                onPress={() => handleApprove(request.id)}
+                style={{ flex: 1 }}
+              />
+
+              <ButtonRequest
+                title="Rechazar"
+                icon="close-circle-outline"
+                iconColor={COLORS.textRed}
+                textColor={COLORS.textRed}
+                backgroundColor={COLORS.backgroundWhite}
+                borderColor={COLORS.borderSecondary}
+                onPress={() => handleReject(request.id)}
+                style={{ flex: 1 }}
+              />
             </View>
           </View>
         ))}
