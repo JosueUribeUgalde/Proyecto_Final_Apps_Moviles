@@ -40,7 +40,6 @@ export default function CalendarAdmin({ navigation }) {
   const [bannerType, setBannerType] = useState('success');
   const today = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(today);
-  const [showAllRequests, setShowAllRequests] = useState(false);
   
   // Peticiones pendientes con fechas
   const pendingRequests = [
@@ -91,16 +90,8 @@ export default function CalendarAdmin({ navigation }) {
     },
   ];
 
-  const handleApprove = (requestId) => {
-    setBannerMessage('Petición aprobada exitosamente');
-    setBannerType('success');
-    setShowBanner(true);
-  };
-
-  const handleReject = (requestId) => {
-    setBannerMessage('Petición rechazada');
-    setBannerType('error');
-    setShowBanner(true);
+  const handleViewRequests = () => {
+    navigation.navigate('RequestScreen');
   };
 
   const handleReportAction = (action) => {
@@ -152,11 +143,6 @@ export default function CalendarAdmin({ navigation }) {
     return pendingRequests.filter(req => req.date === selectedDate);
   };
 
-  const getDisplayedRequests = () => {
-    const requests = getRequestsForDate();
-    return showAllRequests ? requests : requests.slice(0, 2);
-  };
-
   const formatSelectedDate = () => {
     if (!selectedDate) return '';
     const date = new Date(selectedDate);
@@ -165,55 +151,6 @@ export default function CalendarAdmin({ navigation }) {
     const month = monthNames[date.getMonth()];
     return `${day} de ${month}`;
   };
-
-  const renderRequestCard = (request) => (
-    <View key={request.id} style={styles.requestCard}>
-      <View style={styles.requestHeader}>
-        <View>
-          <Text style={styles.requestName}>{request.name}</Text>
-          <Text style={styles.requestPosition}>{request.position}</Text>
-        </View>
-        <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>{request.status}</Text>
-        </View>
-      </View>
-      
-      <View style={styles.requestDetails}>
-        <View style={styles.detailRow}>
-          <Ionicons name="time-outline" size={16} color={COLORS.textGray} />
-          <Text style={styles.detailText}>{request.time}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="information-circle-outline" size={16} color={COLORS.textGray} />
-          <Text style={styles.detailText}>{request.reason}</Text>
-        </View>
-      </View>
-
-      <View style={styles.actionButtons}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.approveButton,
-            pressed && { opacity: 0.7 }
-          ]}
-          onPress={() => handleApprove(request.id)}
-        >
-          <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.approveButtonText}>Aprobar</Text>
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.rejectButton,
-            pressed && { opacity: 0.7 }
-          ]}
-          onPress={() => handleReject(request.id)}
-        >
-          <Ionicons name="close-circle-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.rejectButtonText}>Rechazar</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
@@ -275,35 +212,36 @@ export default function CalendarAdmin({ navigation }) {
           />
         </View>
 
-        {/* Peticiones Pendientes (con límite de 2) */}
+        {/* Peticiones Pendientes - Indicador Simple */}
         <View style={styles.requestsWrapper}>
           <Text style={styles.sectionTitle}>
             Peticiones Pendientes - {formatSelectedDate()}
           </Text>
           
           {getRequestsForDate().length > 0 ? (
-            <>
-              {getDisplayedRequests().map((request) => renderRequestCard(request))}
-              
-              {getRequestsForDate().length > 2 && (
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.viewMoreButton,
-                    pressed && { opacity: 0.7 }
-                  ]}
-                  onPress={() => setShowAllRequests(!showAllRequests)}
-                >
-                  <Text style={styles.viewMoreText}>
-                    {showAllRequests ? 'Ver menos' : `Ver más (${getRequestsForDate().length - 2})`}
+            <View style={styles.requestIndicator}>
+              <View style={styles.requestIndicatorContent}>
+                <Ionicons name="alert-circle" size={32} color={COLORS.primary} />
+                <View style={styles.requestIndicatorText}>
+                  <Text style={styles.requestIndicatorTitle}>
+                    Hay {getRequestsForDate().length} {getRequestsForDate().length === 1 ? 'petición pendiente' : 'peticiones pendientes'} por resolver este día
                   </Text>
-                  <Ionicons 
-                    name={showAllRequests ? "chevron-up" : "chevron-down"} 
-                    size={20} 
-                    color={COLORS.primary} 
-                  />
-                </Pressable>
-              )}
-            </>
+                  <Text style={styles.requestIndicatorSubtitle}>
+                    Revisa y gestiona las peticiones de ausencia
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.viewRequestsButton,
+                  pressed && { opacity: 0.7 }
+                ]}
+                onPress={handleViewRequests}
+              >
+                <Text style={styles.viewRequestsButtonText}>Ver</Text>
+                <Ionicons name="arrow-forward" size={20} color={COLORS.textWhite} />
+              </Pressable>
+            </View>
           ) : (
             <View style={styles.noRequests}>
               <Ionicons name="calendar-outline" size={48} color={COLORS.textGray} />

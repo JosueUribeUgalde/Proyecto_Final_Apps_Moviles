@@ -13,7 +13,7 @@ export default function MenuFooterAdmin() {
           styles.button,
           pressed && { opacity: 0.5 }
         ]}
-        onPress={() => navigation.navigate('Home')}
+        onPress={() => navigation.navigate('DashboardAdmin')}
       >
         <Ionicons name="grid-outline" size={24} color="gray" />
         <Text style={styles.buttonText}>Dashboard</Text>

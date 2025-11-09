@@ -70,6 +70,51 @@ export default StyleSheet.create({
     fontWeight: '600',
   },
   
+  // Indicador de peticiones pendientes
+  requestIndicator: {
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    borderColor: COLORS.primary,
+    borderWidth: 1.5,
+    padding: 16,
+    marginBottom: 12,
+    gap: 16,
+  },
+  requestIndicatorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  requestIndicatorText: {
+    flex: 1,
+    gap: 4,
+  },
+  requestIndicatorTitle: {
+    fontSize: FONTS.regular,
+    fontWeight: '600',
+    color: COLORS.textBlack,
+  },
+  requestIndicatorSubtitle: {
+    fontSize: FONTS.small,
+    color: COLORS.textGray,
+  },
+  viewRequestsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: RADIUS.sm,
+    gap: 8,
+    alignSelf: 'stretch',
+  },
+  viewRequestsButtonText: {
+    fontSize: FONTS.regular,
+    fontWeight: '600',
+    color: COLORS.textWhite,
+  },
+  
   // Tarjeta de petición
   requestCard: {
     backgroundColor: COLORS.backgroundWhite,

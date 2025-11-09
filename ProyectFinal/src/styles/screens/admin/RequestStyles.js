@@ -145,61 +145,59 @@ export default StyleSheet.create({
   requestCard: {
     backgroundColor: COLORS.backgroundWhite,
     borderRadius: RADIUS.md,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
     borderColor: COLORS.borderSecondary,
-    ...SHADOWS.light,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 12,
   },
   requestHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  requestUserInfo: {
-    flex: 1,
-  },
-  requestUserName: {
+  requestName: {
     fontSize: FONTS.regular,
-    fontWeight: '700',
+    fontWeight: '600',
     color: COLORS.textBlack,
-    marginBottom: 2,
   },
   requestPosition: {
     fontSize: FONTS.small,
     color: COLORS.textGray,
-    marginBottom: 4,
+    marginTop: 2,
   },
-  requestDateTime: {
-    fontSize: FONTS.small - 1,
+  statusBadge: {
+    backgroundColor: COLORS.secondary,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: RADIUS.sm,
+  },
+  statusText: {
+    fontSize: FONTS.small,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  
+  // Detalles de la petición
+  requestDetails: {
+    marginBottom: 12,
+    gap: 8,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailText: {
+    fontSize: FONTS.small,
     color: COLORS.textGray,
   },
-  requestActions: {
+  
+  // Botones de acción (ahora manejados por ButtonRequest component)
+  actionButtons: {
     flexDirection: 'row',
-    gap: 6,
-  },
-  actionButton: {
-    width: 64,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  approveButton: {
-    backgroundColor: '#34C759',
-  },
-  rejectButton: {
-    backgroundColor: '#FF3B30',
-  },
-  messageButton: {
-    backgroundColor: COLORS.primary,
-  },
-  actionButtonText: {
-    fontSize: FONTS.small - 1,
-    fontWeight: '600',
-    color: COLORS.textWhite,
+    gap: 8,
+    marginTop: 8,
   },
 
   // Decision Card (Recent Decisions)
