@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Text, View, ScrollView, TextInput, Pressable, Modal, Image } from "react-native";
+import { Text, View, ScrollView, TextInput, Pressable, Modal, FlatList } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 import { HeaderScreen, Banner, MenuFooterAdmin } from "../../components";
@@ -197,6 +197,228 @@ export default function MembersAdmin({ navigation }) {
     return styles.statusDefault;
   };
 
+  // Render functions for FlatList
+  const renderMemberCard = ({ item: member }) => (
+    <View style={styles.memberCard}>
+      <View style={styles.memberHeader}>
+        <View style={styles.memberInfo}>
+          <View style={styles.avatarPlaceholder}>
+            <Ionicons name="person" size={24} color={COLORS.textWhite} />
+          </View>
+          <View style={styles.memberDetails}>
+            <View style={styles.nameRow}>
+              <Text style={styles.memberName}>{member.name}</Text>
+              <Text style={styles.memberGroup}> • {member.group}</Text>
+            </View>
+            <Text style={styles.memberShift}>Next shift: {member.nextShift}</Text>
+            <Text style={styles.memberExperience}>Experience: {member.experience}</Text>
+          </View>
+        </View>
+        <Pressable
+          style={({pressed}) => [styles.moreButton, pressed && {opacity: 0.7}]}
+          onPress={() => {
+            setBannerMessage('Member options coming soon');
+            setBannerType('success');
+            setShowBanner(true);
+          }}
+        >
+          <Ionicons name="ellipsis-horizontal" size={20} color={COLORS.textBlack} />
+        </Pressable>
+      </View>
+
+      <View style={styles.memberFooter}>
+        <View style={[styles.statusBadge, getStatusStyle(member.status)]}>
+          <Text style={styles.statusText}>{member.status}</Text>
+        </View>
+        <View style={styles.shiftsInfo}>
+          <Ionicons name="calendar-outline" size={16} color={COLORS.textGray} />
+          <Text style={styles.shiftsText}>Shifts this week: {member.shiftsThisWeek}</Text>
+        </View>
+        <Text style={styles.lastActiveText}>Last active {member.lastActive}</Text>
+      </View>
+    </View>
+  );
+
+  const renderListHeader = () => (
+    <>
+      {/* Team Directory Section */}
+      <View style={styles.directoryCard}>
+        <View style={styles.directoryHeader}>
+          <Text style={styles.directoryTitle}>Team Directory</Text>
+          <Pressable
+            style={({pressed}) => [styles.filtersButton, pressed && {opacity: 0.7}]}
+            onPress={() => setShowFilters(!showFilters)}
+          >
+            <Ionicons name="options-outline" size={18} color={COLORS.textBlack} />
+            <Text style={styles.filtersButtonText}>Filters</Text>
+          </Pressable>
+        </View>
+
+        {/* Search Bar and All Roles Button */}
+        <View style={styles.searchRow}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search-outline" size={20} color={COLORS.textGray} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search members"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor={COLORS.textGray}
+            />
+          </View>
+          <Pressable
+            style={({pressed}) => [styles.allRolesButton, pressed && {opacity: 0.7}]}
+            onPress={() => {
+              setBannerMessage('All roles filter coming soon');
+              setBannerType('success');
+              setShowBanner(true);
+            }}
+          >
+            <Ionicons name="people-outline" size={18} color={COLORS.textBlack} />
+            <Text style={styles.allRolesText}>All roles</Text>
+          </Pressable>
+        </View>
+
+        {/* Filter by Groups */}
+        {showFilters && (
+          <View style={styles.filtersContainer}>
+            <Text style={styles.filterLabel}>Filter by Group:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.groupFilters}>
+              <Pressable
+                style={({pressed}) => [
+                  styles.groupFilterChip,
+                  !selectedGroupFilter && styles.groupFilterChipActive,
+                  pressed && {opacity: 0.7}
+                ]}
+                onPress={() => setSelectedGroupFilter(null)}
+              >
+                <Text style={[
+                  styles.groupFilterText,
+                  !selectedGroupFilter && styles.groupFilterTextActive
+                ]}>All Groups</Text>
+              </Pressable>
+              {groups.map(group => (
+                <Pressable
+                  key={group.id}
+                  style={({pressed}) => [
+                    styles.groupFilterChip,
+                    selectedGroupFilter === group.id && styles.groupFilterChipActive,
+                    pressed && {opacity: 0.7}
+                  ]}
+                  onPress={() => setSelectedGroupFilter(group.id)}
+                >
+                  <Text style={[
+                    styles.groupFilterText,
+                    selectedGroupFilter === group.id && styles.groupFilterTextActive
+                  ]}>{group.name}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+      </View>
+
+      {/* Active Members Section Header */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Active Members</Text>
+        <Pressable
+          style={({pressed}) => [styles.manageGroupsButton, pressed && {opacity: 0.7}]}
+          onPress={() => setShowManageGroupsModal(true)}
+        >
+          <Text style={styles.manageGroupsText}>Manage Groups</Text>
+        </Pressable>
+      </View>
+    </>
+  );
+
+  const renderListFooter = () => (
+    <>
+      {/* Quick Actions Section */}
+      <View style={styles.quickActionsCard}>
+        <View style={styles.quickActionsHeader}>
+          <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+          <Pressable
+            style={({pressed}) => [pressed && {opacity: 0.7}]}
+            onPress={() => {
+              setBannerMessage('View all quick actions coming soon');
+              setBannerType('success');
+              setShowBanner(true);
+            }}
+          >
+            <Text style={styles.viewAllText}>View All</Text>
+          </Pressable>
+        </View>
+        <View style={styles.quickActionsButtons}>
+          <Pressable
+            style={({pressed}) => [styles.quickActionButton, styles.quickActionPrimary, pressed && {opacity: 0.7}]}
+            onPress={() => {
+              setBannerMessage('Reassign shift feature coming soon');
+              setBannerType('success');
+              setShowBanner(true);
+            }}
+          >
+            <Ionicons name="swap-horizontal-outline" size={20} color={COLORS.textWhite} />
+            <Text style={styles.quickActionText}>Reassign{'\n'}Shift</Text>
+          </Pressable>
+          <Pressable
+            style={({pressed}) => [styles.quickActionButton, styles.quickActionSecondary, pressed && {opacity: 0.7}]}
+            onPress={() => {
+              setBannerMessage('Group codes feature coming soon');
+              setBannerType('success');
+              setShowBanner(true);
+            }}
+          >
+            <Ionicons name="code-outline" size={20} color={COLORS.textBlack} />
+            <Text style={styles.quickActionTextDark}>Group{'\n'}Codes</Text>
+          </Pressable>
+          <Pressable
+            style={({pressed}) => [styles.quickActionButton, styles.quickActionSecondary, pressed && {opacity: 0.7}]}
+            onPress={() => {
+              setBannerMessage('Export list feature coming soon');
+              setBannerType('success');
+              setShowBanner(true);
+            }}
+          >
+            <Ionicons name="document-outline" size={20} color={COLORS.textBlack} />
+            <Text style={styles.quickActionTextDark}>Export{'\n'}List</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Role Distribution Section */}
+      <View style={styles.distributionCard}>
+        <View style={styles.distributionHeader}>
+          <Text style={styles.distributionTitle}>Role Distribution</Text>
+          <Pressable
+            style={({pressed}) => [pressed && {opacity: 0.7}]}
+            onPress={() => {
+              setBannerMessage('Reports feature coming soon');
+              setBannerType('success');
+              setShowBanner(true);
+            }}
+          >
+            <Text style={styles.viewAllText}>Reports</Text>
+          </Pressable>
+        </View>
+        {groups.map(group => (
+          <View key={group.id} style={styles.distributionRow}>
+            <Text style={styles.groupName}>{group.name}</Text>
+            <Text style={styles.groupCount}>
+              {members.filter(m => m.groupId === group.id).length} members
+            </Text>
+          </View>
+        ))}
+      </View>
+    </>
+  );
+
+  const renderEmptyComponent = () => (
+    <View style={styles.emptyState}>
+      <Ionicons name="people-outline" size={48} color={COLORS.textGray} />
+      <Text style={styles.emptyStateText}>No members found</Text>
+    </View>
+  );
+
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
       <HeaderScreen
@@ -221,228 +443,16 @@ export default function MembersAdmin({ navigation }) {
         />
       </View>
 
-      <ScrollView style={styles.content}>
-        {/* Team Directory Section */}
-        <View style={styles.directoryCard}>
-          <View style={styles.directoryHeader}>
-            <Text style={styles.directoryTitle}>Team Directory</Text>
-            <Pressable
-              style={({pressed}) => [styles.filtersButton, pressed && {opacity: 0.7}]}
-              onPress={() => setShowFilters(!showFilters)}
-            >
-              <Ionicons name="options-outline" size={18} color={COLORS.textBlack} />
-              <Text style={styles.filtersButtonText}>Filters</Text>
-            </Pressable>
-          </View>
-
-          {/* Search Bar and All Roles Button */}
-          <View style={styles.searchRow}>
-            <View style={styles.searchContainer}>
-              <Ionicons name="search-outline" size={20} color={COLORS.textGray} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search members"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholderTextColor={COLORS.textGray}
-              />
-            </View>
-            <Pressable
-              style={({pressed}) => [styles.allRolesButton, pressed && {opacity: 0.7}]}
-              onPress={() => {
-                // TODO: Implement all roles filter
-                setBannerMessage('All roles filter coming soon');
-                setBannerType('success');
-                setShowBanner(true);
-              }}
-            >
-              <Ionicons name="people-outline" size={18} color={COLORS.textBlack} />
-              <Text style={styles.allRolesText}>All roles</Text>
-            </Pressable>
-          </View>
-
-          {/* Filter by Groups */}
-          {showFilters && (
-            <View style={styles.filtersContainer}>
-              <Text style={styles.filterLabel}>Filter by Group:</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.groupFilters}>
-                <Pressable
-                  style={({pressed}) => [
-                    styles.groupFilterChip,
-                    !selectedGroupFilter && styles.groupFilterChipActive,
-                    pressed && {opacity: 0.7}
-                  ]}
-                  onPress={() => setSelectedGroupFilter(null)}
-                >
-                  <Text style={[
-                    styles.groupFilterText,
-                    !selectedGroupFilter && styles.groupFilterTextActive
-                  ]}>All Groups</Text>
-                </Pressable>
-                {groups.map(group => (
-                  <Pressable
-                    key={group.id}
-                    style={({pressed}) => [
-                      styles.groupFilterChip,
-                      selectedGroupFilter === group.id && styles.groupFilterChipActive,
-                      pressed && {opacity: 0.7}
-                    ]}
-                    onPress={() => setSelectedGroupFilter(group.id)}
-                  >
-                    <Text style={[
-                      styles.groupFilterText,
-                      selectedGroupFilter === group.id && styles.groupFilterTextActive
-                    ]}>{group.name}</Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-        </View>
-
-        {/* Active Members Section Header */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Active Members</Text>
-          <Pressable
-            style={({pressed}) => [styles.manageGroupsButton, pressed && {opacity: 0.7}]}
-            onPress={() => setShowManageGroupsModal(true)}
-          >
-            <Text style={styles.manageGroupsText}>Manage Groups</Text>
-          </Pressable>
-        </View>
-
-        {/* Members List */}
-        {filteredMembers.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="people-outline" size={48} color={COLORS.textGray} />
-            <Text style={styles.emptyStateText}>No members found</Text>
-          </View>
-        ) : (
-          filteredMembers.map(member => (
-            <View key={member.id} style={styles.memberCard}>
-              <View style={styles.memberHeader}>
-                <View style={styles.memberInfo}>
-                  <View style={styles.avatarPlaceholder}>
-                    <Ionicons name="person" size={24} color={COLORS.textWhite} />
-                  </View>
-                  <View style={styles.memberDetails}>
-                    <View style={styles.nameRow}>
-                      <Text style={styles.memberName}>{member.name}</Text>
-                      <Text style={styles.memberGroup}> • {member.group}</Text>
-                    </View>
-                    <Text style={styles.memberShift}>Next shift: {member.nextShift}</Text>
-                    <Text style={styles.memberExperience}>Experience: {member.experience}</Text>
-                  </View>
-                </View>
-                <Pressable
-                  style={({pressed}) => [styles.moreButton, pressed && {opacity: 0.7}]}
-                  onPress={() => {
-                    // TODO: Show member options menu
-                    setBannerMessage('Member options coming soon');
-                    setBannerType('success');
-                    setShowBanner(true);
-                  }}
-                >
-                  <Ionicons name="ellipsis-horizontal" size={20} color={COLORS.textBlack} />
-                </Pressable>
-              </View>
-
-              <View style={styles.memberFooter}>
-                <View style={[styles.statusBadge, getStatusStyle(member.status)]}>
-                  <Text style={styles.statusText}>{member.status}</Text>
-                </View>
-                <View style={styles.shiftsInfo}>
-                  <Ionicons name="calendar-outline" size={16} color={COLORS.textGray} />
-                  <Text style={styles.shiftsText}>Shifts this week: {member.shiftsThisWeek}</Text>
-                </View>
-                <Text style={styles.lastActiveText}>Last active {member.lastActive}</Text>
-              </View>
-            </View>
-          ))
-        )}
-
-        {/* Quick Actions Section */}
-        <View style={styles.quickActionsCard}>
-          <View style={styles.quickActionsHeader}>
-            <Text style={styles.quickActionsTitle}>Quick Actions</Text>
-            <Pressable
-              style={({pressed}) => [pressed && {opacity: 0.7}]}
-              onPress={() => {
-                // TODO: Navigate to view all quick actions
-                setBannerMessage('View all quick actions coming soon');
-                setBannerType('success');
-                setShowBanner(true);
-              }}
-            >
-              <Text style={styles.viewAllText}>View All</Text>
-            </Pressable>
-          </View>
-          <View style={styles.quickActionsButtons}>
-            <Pressable
-              style={({pressed}) => [styles.quickActionButton, styles.quickActionPrimary, pressed && {opacity: 0.7}]}
-              onPress={() => {
-                // TODO: Implement reassign shift
-                setBannerMessage('Reassign shift feature coming soon');
-                setBannerType('success');
-                setShowBanner(true);
-              }}
-            >
-              <Ionicons name="swap-horizontal-outline" size={20} color={COLORS.textWhite} />
-              <Text style={styles.quickActionText}>Reassign{'\n'}Shift</Text>
-            </Pressable>
-            <Pressable
-              style={({pressed}) => [styles.quickActionButton, styles.quickActionSecondary, pressed && {opacity: 0.7}]}
-              onPress={() => {
-                // TODO: Implement group codes
-                setBannerMessage('Group codes feature coming soon');
-                setBannerType('success');
-                setShowBanner(true);
-              }}
-            >
-              <Ionicons name="code-outline" size={20} color={COLORS.textBlack} />
-              <Text style={styles.quickActionTextDark}>Group{'\n'}Codes</Text>
-            </Pressable>
-            <Pressable
-              style={({pressed}) => [styles.quickActionButton, styles.quickActionSecondary, pressed && {opacity: 0.7}]}
-              onPress={() => {
-                // TODO: Implement export list
-                setBannerMessage('Export list feature coming soon');
-                setBannerType('success');
-                setShowBanner(true);
-              }}
-            >
-              <Ionicons name="document-outline" size={20} color={COLORS.textBlack} />
-              <Text style={styles.quickActionTextDark}>Export{'\n'}List</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Role Distribution Section */}
-        <View style={styles.distributionCard}>
-          <View style={styles.distributionHeader}>
-            <Text style={styles.distributionTitle}>Role Distribution</Text>
-            <Pressable
-              style={({pressed}) => [pressed && {opacity: 0.7}]}
-              onPress={() => {
-                // TODO: Navigate to reports
-                setBannerMessage('Reports feature coming soon');
-                setBannerType('success');
-                setShowBanner(true);
-              }}
-            >
-              <Text style={styles.viewAllText}>Reports</Text>
-            </Pressable>
-          </View>
-          {groups.map(group => (
-            <View key={group.id} style={styles.distributionRow}>
-              <Text style={styles.groupName}>{group.name}</Text>
-              <Text style={styles.groupCount}>
-                {members.filter(m => m.groupId === group.id).length} members
-              </Text>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
+      <FlatList
+        data={filteredMembers}
+        renderItem={renderMemberCard}
+        keyExtractor={(item) => item.id.toString()}
+        ListHeaderComponent={renderListHeader}
+        ListFooterComponent={renderListFooter}
+        ListEmptyComponent={renderEmptyComponent}
+        contentContainerStyle={styles.flatListContent}
+        showsVerticalScrollIndicator={false}
+      />
 
       <View style={styles.footerContainer}>
         <MenuFooterAdmin />

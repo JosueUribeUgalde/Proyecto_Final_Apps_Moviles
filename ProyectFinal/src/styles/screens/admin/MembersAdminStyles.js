@@ -16,6 +16,11 @@ export default StyleSheet.create({
     width: '90%',
     alignSelf: 'center',
   },
+  flatListContent: {
+    width: '90%',
+    alignSelf: 'center',
+    paddingBottom: 16,
+  },
   footerContainer: {
     backgroundColor: COLORS.backgroundWhite,
     width: '100%',
