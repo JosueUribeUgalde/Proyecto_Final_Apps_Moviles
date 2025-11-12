@@ -23,3 +23,13 @@ export { default as RequestScreen } from './admin/RequestScreen';
 export { default as CalendarAdmin } from './admin/CalendarAdmin';
 export { default as ProfileAdmin } from './admin/ProfileAdmin';
 export { default as EditProfileAdmin } from './admin/EditProfileAdmin';
+
+// Company screens
+export { default as LoginCompany } from './company/LoginCompany';
+export { default as Dashboard } from './company/Dashboard';
+export { default as Plan } from './company/Plan';
+export { default as RegisterCompany } from './company/RegisterCompany';
+export { default as ProfileCompany } from './company/ProfileCompany';
+export { default as EditProfileCompany } from './company/EditProfileCompany';
+export { default as PaymentMethod } from './company/PaymentMethod';
+export { default as InvoiceHistory } from './company/InvoiceHistory';
