@@ -9,8 +9,7 @@ export default function Welcome({ navigation }) {
   const handleUserTypeSelection = (userType) => {
     switch (userType) {
       case 'empresa':
-        // TODO: Navegar al login de empresa cuando esté implementado
-        alert('Login de Empresa próximamente');
+        navigation.navigate('LoginCompany');
         break;
       case 'admin':
         navigation.navigate('LoginAdmin');

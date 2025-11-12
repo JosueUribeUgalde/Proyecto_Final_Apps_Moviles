@@ -16,7 +16,7 @@ export default function MenuFooterAdmin() {
         onPress={() => navigation.navigate('DashboardAdmin')}
       >
         <Ionicons name="grid-outline" size={24} color="gray" />
-        <Text style={styles.buttonText}>Dashboard</Text>
+        <Text style={styles.buttonText}>Menu</Text>
       </Pressable>
 
       <Pressable

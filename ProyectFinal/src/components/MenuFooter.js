@@ -15,7 +15,7 @@ export default function MenuFooter() {
         onPress={() => navigation.navigate('Home')}
       >
         <Ionicons name="home" size={24} color="gray" />
-        <Text style={styles.buttonText}>Home</Text>
+        <Text style={styles.buttonText}>Menu</Text>
       </Pressable>
       
       <Pressable 
