@@ -1,7 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Welcome, Login, LoginAdmin, DashboardAdmin, Register, History, PasswordReset, Logout,Home, Profile, EditProfile, ConfirmationReplace, Calendar, RequestScreen, CalendarAdmin, ProfileAdmin, EditProfileAdmin, AddReport, Help } from "./src/screens";
+import { Welcome, Login, LoginAdmin, DashboardAdmin, Register, History, PasswordReset, Logout,Home, Profile, EditProfile, ConfirmationReplace, Calendar, RequestScreen, CalendarAdmin, ProfileAdmin, EditProfileAdmin, AddReport, Help, Dashboard, LoginCompany, Plan, RegisterCompany, ProfileCompany, EditProfileCompany, PaymentMethod, InvoiceHistory, MembersAdmin } from "./src/screens";
 
 
 const Stack = createNativeStackNavigator();
@@ -10,7 +10,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <Stack.Navigator 
+        <Stack.Navigator
           initialRouteName="Welcome"
           screenOptions={{
             headerShown: false,
@@ -36,6 +36,16 @@ export default function App() {
           <Stack.Screen name="EditProfileAdmin" component={EditProfileAdmin} />
           <Stack.Screen name="AddReport" component={AddReport} />
           <Stack.Screen name="Help" component={Help} />
+          <Stack.Screen name="Dashboard" component={Dashboard} />
+          <Stack.Screen name="LoginCompany" component={LoginCompany} />
+          <Stack.Screen name="Plan" component={Plan} />
+          <Stack.Screen name="RegisterCompany" component={RegisterCompany} />
+          <Stack.Screen name="ProfileCompany" component={ProfileCompany} />
+          <Stack.Screen name="EditProfileCompany" component={EditProfileCompany} />
+          <Stack.Screen name="PaymentMethod" component={PaymentMethod} />
+          <Stack.Screen name="InvoiceHistory" component={InvoiceHistory} />
+          <Stack.Screen name="MembersAdmin" component={MembersAdmin} />
+
 
         </Stack.Navigator>
       </NavigationContainer>
