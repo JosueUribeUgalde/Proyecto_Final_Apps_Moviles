@@ -50,6 +50,13 @@ export default StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 4,
   },
+  sectionTitleCentered: {
+    fontSize: FONTS.large,
+    fontWeight: 'bold',
+    color: COLORS.textBlack,
+    marginBottom: 0,
+    paddingHorizontal: 4,
+  },
   
   // Botón Ver más
   viewMoreButton: {
@@ -58,10 +65,10 @@ export default StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     marginTop: 8,
-    backgroundColor: COLORS.backgroundWhite,
+    backgroundColor: COLORS.background,
     borderRadius: RADIUS.sm,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: COLORS.secondary,
     gap: 6,
   },
   viewMoreText: {
@@ -74,7 +81,7 @@ export default StyleSheet.create({
   requestIndicator: {
     backgroundColor: COLORS.backgroundWhite,
     borderRadius: RADIUS.md,
-    borderColor: COLORS.primary,
+    borderColor: COLORS.secondary,
     borderWidth: 1.5,
     padding: 16,
     marginBottom: 12,
@@ -102,17 +109,19 @@ export default StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.backgroundBS,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: RADIUS.sm,
     gap: 8,
     alignSelf: 'stretch',
+    borderWidth: 1,
+    borderColor: COLORS.backgroundBP,
   },
   viewRequestsButtonText: {
     fontSize: FONTS.regular,
     fontWeight: '600',
-    color: COLORS.textWhite,
+    color: COLORS.textGreen,
   },
   
   // Tarjeta de petición
@@ -221,6 +230,120 @@ export default StyleSheet.create({
     marginTop: 12,
   },
 
+  // Selector de Grupos
+  groupSelectorContainer: {
+    marginTop: 20,
+    marginBottom: 5,
+  },
+  groupSelectorTitle: {
+    fontSize: FONTS.regular,
+    fontWeight: '600',
+    color: COLORS.textBlack,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  groupSelectorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderSecondary,
+    padding: 16,
+    gap: 12,
+  },
+  groupSelectorButtonText: {
+    flex: 1,
+    fontSize: FONTS.regular,
+    color: COLORS.textGray,
+  },
+
+  // Modal de Grupos
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  groupModalContainer: {
+    width: '85%',
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.lg,
+    padding: 20,
+    maxHeight: '70%',
+  },
+  groupModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderSecondary,
+  },
+  groupModalTitle: {
+    fontSize: FONTS.large,
+    fontWeight: 'bold',
+    color: COLORS.textBlack,
+  },
+  groupList: {
+    gap: 8,
+  },
+  groupItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderSecondary,
+    gap: 12,
+  },
+  groupItemSelected: {
+    backgroundColor: COLORS.secondary,
+    borderColor: COLORS.primary,
+  },
+  groupDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  groupItemText: {
+    flex: 1,
+    fontSize: FONTS.regular,
+    color: COLORS.textBlack,
+    fontWeight: '500',
+  },
+  groupItemTextSelected: {
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+
+  // Sin grupo seleccionado
+  noGroupSelected: {
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+  },
+  noGroupSelectedTitle: {
+    fontSize: FONTS.large,
+    fontWeight: '600',
+    color: COLORS.textBlack,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  noGroupSelectedText: {
+    fontSize: FONTS.regular,
+    color: COLORS.textGray,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
   // Sección de Reportes
   reportsSection: {
     marginTop: 30,
@@ -235,6 +358,16 @@ export default StyleSheet.create({
     marginBottom: 8,
     flexWrap: 'wrap',
     gap: 8,
+  },
+  sectionHeaderCentered: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 0,
+  },
+  exportButtonContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 10,
   },
   metricsRow: {
     flexDirection: 'row',
@@ -271,10 +404,26 @@ export default StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
+  filterChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+  },
+  filterChipSelected: {
+    backgroundColor: COLORS.backgroundBS,
+    borderColor: COLORS.primary,
+  },
   filterText: {
     fontSize: FONTS.small,
     color: COLORS.textGray,
     fontWeight: '500',
+  },
+  filterTextSelected: {
+    color: COLORS.primary,
+    fontWeight: '600',
   },
   chartPlaceholder: {
     height: 120,
@@ -289,11 +438,46 @@ export default StyleSheet.create({
     fontSize: FONTS.regular,
     color: COLORS.textGray,
   },
+  
+  // Estilos para las gráficas
+  chartContainer: {
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  chart: {
+    marginVertical: 8,
+    borderRadius: RADIUS.md,
+  },
   chartDescription: {
     color: COLORS.textGray,
     fontSize: FONTS.small,
     marginTop: 6,
+    textAlign: 'center',
+    paddingHorizontal: 16,
   },
+  
+  // Leyenda para métricas
+  metricsLegendContainer: {
+    marginTop: 16,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  legendText: {
+    fontSize: FONTS.small,
+    color: COLORS.textBlack,
+  },
+  
   buttonRow: {
     flexDirection: 'row',
     gap: 8,
@@ -320,14 +504,9 @@ export default StyleSheet.create({
     color: COLORS.textBlack,
   },
   topMetricsContainer: {
-    marginTop: 10,
+    marginTop: 16,
   },
   topMetricsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 8,
-    flexWrap: 'wrap',
-    gap: 8,
   },
 });

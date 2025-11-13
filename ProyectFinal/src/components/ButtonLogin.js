@@ -7,6 +7,7 @@ export default function ButtonLogin({
   icon, 
   backgroundColor, 
   textColor,
+  borderColor,
   showBorder = true
 }) {
   return (
@@ -14,6 +15,7 @@ export default function ButtonLogin({
       style={({ pressed }) => [
         styles.button, 
         backgroundColor && { backgroundColor },
+        borderColor && { borderColor },
         !showBorder && { borderWidth: 0 },
         pressed && { opacity: 0.5 } // Efecto de opacidad cuando se presiona
       ]} 
@@ -24,7 +26,8 @@ export default function ButtonLogin({
         {icon && <View style={styles.icon}>{icon}</View>}
         <Text style={[
           styles.buttonText,
-          textColor && { color: textColor }
+          textColor && { color: textColor },
+          { fontWeight: '600' }
         ]}>
           {title}
         </Text>
