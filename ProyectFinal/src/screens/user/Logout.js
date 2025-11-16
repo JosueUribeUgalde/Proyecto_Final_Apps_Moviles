@@ -12,7 +12,7 @@ export default function Logout({ navigation }) {
     const handleLogout = () => {
         setShowBanner(true);
         setTimeout(() => {
-            navigation.navigate('Login');
+            navigation.navigate('Welcome');
         }, 2000);
     };
 

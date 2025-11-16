@@ -115,8 +115,6 @@ export default StyleSheet.create({
     borderRadius: RADIUS.sm,
     gap: 8,
     alignSelf: 'stretch',
-    borderWidth: 1,
-    borderColor: COLORS.backgroundBP,
   },
   viewRequestsButtonText: {
     fontSize: FONTS.regular,

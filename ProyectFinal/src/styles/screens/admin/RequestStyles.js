@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { COLORS, FONTS, RADIUS, SHADOWS } from '../../../components/constants/theme';
+import { COLORS, FONTS, RADIUS } from '../../../components/constants/theme';
 
 export default StyleSheet.create({
   container: {
@@ -34,18 +34,9 @@ export default StyleSheet.create({
     marginBottom: 12,
   },
   filtersTitle: {
-    fontSize: FONTS.regular,
-    fontWeight: '600',
+    fontSize: FONTS.large,
+    fontWeight: 'bold',
     color: COLORS.textBlack,
-  },
-  adjustButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  adjustText: {
-    fontSize: FONTS.small,
-    color: COLORS.textGray,
   },
   filterChipsContainer: {
     flexDirection: 'row',
@@ -54,64 +45,49 @@ export default StyleSheet.create({
     marginBottom: 12,
   },
   filterChip: {
-    paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.borderGray,
+    paddingHorizontal: 12,
     backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
   },
   filterChipActive: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.backgroundBS,
     borderColor: COLORS.primary,
   },
   filterChipText: {
     fontSize: FONTS.small,
-    color: COLORS.textBlack,
+    color: COLORS.textGray,
     fontWeight: '500',
   },
   filterChipTextActive: {
-    color: COLORS.textWhite,
+    color: COLORS.textGreen,
+    fontWeight: '600',
   },
 
-  // Search and Week Toggle
+  // Search
   searchWeekContainer: {
     flexDirection: 'row',
-    gap: 8,
+    justifyContent: 'center',
     marginBottom: 16,
   },
   searchContainer: {
-    flex: 1,
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.backgroundWhite,
-    borderRadius: RADIUS.md,
+    borderRadius: RADIUS.lg,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: COLORS.borderGray,
+    borderColor: COLORS.borderSecondary,
   },
   searchInput: {
     flex: 1,
     marginLeft: 8,
     fontSize: FONTS.regular,
     color: COLORS.textBlack,
-  },
-  weekToggleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.backgroundWhite,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.borderGray,
-    gap: 4,
-  },
-  weekToggleText: {
-    fontSize: FONTS.small,
-    color: COLORS.textBlack,
-    fontWeight: '500',
   },
 
   // Section Headers
@@ -177,8 +153,6 @@ export default StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '600',
   },
-  
-  // Detalles de la petición
   requestDetails: {
     marginBottom: 12,
     gap: 8,
@@ -192,8 +166,6 @@ export default StyleSheet.create({
     fontSize: FONTS.small,
     color: COLORS.textGray,
   },
-  
-  // Botones de acción (ahora manejados por ButtonRequest component)
   actionButtons: {
     flexDirection: 'row',
     gap: 8,
@@ -234,11 +206,125 @@ export default StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 48,
+    paddingHorizontal: 24,
   },
   emptyStateText: {
-    fontSize: FONTS.regular,
-    color: COLORS.textGray,
+    fontSize: FONTS.large,
+    fontWeight: 'bold',
+    color: COLORS.textBlack,
+    marginTop: 16,
     textAlign: 'center',
+  },
+  emptyStateSubtext: {
+    fontSize: FONTS.medium,
+    color: COLORS.textGray,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalOverlayTouchable: {
+    flex: 1,
+  },
+  modalContent: {
+    backgroundColor: COLORS.backgroundWhite,
+    borderTopLeftRadius: RADIUS.lg,
+    borderTopRightRadius: RADIUS.lg,
+    maxHeight: '80%',
+    paddingTop: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderSecondary,
+  },
+  modalTitle: {
+    fontSize: FONTS.large + 2,
+    fontWeight: 'bold',
+    color: COLORS.textBlack,
+  },
+  modalList: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 32,
+  },
+
+  // Modal Decision Card
+  modalDecisionCard: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.md,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+  },
+  modalDecisionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  modalDecisionInfo: {
+    flex: 1,
+  },
+  modalDecisionName: {
+    fontSize: FONTS.regular,
+    fontWeight: '600',
+    color: COLORS.textBlack,
+    marginBottom: 2,
+  },
+  modalDecisionRole: {
+    fontSize: FONTS.small,
+    color: COLORS.textGray,
+  },
+  modalStatusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: RADIUS.sm,
+    marginLeft: 8,
+  },
+  statusApproved: {
+    backgroundColor: COLORS.backgroundBS,
+  },
+  statusRejected: {
+    backgroundColor: '#FDE8E8',
+  },
+  statusAuto: {
+    backgroundColor: '#E8F4FD',
+  },
+  modalStatusText: {
+    fontSize: FONTS.small - 1,
+    fontWeight: '600',
+  },
+  statusApprovedText: {
+    color: COLORS.textGreen,
+  },
+  statusRejectedText: {
+    color: COLORS.error,
+  },
+  statusAutoText: {
+    color: '#1E88E5',
+  },
+  modalDecisionDetails: {
+    gap: 6,
+  },
+  modalDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  modalDetailText: {
+    fontSize: FONTS.small,
+    color: COLORS.textGray,
   },
 });
