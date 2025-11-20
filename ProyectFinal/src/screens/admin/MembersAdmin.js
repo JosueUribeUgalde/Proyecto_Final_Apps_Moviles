@@ -5,24 +5,25 @@ import { Ionicons } from '@expo/vector-icons';
 import { HeaderScreen, Banner, MenuFooterAdmin } from "../../components";
 import { COLORS } from '../../components/constants/theme';
 import styles from "../../styles/screens/admin/MembersAdminStyles";
+import CalendarAdminStyles from "../../styles/screens/admin/CalendarAdminStyles";
 
 // Mock data para desarrollo
 const MOCK_GROUPS = [
-  { id: 1, name: 'Front Desk', memberCount: 12 },
-  { id: 2, name: 'Kitchen', memberCount: 8 },
-  { id: 3, name: 'Night Ops', memberCount: 5 },
-  { id: 4, name: 'Housekeeping', memberCount: 15 },
+  { id: 1, name: 'Recepción', memberCount: 12 },
+  { id: 2, name: 'Cocina', memberCount: 8 },
+  { id: 3, name: 'Turno Nocturno', memberCount: 5 },
+  { id: 4, name: 'Limpieza', memberCount: 15 },
 ];
 
 const MOCK_MEMBERS = [
   {
     id: 1,
     name: 'Alex Johnson',
-    group: 'Front Desk',
+    group: 'Recepción',
     groupId: 1,
-    nextShift: 'Today, 2:00 PM - 10:00 PM',
-    experience: '3 yrs',
-    status: 'Available',
+    nextShift: 'Hoy, 2:00 PM - 10:00 PM',
+    experience: '3 años',
+    status: 'Disponible',
     shiftsThisWeek: 4,
     lastActive: '1h',
     avatar: null,
@@ -30,11 +31,11 @@ const MOCK_MEMBERS = [
   {
     id: 2,
     name: 'Priya Patel',
-    group: 'Kitchen',
+    group: 'Cocina',
     groupId: 2,
-    nextShift: 'Tomorrow, 6:00 AM - 2:00 PM',
-    experience: '5 yrs',
-    status: 'Off today',
+    nextShift: 'Mañana, 6:00 AM - 2:00 PM',
+    experience: '5 años',
+    status: 'Libre hoy',
     shiftsThisWeek: 3,
     lastActive: '3h',
     avatar: null,
@@ -42,23 +43,23 @@ const MOCK_MEMBERS = [
   {
     id: 3,
     name: 'Diego Ramos',
-    group: 'Night Ops',
+    group: 'Turno Nocturno',
     groupId: 3,
-    nextShift: 'Fri, 10:00 PM - 6:00 AM',
-    experience: '2 yrs',
-    status: 'On leave request',
+    nextShift: 'Viernes, 10:00 PM - 6:00 AM',
+    experience: '2 años',
+    status: 'Permiso solicitado',
     shiftsThisWeek: 2,
-    lastActive: 'yesterday',
+    lastActive: 'ayer',
     avatar: null,
   },
   {
     id: 4,
     name: 'María González',
-    group: 'Housekeeping',
+    group: 'Limpieza',
     groupId: 4,
-    nextShift: 'Today, 8:00 AM - 4:00 PM',
-    experience: '4 yrs',
-    status: 'Available',
+    nextShift: 'Hoy, 8:00 AM - 4:00 PM',
+    experience: '4 años',
+    status: 'Disponible',
     shiftsThisWeek: 5,
     lastActive: '30min',
     avatar: null,
@@ -66,11 +67,11 @@ const MOCK_MEMBERS = [
   {
     id: 5,
     name: 'John Smith',
-    group: 'Front Desk',
+    group: 'Recepción',
     groupId: 1,
-    nextShift: 'Tomorrow, 10:00 AM - 6:00 PM',
-    experience: '1 yr',
-    status: 'Available',
+    nextShift: 'Mañana, 10:00 AM - 6:00 PM',
+    experience: '1 año',
+    status: 'Disponible',
     shiftsThisWeek: 4,
     lastActive: '2h',
     avatar: null,
@@ -82,6 +83,8 @@ export default function MembersAdmin({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [showGroupSelectModal, setShowGroupSelectModal] = useState(false);
 
   // Estado para modales
   const [showManageGroupsModal, setShowManageGroupsModal] = useState(false);
@@ -108,14 +111,21 @@ export default function MembersAdmin({ navigation }) {
   const filteredMembers = members.filter(member => {
     const matchesSearch = member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          member.group.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesGroup = selectedGroupFilter ? member.groupId === selectedGroupFilter : true;
-    return matchesSearch && matchesGroup;
+    
+    // Si hay búsqueda activa, solo filtrar por búsqueda
+    if (searchQuery) {
+      return matchesSearch;
+    }
+    
+    // Si no hay búsqueda, filtrar por grupo seleccionado
+    const matchesSelectedGroup = selectedGroup ? member.groupId === selectedGroup.id : true;
+    return matchesSelectedGroup;
   });
 
   // CRUD de grupos
   const handleCreateGroup = () => {
     if (!newGroupName.trim()) {
-      setBannerMessage('Please enter a group name');
+      setBannerMessage('Por favor ingresa un nombre de grupo');
       setBannerType('error');
       setShowBanner(true);
       return;
@@ -131,14 +141,14 @@ export default function MembersAdmin({ navigation }) {
     setGroups([...groups, newGroup]);
     setNewGroupName('');
     setShowCreateGroupModal(false);
-    setBannerMessage('Group created successfully');
+    setBannerMessage('Grupo creado exitosamente');
     setBannerType('success');
     setShowBanner(true);
   };
 
   const handleEditGroup = () => {
     if (!editingGroup || !editingGroup.name.trim()) {
-      setBannerMessage('Please enter a valid group name');
+      setBannerMessage('Por favor ingresa un nombre válido para el grupo');
       setBannerType('error');
       setShowBanner(true);
       return;
@@ -154,7 +164,7 @@ export default function MembersAdmin({ navigation }) {
 
     setShowEditGroupModal(false);
     setEditingGroup(null);
-    setBannerMessage('Group updated successfully');
+    setBannerMessage('Grupo actualizado exitosamente');
     setBannerType('success');
     setShowBanner(true);
   };
@@ -166,7 +176,7 @@ export default function MembersAdmin({ navigation }) {
     const hasMembers = members.some(m => m.groupId === deletingGroup.id);
 
     if (hasMembers) {
-      setBannerMessage('Cannot delete group with active members');
+      setBannerMessage('No se puede eliminar un grupo con miembros activos');
       setBannerType('error');
       setShowBanner(true);
       setShowDeleteGroupModal(false);
@@ -177,7 +187,7 @@ export default function MembersAdmin({ navigation }) {
     setGroups(groups.filter(g => g.id !== deletingGroup.id));
     setShowDeleteGroupModal(false);
     setDeletingGroup(null);
-    setBannerMessage('Group deleted successfully');
+    setBannerMessage('Grupo eliminado exitosamente');
     setBannerType('success');
     setShowBanner(true);
   };
@@ -185,39 +195,92 @@ export default function MembersAdmin({ navigation }) {
   const handleShare = () => {
     // TODO: Implement share functionality
     setShowShareModal(false);
-    setBannerMessage('Share link copied to clipboard');
+    setBannerMessage('Enlace copiado al portapapeles');
     setBannerType('success');
     setShowBanner(true);
   };
 
   const getStatusStyle = (status) => {
-    if (status === 'Available') return styles.statusAvailable;
-    if (status === 'Off today') return styles.statusOff;
-    if (status === 'On leave request') return styles.statusLeave;
+    if (status === 'Disponible') return styles.statusAvailable;
+    if (status === 'Libre hoy') return styles.statusOff;
+    if (status === 'Permiso solicitado') return styles.statusLeave;
     return styles.statusDefault;
   };
 
+  const handleGroupSelect = (group) => {
+    setSelectedGroup(group);
+    setShowGroupSelectModal(false);
+    // Aquí se cargarán los datos específicos del grupo desde Firebase
+  };
+
   // Render functions for FlatList
-  const renderMemberCard = ({ item: member }) => (
+  const renderMemberCard = ({ item: member }) => {
+    // Si hay búsqueda activa, mostrar todos los resultados
+    if (searchQuery) {
+      return (
+        <View style={styles.memberCard}>
+          <View style={styles.memberHeader}>
+            <View style={styles.memberInfo}>
+              <View style={styles.avatarPlaceholder}>
+                <Ionicons name="person" size={24} color={COLORS.primary} />
+              </View>
+              <View style={styles.memberDetails}>
+                <View style={styles.nameRow}>
+                  <Text style={styles.memberName}>{member.name}</Text>
+                  <Text style={styles.memberGroup}> • {member.group}</Text>
+                </View>
+                <Text style={styles.memberShift}>Próximo turno: {member.nextShift}</Text>
+                <Text style={styles.memberExperience}>Experiencia: {member.experience}</Text>
+              </View>
+            </View>
+            <Pressable
+              style={({pressed}) => [styles.moreButton, pressed && {opacity: 0.7}]}
+              onPress={() => {
+                setBannerMessage('Opciones de miembro próximamente');
+                setBannerType('success');
+                setShowBanner(true);
+              }}
+            >
+              <Ionicons name="ellipsis-horizontal" size={20} color={COLORS.textBlack} />
+            </Pressable>
+          </View>
+
+          <View style={styles.memberFooter}>
+            <View style={[styles.statusBadge, getStatusStyle(member.status)]}>
+              <Text style={styles.statusText}>{member.status}</Text>
+            </View>
+            <View style={styles.shiftsInfo}>
+              <Ionicons name="calendar-outline" size={16} color={COLORS.textGray} />
+              <Text style={styles.shiftsText}>Turnos esta semana: {member.shiftsThisWeek}</Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    // Si no hay búsqueda, solo mostrar si hay grupo seleccionado
+    if (!selectedGroup) return null;
+    
+    return (
     <View style={styles.memberCard}>
       <View style={styles.memberHeader}>
         <View style={styles.memberInfo}>
           <View style={styles.avatarPlaceholder}>
-            <Ionicons name="person" size={24} color={COLORS.textWhite} />
+            <Ionicons name="person" size={24} color={COLORS.primary} />
           </View>
           <View style={styles.memberDetails}>
             <View style={styles.nameRow}>
               <Text style={styles.memberName}>{member.name}</Text>
               <Text style={styles.memberGroup}> • {member.group}</Text>
             </View>
-            <Text style={styles.memberShift}>Next shift: {member.nextShift}</Text>
-            <Text style={styles.memberExperience}>Experience: {member.experience}</Text>
+            <Text style={styles.memberShift}>Próximo turno: {member.nextShift}</Text>
+            <Text style={styles.memberExperience}>Experiencia: {member.experience}</Text>
           </View>
         </View>
         <Pressable
           style={({pressed}) => [styles.moreButton, pressed && {opacity: 0.7}]}
           onPress={() => {
-            setBannerMessage('Member options coming soon');
+            setBannerMessage('Opciones de miembro próximamente');
             setBannerType('success');
             setShowBanner(true);
           }}
@@ -232,216 +295,231 @@ export default function MembersAdmin({ navigation }) {
         </View>
         <View style={styles.shiftsInfo}>
           <Ionicons name="calendar-outline" size={16} color={COLORS.textGray} />
-          <Text style={styles.shiftsText}>Shifts this week: {member.shiftsThisWeek}</Text>
+          <Text style={styles.shiftsText}>Turnos esta semana: {member.shiftsThisWeek}</Text>
         </View>
-        <Text style={styles.lastActiveText}>Last active {member.lastActive}</Text>
       </View>
     </View>
-  );
+    );
+  };
 
   const renderListHeader = () => (
     <>
       {/* Team Directory Section */}
       <View style={styles.directoryCard}>
-        <View style={styles.directoryHeader}>
-          <Text style={styles.directoryTitle}>Team Directory</Text>
-          <Pressable
-            style={({pressed}) => [styles.filtersButton, pressed && {opacity: 0.7}]}
-            onPress={() => setShowFilters(!showFilters)}
-          >
-            <Ionicons name="options-outline" size={18} color={COLORS.textBlack} />
-            <Text style={styles.filtersButtonText}>Filters</Text>
-          </Pressable>
-        </View>
+        <Text style={styles.directoryTitle}>Buscar a miembro</Text>
 
-        {/* Search Bar and All Roles Button */}
-        <View style={styles.searchRow}>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search-outline" size={20} color={COLORS.textGray} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search members"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor={COLORS.textGray}
-            />
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search-outline" size={20} color={COLORS.textGray} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor={COLORS.textGray}
+          />
+        </View>
+      </View>
+
+      {!searchQuery && (
+        <>
+          {/* Selector de Grupos */}
+          <View style={CalendarAdminStyles.groupSelectorContainer}>
+            <Text style={CalendarAdminStyles.groupSelectorTitle}>Selecciona un grupo</Text>
+            <Pressable
+              style={({pressed}) => [
+                CalendarAdminStyles.groupSelectorButton,
+                pressed && {opacity: 0.7}
+              ]}
+              onPress={() => setShowGroupSelectModal(true)}
+            >
+              <Ionicons name="people-outline" size={24} color={COLORS.primary} />
+              <Text style={[
+                CalendarAdminStyles.groupSelectorButtonText,
+                selectedGroup && { color: COLORS.textBlack, fontWeight: '600' }
+              ]}>
+                {selectedGroup ? selectedGroup.name : 'No hay grupo seleccionado'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color={COLORS.textGray} />
+            </Pressable>
           </View>
-          <Pressable
-            style={({pressed}) => [styles.allRolesButton, pressed && {opacity: 0.7}]}
-            onPress={() => {
-              setBannerMessage('All roles filter coming soon');
-              setBannerType('success');
-              setShowBanner(true);
-            }}
-          >
-            <Ionicons name="people-outline" size={18} color={COLORS.textBlack} />
-            <Text style={styles.allRolesText}>All roles</Text>
-          </Pressable>
-        </View>
 
-        {/* Filter by Groups */}
-        {showFilters && (
-          <View style={styles.filtersContainer}>
-            <Text style={styles.filterLabel}>Filter by Group:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.groupFilters}>
-              <Pressable
-                style={({pressed}) => [
-                  styles.groupFilterChip,
-                  !selectedGroupFilter && styles.groupFilterChipActive,
-                  pressed && {opacity: 0.7}
-                ]}
-                onPress={() => setSelectedGroupFilter(null)}
-              >
-                <Text style={[
-                  styles.groupFilterText,
-                  !selectedGroupFilter && styles.groupFilterTextActive
-                ]}>All Groups</Text>
-              </Pressable>
-              {groups.map(group => (
+          {/* Active Members Section Header */}
+          <View style={styles.sectionHeaderCentered}>
+            <Text style={styles.sectionTitleCentered}>Miembros Activos</Text>
+          </View>
+
+          {/* Group Management Actions */}
+          <View style={styles.groupActionsContainer}>
+            <Pressable
+              style={({pressed}) => [styles.groupActionButton, styles.createGroupButton, pressed && {opacity: 0.7}]}
+              onPress={() => setShowCreateGroupModal(true)}
+            >
+              <Ionicons name="add-circle-outline" size={20} color={COLORS.textGreen} />
+              <Text style={styles.createGroupButtonText}>Crear Grupo</Text>
+            </Pressable>
+            
+            {selectedGroup && (
+              <>
                 <Pressable
-                  key={group.id}
-                  style={({pressed}) => [
-                    styles.groupFilterChip,
-                    selectedGroupFilter === group.id && styles.groupFilterChipActive,
-                    pressed && {opacity: 0.7}
-                  ]}
-                  onPress={() => setSelectedGroupFilter(group.id)}
+                  style={({pressed}) => [styles.groupActionButton, styles.editGroupButton, pressed && {opacity: 0.7}]}
+                  onPress={() => {
+                    if (groups.length === 0) {
+                      setBannerMessage('No hay grupos disponibles para editar');
+                      setBannerType('error');
+                      setShowBanner(true);
+                      return;
+                    }
+                    setEditingGroup(groups[0]);
+                    setShowEditGroupModal(true);
+                  }}
                 >
-                  <Text style={[
-                    styles.groupFilterText,
-                    selectedGroupFilter === group.id && styles.groupFilterTextActive
-                  ]}>{group.name}</Text>
+                  <Ionicons name="create-outline" size={20} color={COLORS.textGreen} />
+                  <Text style={styles.editGroupButtonText}>Editar Grupo</Text>
                 </Pressable>
-              ))}
-            </ScrollView>
+                
+                <Pressable
+                  style={({pressed}) => [styles.groupActionButton, styles.deleteGroupButton, pressed && {opacity: 0.7}]}
+                  onPress={() => {
+                    if (groups.length === 0) {
+                      setBannerMessage('No hay grupos disponibles para eliminar');
+                      setBannerType('error');
+                      setShowBanner(true);
+                      return;
+                    }
+                    setDeletingGroup(groups[0]);
+                    setShowDeleteGroupModal(true);
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+                  <Text style={styles.deleteGroupButtonText}>Eliminar Grupo</Text>
+                </Pressable>
+                
+                <Pressable
+                  style={({pressed}) => [styles.groupActionButton, styles.shareGroupButton, pressed && {opacity: 0.7}]}
+                  onPress={() => {
+                    // TODO: Navigate to add member screen
+                    setBannerMessage('Agregar miembro próximamente');
+                    setBannerType('success');
+                    setShowBanner(true);
+                  }}
+                >
+                  <Ionicons name="person-add-outline" size={20} color={COLORS.textGreen} />
+                  <Text style={styles.shareGroupButtonText}>Agregar Miembro</Text>
+                </Pressable>
+              </>
+            )}
           </View>
-        )}
-      </View>
+        </>
+      )}
 
-      {/* Active Members Section Header */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Active Members</Text>
-        <Pressable
-          style={({pressed}) => [styles.manageGroupsButton, pressed && {opacity: 0.7}]}
-          onPress={() => setShowManageGroupsModal(true)}
-        >
-          <Text style={styles.manageGroupsText}>Manage Groups</Text>
-        </Pressable>
-      </View>
+      {searchQuery && (
+        <View style={styles.sectionHeaderCentered}>
+          <Text style={styles.sectionTitleCentered}>
+            Resultados de búsqueda ({filteredMembers.length})
+          </Text>
+        </View>
+      )}
     </>
   );
 
-  const renderListFooter = () => (
-    <>
-      {/* Quick Actions Section */}
-      <View style={styles.quickActionsCard}>
-        <View style={styles.quickActionsHeader}>
-          <Text style={styles.quickActionsTitle}>Quick Actions</Text>
-          <Pressable
-            style={({pressed}) => [pressed && {opacity: 0.7}]}
-            onPress={() => {
-              setBannerMessage('View all quick actions coming soon');
-              setBannerType('success');
-              setShowBanner(true);
-            }}
-          >
-            <Text style={styles.viewAllText}>View All</Text>
-          </Pressable>
-        </View>
-        <View style={styles.quickActionsButtons}>
-          <Pressable
-            style={({pressed}) => [styles.quickActionButton, styles.quickActionPrimary, pressed && {opacity: 0.7}]}
-            onPress={() => {
-              setBannerMessage('Reassign shift feature coming soon');
-              setBannerType('success');
-              setShowBanner(true);
-            }}
-          >
-            <Ionicons name="swap-horizontal-outline" size={20} color={COLORS.textWhite} />
-            <Text style={styles.quickActionText}>Reassign{'\n'}Shift</Text>
-          </Pressable>
-          <Pressable
-            style={({pressed}) => [styles.quickActionButton, styles.quickActionSecondary, pressed && {opacity: 0.7}]}
-            onPress={() => {
-              setBannerMessage('Group codes feature coming soon');
-              setBannerType('success');
-              setShowBanner(true);
-            }}
-          >
-            <Ionicons name="code-outline" size={20} color={COLORS.textBlack} />
-            <Text style={styles.quickActionTextDark}>Group{'\n'}Codes</Text>
-          </Pressable>
-          <Pressable
-            style={({pressed}) => [styles.quickActionButton, styles.quickActionSecondary, pressed && {opacity: 0.7}]}
-            onPress={() => {
-              setBannerMessage('Export list feature coming soon');
-              setBannerType('success');
-              setShowBanner(true);
-            }}
-          >
-            <Ionicons name="document-outline" size={20} color={COLORS.textBlack} />
-            <Text style={styles.quickActionTextDark}>Export{'\n'}List</Text>
-          </Pressable>
-        </View>
-      </View>
+  const renderListFooter = () => {
+    // Si hay búsqueda activa, no mostrar distribución
+    if (searchQuery) {
+      return null;
+    }
 
+    if (!selectedGroup) {
+      return (
+        <View style={CalendarAdminStyles.noGroupSelected}>
+          <Ionicons name="people-outline" size={64} color={COLORS.textGray} />
+          <Text style={CalendarAdminStyles.noGroupSelectedTitle}>No hay grupo seleccionado</Text>
+          <Text style={CalendarAdminStyles.noGroupSelectedText}>
+            Selecciona un grupo para ver los miembros activos y la distribución de roles
+          </Text>
+        </View>
+      );
+    }
+
+    // Verificar si el grupo seleccionado tiene miembros
+    const groupHasMembers = members.some(m => m.groupId === selectedGroup.id);
+
+    // Si el grupo está vacío, no mostrar distribución
+    if (!groupHasMembers) {
+      return null;
+    }
+
+    return (
+    <>
       {/* Role Distribution Section */}
       <View style={styles.distributionCard}>
         <View style={styles.distributionHeader}>
-          <Text style={styles.distributionTitle}>Role Distribution</Text>
-          <Pressable
-            style={({pressed}) => [pressed && {opacity: 0.7}]}
-            onPress={() => {
-              setBannerMessage('Reports feature coming soon');
-              setBannerType('success');
-              setShowBanner(true);
-            }}
-          >
-            <Text style={styles.viewAllText}>Reports</Text>
-          </Pressable>
+          <Text style={styles.distributionTitle}>Distribución de Roles</Text>
         </View>
-        {groups.map(group => (
-          <View key={group.id} style={styles.distributionRow}>
-            <Text style={styles.groupName}>{group.name}</Text>
-            <Text style={styles.groupCount}>
-              {members.filter(m => m.groupId === group.id).length} members
-            </Text>
-          </View>
-        ))}
+        {groups.length > 0 ? (
+          groups.map(group => (
+            <View key={group.id} style={styles.distributionRow}>
+              <Text style={styles.groupName}>{group.name}</Text>
+              <Text style={styles.groupCount}>
+                {members.filter(m => m.groupId === group.id).length} miembros
+              </Text>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.emptyStateText}>No hay datos disponibles</Text>
+        )}
       </View>
     </>
-  );
+    );
+  };
 
-  const renderEmptyComponent = () => (
+  const renderEmptyComponent = () => {
+    // Si hay búsqueda activa y no hay resultados
+    if (searchQuery) {
+      return (
+        <View style={styles.emptyState}>
+          <Ionicons name="search-outline" size={48} color={COLORS.textGray} />
+          <Text style={styles.emptyStateText}>No se encontraron miembros que coincidan con "{searchQuery}"</Text>
+        </View>
+      );
+    }
+
+    // Si no hay grupo seleccionado
+    if (!selectedGroup) return null;
+    
+    return (
     <View style={styles.emptyState}>
       <Ionicons name="people-outline" size={48} color={COLORS.textGray} />
-      <Text style={styles.emptyStateText}>No members found</Text>
+      <Text style={styles.emptyStateText}>No se encontraron miembros</Text>
     </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
       <HeaderScreen
-        title="Members"
+        title="Miembros"
         leftIcon={<Ionicons name="arrow-back" size={24} color={COLORS.textBlack} />}
         onLeftPress={() => navigation.goBack()}
-        rightIcon={<Ionicons name="person-add-outline" size={24} color={COLORS.textBlack} />}
+        rightIcon={<Ionicons name="notifications-outline" size={24} color={COLORS.textBlack} />}
         onRightPress={() => {
-          // TODO: Navigate to add member screen
-          setBannerMessage('Add member feature coming soon');
+          // TODO: Navigate to notifications screen
+          setBannerMessage('Notificaciones próximamente');
           setBannerType('success');
           setShowBanner(true);
         }}
       />
 
-      <View style={styles.bannerContainer}>
-        <Banner
-          message={bannerMessage}
-          type={bannerType}
-          visible={showBanner}
-          onHide={() => setShowBanner(false)}
-        />
-      </View>
+      {showBanner && (
+        <View style={styles.bannerContainer}>
+          <Banner
+            message={bannerMessage}
+            type={bannerType}
+            visible={showBanner}
+            onHide={() => setShowBanner(false)}
+          />
+        </View>
+      )}
 
       <FlatList
         data={filteredMembers}
@@ -470,9 +548,9 @@ export default function MembersAdmin({ navigation }) {
           onPress={() => setShowManageGroupsModal(false)}
         >
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Manage Groups</Text>
+            <Text style={styles.modalTitle}>Gestionar Grupos</Text>
             <Text style={styles.modalDescription}>
-              Create, edit, delete groups, or share your team directory.
+              Crea, edita, elimina grupos o comparte tu directorio de equipo.
             </Text>
             <View style={styles.manageGroupsButtons}>
               <Pressable
@@ -483,14 +561,14 @@ export default function MembersAdmin({ navigation }) {
                 }}
               >
                 <Ionicons name="add-circle-outline" size={24} color={COLORS.textWhite} />
-                <Text style={styles.manageGroupButtonText}>Create Group</Text>
+                <Text style={styles.manageGroupButtonText}>Crear Grupo</Text>
               </Pressable>
               <Pressable
                 style={({pressed}) => [styles.manageGroupButton, styles.editButton, pressed && {opacity: 0.7}]}
                 onPress={() => {
                   setShowManageGroupsModal(false);
                   if (groups.length === 0) {
-                    setBannerMessage('No groups to edit');
+                    setBannerMessage('No hay grupos para editar');
                     setBannerType('error');
                     setShowBanner(true);
                     return;
@@ -500,14 +578,14 @@ export default function MembersAdmin({ navigation }) {
                 }}
               >
                 <Ionicons name="create-outline" size={24} color={COLORS.textWhite} />
-                <Text style={styles.manageGroupButtonText}>Edit Group</Text>
+                <Text style={styles.manageGroupButtonText}>Editar Grupo</Text>
               </Pressable>
               <Pressable
                 style={({pressed}) => [styles.manageGroupButton, styles.deleteButton, pressed && {opacity: 0.7}]}
                 onPress={() => {
                   setShowManageGroupsModal(false);
                   if (groups.length === 0) {
-                    setBannerMessage('No groups to delete');
+                    setBannerMessage('No hay grupos para eliminar');
                     setBannerType('error');
                     setShowBanner(true);
                     return;
@@ -517,24 +595,28 @@ export default function MembersAdmin({ navigation }) {
                 }}
               >
                 <Ionicons name="trash-outline" size={24} color={COLORS.textWhite} />
-                <Text style={styles.manageGroupButtonText}>Delete Group</Text>
+                <Text style={styles.manageGroupButtonText}>Eliminar Grupo</Text>
               </Pressable>
               <Pressable
                 style={({pressed}) => [styles.manageGroupButton, styles.shareButton, pressed && {opacity: 0.7}]}
                 onPress={() => {
                   setShowManageGroupsModal(false);
-                  setShowShareModal(true);
+                  // TODO: Navigate to add member screen
+                  setBannerMessage('Agregar miembro próximamente');
+                  setBannerType('success');
+                  setShowBanner(true);
                 }}
               >
-                <Ionicons name="share-social-outline" size={24} color={COLORS.textWhite} />
-                <Text style={styles.manageGroupButtonText}>Share Directory</Text>
+                <Ionicons name="person-add-outline" size={24} color={COLORS.textWhite} />
+                <Text style={styles.manageGroupButtonText}>Agregar Miembro</Text>
               </Pressable>
             </View>
             <Pressable
               style={({pressed}) => [styles.modalButton, styles.modalButtonCancel, {marginTop: 16}, pressed && {opacity: 0.7}]}
               onPress={() => setShowManageGroupsModal(false)}
             >
-              <Text style={styles.modalButtonTextCancel}>Close</Text>
+              <Ionicons name="close-circle-outline" size={20} color={COLORS.error} />
+              <Text style={styles.modalButtonTextCancel}>Cerrar</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -552,12 +634,12 @@ export default function MembersAdmin({ navigation }) {
           onPress={() => setShowCreateGroupModal(false)}
         >
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Create New Group</Text>
+            <Text style={styles.modalTitle}>Crear Nuevo Grupo</Text>
             <View style={styles.modalInputContainer}>
-              <Text style={styles.modalLabel}>Group Name</Text>
+              <Text style={styles.modalLabel}>Nombre del Grupo</Text>
               <TextInput
                 style={styles.modalInput}
-                placeholder="Enter group name"
+                placeholder="Ingresa el nombre del grupo"
                 value={newGroupName}
                 onChangeText={setNewGroupName}
                 placeholderTextColor={COLORS.textGray}
@@ -571,13 +653,15 @@ export default function MembersAdmin({ navigation }) {
                   setNewGroupName('');
                 }}
               >
-                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                <Ionicons name="close-circle-outline" size={20} color={COLORS.error} />
+                <Text style={styles.modalButtonTextCancel}>Cancelar</Text>
               </Pressable>
               <Pressable
                 style={({pressed}) => [styles.modalButton, styles.modalButtonConfirm, pressed && {opacity: 0.7}]}
                 onPress={handleCreateGroup}
               >
-                <Text style={styles.modalButtonTextConfirm}>Create</Text>
+                <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.textGreen} />
+                <Text style={styles.modalButtonTextConfirm}>Crear</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -596,9 +680,10 @@ export default function MembersAdmin({ navigation }) {
           onPress={() => setShowEditGroupModal(false)}
         >
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Edit Group</Text>
+            <Text style={styles.modalTitle}>Editar Grupo</Text>
             <View style={styles.modalInputContainer}>
-              <Text style={styles.modalLabel}>Select Group</Text>
+              <Text style={styles.modalLabel}>Seleccionar Grupo</Text>
+              <View style={styles.groupSelectListSeparator} />
               <ScrollView style={styles.groupSelectList}>
                 {groups.map(group => (
                   <Pressable
@@ -619,10 +704,11 @@ export default function MembersAdmin({ navigation }) {
               </ScrollView>
               {editingGroup && (
                 <>
-                  <Text style={[styles.modalLabel, {marginTop: 16}]}>New Group Name</Text>
+                  <View style={styles.groupSelectListSeparator} />
+                  <Text style={[styles.modalLabel, {marginTop: 16}]}>Nuevo Nombre del Grupo</Text>
                   <TextInput
                     style={styles.modalInput}
-                    placeholder="Enter new group name"
+                    placeholder="Ingresa el nuevo nombre del grupo"
                     value={editingGroup.name}
                     onChangeText={(text) => setEditingGroup({...editingGroup, name: text})}
                     placeholderTextColor={COLORS.textGray}
@@ -638,13 +724,15 @@ export default function MembersAdmin({ navigation }) {
                   setEditingGroup(null);
                 }}
               >
-                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                <Ionicons name="close-circle-outline" size={20} color={COLORS.error} />
+                <Text style={styles.modalButtonTextCancel}>Cancelar</Text>
               </Pressable>
               <Pressable
                 style={({pressed}) => [styles.modalButton, styles.modalButtonConfirm, pressed && {opacity: 0.7}]}
                 onPress={handleEditGroup}
               >
-                <Text style={styles.modalButtonTextConfirm}>Save</Text>
+                <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.textGreen} />
+                <Text style={styles.modalButtonTextConfirm}>Guardar</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -663,9 +751,10 @@ export default function MembersAdmin({ navigation }) {
           onPress={() => setShowDeleteGroupModal(false)}
         >
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Delete Group</Text>
+            <Text style={styles.modalTitle}>Eliminar Grupo</Text>
             <View style={styles.modalInputContainer}>
-              <Text style={styles.modalLabel}>Select Group to Delete</Text>
+              <Text style={styles.modalLabel}>Seleccionar Grupo a Eliminar</Text>
+              <View style={styles.groupSelectListSeparator} />
               <ScrollView style={styles.groupSelectList}>
                 {groups.map(group => (
                   <Pressable
@@ -682,7 +771,7 @@ export default function MembersAdmin({ navigation }) {
                       deletingGroup?.id === group.id && styles.groupSelectTextActive
                     ]}>{group.name}</Text>
                     <Text style={styles.groupSelectCount}>
-                      {members.filter(m => m.groupId === group.id).length} members
+                      {members.filter(m => m.groupId === group.id).length} miembros
                     </Text>
                   </Pressable>
                 ))}
@@ -691,7 +780,7 @@ export default function MembersAdmin({ navigation }) {
                 <View style={styles.warningBox}>
                   <Ionicons name="warning-outline" size={20} color={COLORS.textRed} />
                   <Text style={styles.warningText}>
-                    This action cannot be undone. Groups with members cannot be deleted.
+                    Esta acción no se puede deshacer. Los grupos con miembros no pueden ser eliminados.
                   </Text>
                 </View>
               )}
@@ -704,13 +793,15 @@ export default function MembersAdmin({ navigation }) {
                   setDeletingGroup(null);
                 }}
               >
-                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                <Ionicons name="close-circle-outline" size={20} color={COLORS.error} />
+                <Text style={styles.modalButtonTextCancel}>Cancelar</Text>
               </Pressable>
               <Pressable
                 style={({pressed}) => [styles.modalButton, styles.modalButtonDelete, pressed && {opacity: 0.7}]}
                 onPress={handleDeleteGroup}
               >
-                <Text style={styles.modalButtonTextConfirm}>Delete</Text>
+                <Ionicons name="trash-outline" size={20} color={COLORS.textWhite} />
+                <Text style={styles.modalButtonTextDelete}>Eliminar</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -729,9 +820,9 @@ export default function MembersAdmin({ navigation }) {
           onPress={() => setShowShareModal(false)}
         >
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Share Team Directory</Text>
+            <Text style={styles.modalTitle}>Compartir Directorio de Equipo</Text>
             <Text style={styles.modalDescription}>
-              Generate a shareable link to the team directory. Recipients will have read-only access.
+              Genera un enlace compartible al directorio del equipo. Los destinatarios tendrán acceso de solo lectura.
             </Text>
             <View style={styles.shareOptions}>
               <Pressable
@@ -739,27 +830,77 @@ export default function MembersAdmin({ navigation }) {
                 onPress={handleShare}
               >
                 <Ionicons name="link-outline" size={24} color={COLORS.primary} />
-                <Text style={styles.shareOptionText}>Copy Link</Text>
+                <Text style={styles.shareOptionText}>Copiar Enlace</Text>
               </Pressable>
               <Pressable
                 style={({pressed}) => [styles.shareOption, pressed && {opacity: 0.7}]}
                 onPress={() => {
                   setShowShareModal(false);
-                  setBannerMessage('Email sharing coming soon');
+                  setBannerMessage('Compartir por correo próximamente');
                   setBannerType('success');
                   setShowBanner(true);
                 }}
               >
                 <Ionicons name="mail-outline" size={24} color={COLORS.primary} />
-                <Text style={styles.shareOptionText}>Send via Email</Text>
+                <Text style={styles.shareOptionText}>Enviar por Correo</Text>
               </Pressable>
             </View>
             <Pressable
-              style={({pressed}) => [styles.modalButton, styles.modalButtonCancel, {marginTop: 16}, pressed && {opacity: 0.7}]}
+              style={({pressed}) => [styles.shareCloseButton, pressed && {opacity: 0.7}]}
               onPress={() => setShowShareModal(false)}
             >
-              <Text style={styles.modalButtonTextCancel}>Close</Text>
+              <Ionicons name="close-circle" size={20} color={COLORS.error} />
+              <Text style={styles.shareCloseButtonText}>Cerrar</Text>
             </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Modal de Selección de Grupo */}
+      <Modal
+        visible={showGroupSelectModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowGroupSelectModal(false)}
+      >
+        <Pressable
+          style={CalendarAdminStyles.modalOverlay}
+          onPress={() => setShowGroupSelectModal(false)}
+        >
+          <Pressable style={CalendarAdminStyles.groupModalContainer} onPress={(e) => e.stopPropagation()}>
+            <View style={CalendarAdminStyles.groupModalHeader}>
+              <Text style={CalendarAdminStyles.groupModalTitle}>Seleccione un grupo</Text>
+              <Pressable onPress={() => setShowGroupSelectModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.textBlack} />
+              </Pressable>
+            </View>
+            <FlatList
+              data={groups}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item: group }) => (
+                <Pressable
+                  style={({pressed}) => [
+                    CalendarAdminStyles.groupItem,
+                    selectedGroup?.id === group.id && CalendarAdminStyles.groupItemSelected,
+                    pressed && {opacity: 0.7}
+                  ]}
+                  onPress={() => handleGroupSelect(group)}
+                >
+                  <Ionicons name="people" size={20} color={COLORS.primary} />
+                  <Text style={[
+                    CalendarAdminStyles.groupItemText,
+                    selectedGroup?.id === group.id && CalendarAdminStyles.groupItemTextSelected
+                  ]}>
+                    {group.name}
+                  </Text>
+                  {selectedGroup?.id === group.id && (
+                    <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />
+                  )}
+                </Pressable>
+              )}
+              ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+              showsVerticalScrollIndicator={false}
+            />
           </Pressable>
         </Pressable>
       </Modal>

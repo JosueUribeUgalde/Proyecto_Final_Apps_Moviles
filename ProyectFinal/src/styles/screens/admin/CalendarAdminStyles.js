@@ -249,6 +249,7 @@ export default StyleSheet.create({
     borderColor: COLORS.borderSecondary,
     padding: 16,
     gap: 12,
+    ...SHADOWS.medium,
   },
   groupSelectorButtonText: {
     flex: 1,
@@ -327,6 +328,7 @@ export default StyleSheet.create({
     marginTop: 20,
     borderWidth: 1,
     borderColor: COLORS.borderSecondary,
+    ...SHADOWS.medium,
   },
   noGroupSelectedTitle: {
     fontSize: FONTS.large,
