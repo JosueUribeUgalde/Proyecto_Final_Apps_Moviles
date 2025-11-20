@@ -1,72 +1,93 @@
 // 1. Paquetes core de React/React Native
 import { useState } from 'react';
-import { Text, View, ScrollView, Pressable } from "react-native";
+import { Text, View, ScrollView, Pressable, Modal, FlatList } from "react-native";
 // 2. Bibliotecas de terceros
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 // 3. Componentes propios
-import { HeaderScreen, MenuFooterAdmin } from "../../components";
+import { HeaderScreen, MenuFooterAdmin, ButtonRequest } from "../../components";
 // 4. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
 // 5. Estilos
 import styles from "../../styles/screens/admin/DashboardAdminStyles";
+import CalendarAdminStyles from "../../styles/screens/admin/CalendarAdminStyles";
 
 export default function DashboardAdmin({ navigation }) {
+  // Estado para el selector de grupos
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [showGroupSelectModal, setShowGroupSelectModal] = useState(false);
+
+  // Mock data para grupos
+  const MOCK_GROUPS = [
+    { id: 1, name: 'Recepción', memberCount: 12 },
+    { id: 2, name: 'Cocina', memberCount: 8 },
+    { id: 3, name: 'Turno Nocturno', memberCount: 5 },
+    { id: 4, name: 'Limpieza', memberCount: 15 },
+  ];
+
+  const [groups] = useState(MOCK_GROUPS);
+
   // Estado para las solicitudes de ausencia (mockup data)
   const [requests, setRequests] = useState([
     {
       id: 1,
       name: 'Alex Murphy',
       date: 'Sep 22, 9:00-17:00',
-      reason: 'Vacation - Doctor',
-      status: 'Pending'
+      reason: 'Vacaciones - Doctor',
+      status: 'Pendiente'
     },
     {
       id: 2,
       name: 'Priya Singh',
       date: 'Sep 23, 13:00-18:00',
-      reason: 'Doctor - Family',
-      status: 'Approved'
+      reason: 'Doctor - Familia',
+      status: 'Aprobado'
     },
     {
       id: 3,
       name: 'Marco Chen',
       date: 'Sep 24, 8:00-12:00',
       reason: 'Personal',
-      status: 'Rejected'
+      status: 'Rechazado'
     }
   ]);
 
   const handleApprove = (id) => {
     // TODO: Implementar lógica de aprobación con Firebase
     setRequests(requests.map(req =>
-      req.id === id ? { ...req, status: 'Approved' } : req
+      req.id === id ? { ...req, status: 'Aprobado' } : req
     ));
   };
 
   const handleReject = (id) => {
     // TODO: Implementar lógica de rechazo con Firebase
     setRequests(requests.map(req =>
-      req.id === id ? { ...req, status: 'Rejected' } : req
+      req.id === id ? { ...req, status: 'Rechazado' } : req
     ));
   };
 
   const handleApproveAll = () => {
     // TODO: Implementar lógica de aprobación masiva
-    setRequests(requests.map(req => ({ ...req, status: 'Approved' })));
+    setRequests(requests.map(req => ({ ...req, status: 'Aprobado' })));
   };
 
   const getStatusStyle = (status) => {
     switch(status) {
-      case 'Pending':
+      case 'Pendiente':
         return styles.statusPending;
-      case 'Approved':
+      case 'Aprobado':
         return styles.statusApproved;
-      case 'Rejected':
+      case 'Rechazado':
         return styles.statusRejected;
       default:
         return styles.statusPending;
     }
+  };
+
+  const handleGroupSelect = (group) => {
+    setSelectedGroup(group);
+    setShowGroupSelectModal(false);
+    // Aquí se cargarán los datos específicos del grupo desde Firebase
   };
 
   return (
@@ -83,49 +104,62 @@ export default function DashboardAdmin({ navigation }) {
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Métricas principales */}
-        <View style={styles.metricsContainer}>
+        {/* Selector de Grupos */}
+        <View style={CalendarAdminStyles.groupSelectorContainer}>
+          <Text style={CalendarAdminStyles.groupSelectorTitle}>Selecciona un grupo</Text>
+          <Pressable
+            style={({pressed}) => [
+              CalendarAdminStyles.groupSelectorButton,
+              pressed && {opacity: 0.7}
+            ]}
+            onPress={() => setShowGroupSelectModal(true)}
+          >
+            <Ionicons name="people-outline" size={24} color={COLORS.primary} />
+            <Text style={[
+              CalendarAdminStyles.groupSelectorButtonText,
+              selectedGroup && { color: COLORS.textBlack, fontWeight: '600' }
+            ]}>
+              {selectedGroup ? selectedGroup.name : 'No hay grupo seleccionado'}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color={COLORS.textGray} />
+          </Pressable>
+        </View>
+
+        {selectedGroup ? (
+          <>
+            {/* Métricas principales */}
+            <View style={styles.metricsContainer}>
           <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>Total Members</Text>
+            <Text style={styles.metricLabel}>Total de Miembros</Text>
             <Text style={styles.metricValue}>128</Text>
-            <Text style={styles.metricSub}>+6 this week</Text>
+            <Text style={styles.metricSub}>+6 esta semana</Text>
           </View>
 
           <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>Active Shifts</Text>
+            <Text style={styles.metricLabel}>Turnos Activos</Text>
             <Text style={styles.metricValue}>23</Text>
-            <Text style={styles.metricSub}>Across 5 teams</Text>
+            <Text style={styles.metricSub}>En 5 equipos</Text>
           </View>
         </View>
 
         <View style={styles.metricsContainer}>
           <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>Pending Absence Requests</Text>
+            <Text style={styles.metricLabel}>Solicitudes de Ausencia Pendientes</Text>
             <Text style={styles.metricValue}>23</Text>
-            <Text style={styles.metricSub}>Awaiting review</Text>
+            <Text style={styles.metricSub}>Esperando revisión</Text>
           </View>
 
           <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>Open Replacements</Text>
+            <Text style={styles.metricLabel}>Reemplazos Abiertos</Text>
             <Text style={styles.metricValue}>4</Text>
-            <Text style={styles.metricSub}>All matching in progress</Text>
+            <Text style={styles.metricSub}>Todos en progreso</Text>
           </View>
         </View>
 
         {/* Sección de solicitudes */}
         <View style={styles.requestsSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Absence & Permission Requests</Text>
-            <Pressable
-              onPress={handleApproveAll}
-              style={({ pressed }) => [
-                styles.approveAllButton,
-                pressed && { opacity: 0.7 }
-              ]}
-            >
-              <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.approveAllText}>Approve All</Text>
-            </Pressable>
+            <Text style={styles.sectionTitle}>Solicitudes de Ausencia y Permisos</Text>
           </View>
 
           {/* Lista de solicitudes */}
@@ -134,42 +168,116 @@ export default function DashboardAdmin({ navigation }) {
               <View style={styles.requestHeader}>
                 <Text style={styles.requestName}>{request.name}</Text>
                 <View style={getStatusStyle(request.status)}>
-                  <Text style={styles.statusText}>{request.status}</Text>
+                  <Text style={[
+                    styles.statusText,
+                    request.status === 'Pendiente' && styles.statusPendingText,
+                    request.status === 'Aprobado' && styles.statusApprovedText,
+                    request.status === 'Rechazado' && styles.statusRejectedText,
+                  ]}>
+                    {request.status}
+                  </Text>
                 </View>
               </View>
 
-              <Text style={styles.requestDate}>{request.date}</Text>
-              <Text style={styles.requestReason}>• Reason: {request.reason}</Text>
+              <View style={styles.requestDetails}>
+                <View style={styles.detailRow}>
+                  <Ionicons name="time-outline" size={16} color={COLORS.textGray} />
+                  <Text style={styles.detailText}>{request.date}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Ionicons name="information-circle-outline" size={16} color={COLORS.textGray} />
+                  <Text style={styles.detailText}>Motivo: {request.reason}</Text>
+                </View>
+              </View>
 
-              {request.status === 'Pending' && (
+              {request.status === 'Pendiente' && (
                 <View style={styles.actionButtons}>
-                  <Pressable
-                    onPress={() => handleReject(request.id)}
-                    style={({ pressed }) => [
-                      styles.rejectButton,
-                      pressed && { opacity: 0.7 }
-                    ]}
-                  >
-                    <Ionicons name="close" size={20} color={COLORS.error} />
-                    <Text style={styles.rejectText}>Reject</Text>
-                  </Pressable>
-
-                  <Pressable
+                  <ButtonRequest
+                    title="Aprobar"
+                    icon="checkmark-circle-outline"
+                    iconColor={COLORS.textGreen}
+                    textColor={COLORS.textGreen}
+                    backgroundColor={COLORS.backgroundBS}
+                    borderColor={COLORS.borderSecondary}
                     onPress={() => handleApprove(request.id)}
-                    style={({ pressed }) => [
-                      styles.approveButton,
-                      pressed && { opacity: 0.7 }
-                    ]}
-                  >
-                    <Ionicons name="checkmark" size={20} color={COLORS.textWhite} />
-                    <Text style={styles.approveText}>Approve</Text>
-                  </Pressable>
+                    style={{ flex: 1 }}
+                  />
+
+                  <ButtonRequest
+                    title="Rechazar"
+                    icon="close-circle-outline"
+                    iconColor={COLORS.textRed}
+                    textColor={COLORS.textRed}
+                    backgroundColor={COLORS.backgroundWhite}
+                    borderColor={COLORS.borderSecondary}
+                    onPress={() => handleReject(request.id)}
+                    style={{ flex: 1 }}
+                  />
                 </View>
               )}
             </View>
           ))}
         </View>
+          </>
+        ) : (
+          <View style={CalendarAdminStyles.noGroupSelected}>
+            <Ionicons name="people-outline" size={64} color={COLORS.textGray} />
+            <Text style={CalendarAdminStyles.noGroupSelectedTitle}>No hay grupo seleccionado</Text>
+            <Text style={CalendarAdminStyles.noGroupSelectedText}>
+              Selecciona un grupo para ver el dashboard con métricas y solicitudes
+            </Text>
+          </View>
+        )}
       </ScrollView>
+
+      {/* Modal de Selección de Grupo */}
+      <Modal
+        visible={showGroupSelectModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowGroupSelectModal(false)}
+      >
+        <Pressable
+          style={CalendarAdminStyles.modalOverlay}
+          onPress={() => setShowGroupSelectModal(false)}
+        >
+          <Pressable style={CalendarAdminStyles.groupModalContainer} onPress={(e) => e.stopPropagation()}>
+            <View style={CalendarAdminStyles.groupModalHeader}>
+              <Text style={CalendarAdminStyles.groupModalTitle}>Seleccione un grupo</Text>
+              <Pressable onPress={() => setShowGroupSelectModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.textBlack} />
+              </Pressable>
+            </View>
+            <FlatList
+              data={groups}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item: group }) => (
+                <Pressable
+                  style={({pressed}) => [
+                    CalendarAdminStyles.groupItem,
+                    selectedGroup?.id === group.id && CalendarAdminStyles.groupItemSelected,
+                    pressed && {opacity: 0.7}
+                  ]}
+                  onPress={() => handleGroupSelect(group)}
+                >
+                  <Ionicons name="people" size={20} color={COLORS.primary} />
+                  <Text style={[
+                    CalendarAdminStyles.groupItemText,
+                    selectedGroup?.id === group.id && CalendarAdminStyles.groupItemTextSelected
+                  ]}>
+                    {group.name}
+                  </Text>
+                  {selectedGroup?.id === group.id && (
+                    <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />
+                  )}
+                </Pressable>
+              )}
+              ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+              showsVerticalScrollIndicator={false}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <View style={styles.footerContainer}>
         <MenuFooterAdmin />
