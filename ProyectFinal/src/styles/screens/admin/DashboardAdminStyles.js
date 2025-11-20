@@ -2,11 +2,14 @@ import { StyleSheet } from 'react-native';
 import { COLORS, FONTS, RADIUS, SHADOWS } from '../../../components/constants/theme';
 
 export default StyleSheet.create({
+  // Contenedor principal
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
     width: '100%',
   },
+  
+  // Contenedor de scroll
   content: {
     flex: 1,
     width: '100%',
@@ -15,24 +18,30 @@ export default StyleSheet.create({
     paddingHorizontal: '7.5%',
     paddingBottom: 20,
   },
+  
+  // Footer del menú
   footerContainer: {
     backgroundColor: COLORS.backgroundWhite,
     width: '100%',
   },
 
-  // Métricas
+  // Contenedor de métricas (cards de estadísticas)
   metricsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 16,
     gap: 12,
   },
+  
+  // Card individual de métrica
   metricCard: {
     flex: 1,
     backgroundColor: COLORS.backgroundWhite,
     borderRadius: RADIUS.md,
     padding: 16,
-    ...SHADOWS.light,
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+    ...SHADOWS.medium,
   },
   metricLabel: {
     fontSize: FONTS.small,
@@ -55,6 +64,8 @@ export default StyleSheet.create({
     marginTop: 24,
     marginBottom: 16,
   },
+  
+  // Header de sección (título)
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -66,109 +77,85 @@ export default StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.textBlack,
   },
-  approveAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: COLORS.secondary,
-    borderRadius: RADIUS.sm,
-  },
-  approveAllText: {
-    fontSize: FONTS.small,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
 
-  // Tarjetas de solicitud
+  // Card de solicitud individual
   requestCard: {
     backgroundColor: COLORS.backgroundWhite,
     borderRadius: RADIUS.md,
+    borderColor: COLORS.borderSecondary,
+    borderWidth: 1,
     padding: 16,
     marginBottom: 12,
-    ...SHADOWS.light,
+    ...SHADOWS.medium,
   },
+  
+  // Header del card (nombre y badge de estado)
   requestHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   requestName: {
     fontSize: FONTS.regular,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: COLORS.textBlack,
   },
-  requestDate: {
-    fontSize: FONTS.small,
-    color: COLORS.textGray,
-    marginBottom: 4,
-  },
-  requestReason: {
-    fontSize: FONTS.small,
-    color: COLORS.textGray,
+  
+  // Contenedor de detalles (fecha y motivo)
+  requestDetails: {
     marginBottom: 12,
+    gap: 8,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailText: {
+    fontSize: FONTS.small,
+    color: COLORS.textGray,
   },
 
-  // Estados de solicitud
+  // Badges de estado de solicitud
   statusPending: {
+    backgroundColor: COLORS.secondary,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.statusPending,
   },
   statusApproved: {
+    backgroundColor: COLORS.backgroundBS,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.secondary,
   },
   statusRejected: {
+    backgroundColor: '#FDE8E8',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.statusRejected,
   },
+  
+  // Texto de los badges
   statusText: {
-    fontSize: 12,
+    fontSize: FONTS.small,
     fontWeight: '600',
+  },
+  statusPendingText: {
+    color: COLORS.primary,
+  },
+  statusApprovedText: {
+    color: COLORS.textGreen,
+  },
+  statusRejectedText: {
+    color: COLORS.error,
   },
 
-  // Botones de acción
+  // Contenedor de botones de acción (Approve/Reject)
   actionButtons: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
+    gap: 8,
     marginTop: 8,
-  },
-  rejectButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: RADIUS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.error,
-  },
-  rejectText: {
-    fontSize: FONTS.small,
-    color: COLORS.error,
-    fontWeight: '600',
-  },
-  approveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.primary,
-  },
-  approveText: {
-    fontSize: FONTS.small,
-    color: COLORS.textWhite,
-    fontWeight: '600',
   },
 });
