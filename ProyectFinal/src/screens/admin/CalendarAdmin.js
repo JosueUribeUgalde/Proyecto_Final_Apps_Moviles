@@ -1,5 +1,5 @@
 // 1. Paquetes core de React/React Native
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Text, View, ScrollView, Pressable, Alert, Dimensions, Modal, FlatList } from "react-native";
 
 // 2. Bibliotecas de terceros
@@ -7,6 +7,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { LineChart, BarChart, ProgressChart, PieChart } from 'react-native-chart-kit';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
+import ViewShot from 'react-native-view-shot';
 
 // 3. Componentes propios
 import { HeaderScreen, Banner, MenuFooterAdmin, ButtonLogin } from "../../components";
@@ -47,6 +51,11 @@ export default function CalendarAdmin({ navigation }) {
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState('Esta semana');
+  
+  // Referencias para capturar las gráficas como imágenes
+  const lineChartRef = useRef();
+  const barChartRef = useRef();
+  const pieChartRef = useRef();
   
   // Grupos estáticos (después se cargarán desde Firebase)
   const groups = [
@@ -183,9 +192,324 @@ export default function CalendarAdmin({ navigation }) {
     navigation.navigate('RequestScreen');
   };
 
-  const handleReportAction = (action) => {
+  const handleReportAction = async (action) => {
     if (action === 'export') {
-      Alert.alert('Exportar', 'Exportación iniciada');
+      try {
+        // Capturar las gráficas como imágenes
+        let lineChartImage = null;
+        let barChartImage = null;
+        let pieChartImage = null;
+        
+        // Esperar un momento para asegurar que las gráficas estén renderizadas
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Capturar LineChart
+        if (lineChartRef.current) {
+          try {
+            const uri = await lineChartRef.current.capture();
+            const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+            lineChartImage = `data:image/jpeg;base64,${base64}`;
+            console.log('LineChart capturada');
+          } catch (error) {
+            console.log('Error capturando LineChart:', error);
+          }
+        }
+        
+        // Capturar BarChart
+        if (barChartRef.current) {
+          try {
+            const uri = await barChartRef.current.capture();
+            const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+            barChartImage = `data:image/jpeg;base64,${base64}`;
+            console.log('BarChart capturada');
+          } catch (error) {
+            console.log('Error capturando BarChart:', error);
+          }
+        }
+        
+        // Capturar PieChart
+        if (pieChartRef.current) {
+          try {
+            const uri = await pieChartRef.current.capture();
+            const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+            pieChartImage = `data:image/jpeg;base64,${base64}`;
+            console.log('PieChart capturada');
+          } catch (error) {
+            console.log('Error capturando PieChart:', error);
+          }
+        }
+        
+        // Generar contenido HTML del reporte
+        const html = `
+          <html>
+            <head>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+              <style>
+                body {
+                  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                  padding: 20px;
+                  color: #333;
+                }
+                h1 {
+                  color: #178C72;
+                  text-align: center;
+                  margin-bottom: 10px;
+                }
+                h2 {
+                  color: #178C72;
+                  margin-top: 25px;
+                  margin-bottom: 15px;
+                  border-bottom: 2px solid #178C72;
+                  padding-bottom: 5px;
+                }
+                .header-info {
+                  text-align: center;
+                  margin-bottom: 30px;
+                  color: #666;
+                }
+                .metrics-grid {
+                  display: grid;
+                  grid-template-columns: repeat(2, 1fr);
+                  gap: 15px;
+                  margin-bottom: 30px;
+                }
+                .metric-card {
+                  border: 1px solid #E0E0E0;
+                  border-radius: 8px;
+                  padding: 15px;
+                  background-color: #F9F9F9;
+                }
+                .metric-label {
+                  font-size: 12px;
+                  color: #666;
+                  margin-bottom: 8px;
+                }
+                .metric-value {
+                  font-size: 28px;
+                  font-weight: bold;
+                  color: #178C72;
+                  margin-bottom: 5px;
+                }
+                .metric-sub {
+                  font-size: 11px;
+                  color: #999;
+                }
+                table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  margin-top: 15px;
+                }
+                th {
+                  background-color: #178C72;
+                  color: white;
+                  padding: 12px;
+                  text-align: left;
+                  font-weight: 600;
+                }
+                td {
+                  padding: 10px;
+                  border-bottom: 1px solid #E0E0E0;
+                }
+                tr:nth-child(even) {
+                  background-color: #F9F9F9;
+                }
+                .footer {
+                  margin-top: 40px;
+                  text-align: center;
+                  font-size: 11px;
+                  color: #999;
+                  border-top: 1px solid #E0E0E0;
+                  padding-top: 15px;
+                }
+                .chart-image {
+                  width: 100%;
+                  max-width: 650px;
+                  height: auto;
+                  margin: 15px auto;
+                  display: block;
+                  border-radius: 8px;
+                }
+              </style>
+            </head>
+            <body>
+              <h1>Reporte de Asistencia</h1>
+              <div class="header-info">
+                <p><strong>Grupo:</strong> ${selectedGroup ? selectedGroup.name : 'Todos los grupos'}</p>
+                <p><strong>Período:</strong> ${selectedFilter}</p>
+                <p><strong>Fecha de generación:</strong> ${new Date().toLocaleDateString('es-ES', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}</p>
+              </div>
+
+              <h2>Resumen General</h2>
+              <div class="metrics-grid">
+                <div class="metric-card">
+                  <div class="metric-label">Asistencia Semanal</div>
+                  <div class="metric-value">92%</div>
+                  <div class="metric-sub">Esta Semana</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-label">Tasa de Cobertura</div>
+                  <div class="metric-value">96%</div>
+                  <div class="metric-sub">Ausencias cubiertas</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-label">Tiempo de Respuesta</div>
+                  <div class="metric-value">14m</div>
+                  <div class="metric-sub">Tiempo de reemplazo</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-label">Reasignaciones</div>
+                  <div class="metric-value">38</div>
+                  <div class="metric-sub">Últimos 7 días</div>
+                </div>
+              </div>
+
+              ${lineChartImage ? `
+              <h2>Tendencia de Asistencia Semanal</h2>
+              <img src="${lineChartImage}" class="chart-image" alt="Gráfica de Tendencia" />
+              ` : ''}
+
+              <h2>Tendencia de Asistencia Semanal (Datos)</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Día</th>
+                    <th>Empleados Presentes</th>
+                    <th>Porcentaje</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Lunes</td>
+                    <td>23 / 25</td>
+                    <td>92%</td>
+                  </tr>
+                  <tr>
+                    <td>Martes</td>
+                    <td>22 / 25</td>
+                    <td>88%</td>
+                  </tr>
+                  <tr>
+                    <td>Miércoles</td>
+                    <td>24 / 25</td>
+                    <td>96%</td>
+                  </tr>
+                  <tr>
+                    <td>Jueves</td>
+                    <td>23 / 25</td>
+                    <td>92%</td>
+                  </tr>
+                  <tr>
+                    <td>Viernes</td>
+                    <td>21 / 25</td>
+                    <td>84%</td>
+                  </tr>
+                  <tr>
+                    <td>Sábado</td>
+                    <td>20 / 25</td>
+                    <td>80%</td>
+                  </tr>
+                  <tr>
+                    <td>Domingo</td>
+                    <td>22 / 25</td>
+                    <td>88%</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              ${barChartImage ? `
+              <h2>Cobertura por Equipos</h2>
+              <img src="${barChartImage}" class="chart-image" alt="Gráfica de Cobertura" />
+              ` : ''}
+
+              <h2>Cobertura por Equipos (Datos)</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Equipo</th>
+                    <th>Porcentaje de Cobertura</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Recepción</td>
+                    <td>90%</td>
+                  </tr>
+                  <tr>
+                    <td>Cocina</td>
+                    <td>90%</td>
+                  </tr>
+                  <tr>
+                    <td>Operaciones</td>
+                    <td>80%</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              ${pieChartImage ? `
+              <h2>Métricas Principales</h2>
+              <img src="${pieChartImage}" class="chart-image" alt="Gráfica de Métricas" />
+              ` : ''}
+
+              <h2>Métricas Principales (Detalle)</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Métrica</th>
+                    <th>Valor</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Tasa de Ausencias</td>
+                    <td>10 / 125</td>
+                    <td>8% de empleados ausentes</td>
+                  </tr>
+                  <tr>
+                    <td>Asignaciones Automáticas</td>
+                    <td>26 / 30</td>
+                    <td>87% de turnos asignados automáticamente</td>
+                  </tr>
+                  <tr>
+                    <td>Ajustes Manuales</td>
+                    <td>4 / 34</td>
+                    <td>12% de cambios requirieron ajuste manual</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="footer">
+                <p>Reporte generado automáticamente por el Sistema de Gestión de Asistencia</p>
+                <p>© ${new Date().getFullYear()} - Todos los derechos reservados</p>
+              </div>
+            </body>
+          </html>
+        `;
+
+        // Generar el PDF con soporte para archivos locales
+        const { uri } = await Print.printToFileAsync({ 
+          html,
+          base64: false
+        });
+        
+        // Compartir el PDF
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Exportar Reporte de Asistencia',
+          UTI: 'com.adobe.pdf'
+        });
+
+        Alert.alert('Éxito', 'Reporte exportado correctamente');
+      } catch (error) {
+        console.error('Error al exportar PDF:', error);
+        Alert.alert('Error', 'No se pudo exportar el reporte');
+      }
       return;
     }
     if (action === 'filter') {
@@ -507,16 +831,26 @@ export default function CalendarAdmin({ navigation }) {
                   <Text style={styles.sectionTitle}>Tendencia de Asistencia</Text>
                 </View>
 
-                <View style={styles.chartContainer}>
-                  <LineChart
-                    data={attendanceTrendData}
-                    width={screenWidth * 0.9}
-                    height={220}
-                    chartConfig={chartConfig}
-                    style={styles.chart}
-                  />
-                  <Text style={styles.chartDescription}>Empleados presentes cada día (de 25 totales en el grupo)</Text>
-                </View>
+                <ViewShot 
+                  ref={lineChartRef} 
+                  options={{ 
+                    format: 'jpg', 
+                    quality: 0.9,
+                    result: 'tmpfile'
+                  }}
+                  style={{ backgroundColor: '#FFFFFF' }}
+                >
+                  <View style={styles.chartContainer}>
+                    <LineChart
+                      data={attendanceTrendData}
+                      width={screenWidth * 0.9}
+                      height={220}
+                      chartConfig={chartConfig}
+                      style={styles.chart}
+                    />
+                    <Text style={styles.chartDescription}>Empleados presentes cada día (de 25 totales en el grupo)</Text>
+                  </View>
+                </ViewShot>
               </View>
 
               {/* Cobertura por Equipo */}
@@ -525,65 +859,85 @@ export default function CalendarAdmin({ navigation }) {
                   <Text style={styles.sectionTitle}>Porcentaje de cobertura por grupos</Text>
                 </View>
 
-                <View style={styles.chartContainer}>
-                  <BarChart
-                    data={teamCoverageData}
-                    width={screenWidth * 0.9}
-                    height={220}
-                    chartConfig={chartConfigWhite}
-                    style={styles.chart}
-                    showValuesOnTopOfBars
-                    fromZero
-                    yAxisSuffix="%"
-                  />
-                  <Text style={styles.chartDescription}>Porcentaje de ausencias cubiertas por cada grupo</Text>
-                </View>
+                <ViewShot 
+                  ref={barChartRef} 
+                  options={{ 
+                    format: 'jpg', 
+                    quality: 0.9,
+                    result: 'tmpfile'
+                  }}
+                  style={{ backgroundColor: '#FFFFFF' }}
+                >
+                  <View style={styles.chartContainer}>
+                    <BarChart
+                      data={teamCoverageData}
+                      width={screenWidth * 0.9}
+                      height={220}
+                      chartConfig={chartConfigWhite}
+                      style={styles.chart}
+                      showValuesOnTopOfBars
+                      fromZero
+                      yAxisSuffix="%"
+                    />
+                    <Text style={styles.chartDescription}>Porcentaje de ausencias cubiertas por cada grupo</Text>
+                  </View>
+                </ViewShot>
 
                 <View style={styles.topMetricsContainer}>
                   <View style={styles.topMetricsHeader}>
                     <Text style={styles.sectionTitle}>Métricas Principales</Text>
                   </View>
 
-                  <View style={styles.chartContainer}>
-                    <PieChart
-                      data={[
-                        {
-                          name: 'Ausencias',
-                          population: 10,
-                          color: COLORS.error,
-                          legendFontColor: COLORS.textBlack,
-                          legendFontSize: 12
-                        },
-                        {
-                          name: 'Asig. Auto',
-                          population: 26,
-                          color: COLORS.textGray,
-                          legendFontColor: COLORS.textBlack,
-                          legendFontSize: 12
-                        },
-                        {
-                          name: 'Ajustes',
-                          population: 4,
-                          color: COLORS.textGreen,
-                          legendFontColor: COLORS.textBlack,
-                          legendFontSize: 12
-                        }
-                      ]}
-                      width={screenWidth * 0.9}
-                      height={200}
-                      chartConfig={{
-                        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                        labelColor: (opacity = 1) => COLORS.textBlack,
-                      }}
-                      accessor="population"
-                      backgroundColor="transparent"
-                      paddingLeft="15"
-                      absolute
-                      style={styles.chart}
-                      hasLegend={true}
-                      center={[10, 0]}
-                    />
-                  </View>
+                  <ViewShot 
+                    ref={pieChartRef} 
+                    options={{ 
+                      format: 'jpg', 
+                      quality: 0.9,
+                      result: 'tmpfile'
+                    }}
+                    style={{ backgroundColor: '#FFFFFF' }}
+                  >
+                    <View style={styles.chartContainer}>
+                      <PieChart
+                        data={[
+                          {
+                            name: 'Ausencias',
+                            population: 10,
+                            color: COLORS.error,
+                            legendFontColor: COLORS.textBlack,
+                            legendFontSize: 12
+                          },
+                          {
+                            name: 'Asig. Auto',
+                            population: 26,
+                            color: COLORS.textGray,
+                            legendFontColor: COLORS.textBlack,
+                            legendFontSize: 12
+                          },
+                          {
+                            name: 'Ajustes',
+                            population: 4,
+                            color: COLORS.textGreen,
+                            legendFontColor: COLORS.textBlack,
+                            legendFontSize: 12
+                          }
+                        ]}
+                        width={screenWidth * 0.9}
+                        height={200}
+                        chartConfig={{
+                          color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                          labelColor: (opacity = 1) => COLORS.textBlack,
+                        }}
+                        accessor="population"
+                        backgroundColor="transparent"
+                        paddingLeft="15"
+                        absolute
+                        style={styles.chart}
+                        hasLegend={true}
+                        center={[10, 0]}
+                      />
+                    </View>
+                  </ViewShot>
 
                   <View style={styles.metricsLegendContainer}>
                     <View style={styles.legendItem}>

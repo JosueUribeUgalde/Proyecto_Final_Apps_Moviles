@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { COLORS, RADIUS, FONTS } from '../../components/constants/theme';
+import { COLORS, RADIUS, FONTS, SHADOWS } from '../../components/constants/theme';
 
 export default StyleSheet.create({
   button: {
@@ -11,6 +11,7 @@ export default StyleSheet.create({
     paddingHorizontal: 20,
     marginVertical: 5,
     width: '80%',
+    ...SHADOWS.medium,
   },
   contentRow: {
     flexDirection: 'row',
