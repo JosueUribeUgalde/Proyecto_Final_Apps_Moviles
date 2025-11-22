@@ -24,7 +24,7 @@ export default function MenuFooterCompany() {
           styles.button,
           pressed && { opacity: 0.5 }
         ]}
-        onPress={() => navigation.navigate('Miembros')}
+        onPress={() => navigation.navigate('MembersCompany')}
       >
         <Ionicons name="people-outline" size={24} color="gray" />
         <Text style={styles.buttonText}>Miembros</Text>

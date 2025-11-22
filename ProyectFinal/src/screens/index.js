@@ -33,3 +33,4 @@ export { default as ProfileCompany } from './company/ProfileCompany';
 export { default as EditProfileCompany } from './company/EditProfileCompany';
 export { default as PaymentMethod } from './company/PaymentMethod';
 export { default as InvoiceHistory } from './company/InvoiceHistory';
+export { default as MembersCompany } from './company/MembersCompany';
