@@ -1,19 +1,14 @@
-import React, { useState } from "react";
+import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
-import { HeaderScreen, ButtonLogin, Banner } from "../../components";
+import { HeaderScreen, ButtonLogin } from "../../components";
 import { COLORS } from "../../components/constants/theme";
 import styles from "../../styles/screens/user/LogoutStyles";
 
 export default function Logout({ navigation }) {
-    const [showBanner, setShowBanner] = useState(false);
-
     const handleLogout = () => {
-        setShowBanner(true);
-        setTimeout(() => {
-            navigation.navigate('Welcome');
-        }, 2000);
+        navigation.navigate('Welcome');
     };
 
     const handleCancel = () => {
@@ -24,8 +19,6 @@ export default function Logout({ navigation }) {
         <SafeAreaView edges={['top']} style={styles.container}>
             <HeaderScreen
                 title="Cerrar Sesión"
-                leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
-                onLeftPress={handleCancel}
             />
 
             <View style={styles.content}>
@@ -46,27 +39,24 @@ export default function Logout({ navigation }) {
                     <ButtonLogin
                         title="Cancelar"
                         onPress={handleCancel}
-                        backgroundColor={COLORS.secondary}
-                        textColor={COLORS.textBlack}
-                        showBorder={false}
+                        backgroundColor={COLORS.backgroundWhite}
+                        textColor={COLORS.textGreen}
+                        icon={<Ionicons name="close-circle-outline" size={20} color={COLORS.textGreen} />}
+                        borderColor={COLORS.borderSecondary}
+                        showBorder={true}
                     />
 
                     <ButtonLogin
                         title="Cerrar Sesión"
                         onPress={handleLogout}
-                        backgroundColor={COLORS.error}
-                        textColor={COLORS.textWhite}
-                        showBorder={false}
+                        backgroundColor={COLORS.backgroundWhite}
+                        textColor={COLORS.textRed}
+                        icon={<Ionicons name="log-out-outline" size={20} color={COLORS.textRed} />}
+                        showBorder={true}
+                        borderColor={COLORS.borderSecondary}
                     />
                 </View>
             </View>
-
-            <Banner
-                message="Sesión cerrada exitosamente"
-                type="success"
-                visible={showBanner}
-                onHide={() => setShowBanner(false)}
-            />
         </SafeAreaView>
     );
 }

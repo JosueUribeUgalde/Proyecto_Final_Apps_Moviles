@@ -94,9 +94,7 @@ export default function DashboardAdmin({ navigation }) {
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
       <HeaderScreen
         title="Admin Dashboard"
-        leftIcon={<Ionicons name="menu-outline" size={24} color={COLORS.textBlack} />}
         rightIcon={<Ionicons name="notifications-outline" size={24} color={COLORS.textBlack} />}
-        onLeftPress={() => navigation.openDrawer ? navigation.openDrawer() : {}}
         onRightPress={() => {}}
       />
 
