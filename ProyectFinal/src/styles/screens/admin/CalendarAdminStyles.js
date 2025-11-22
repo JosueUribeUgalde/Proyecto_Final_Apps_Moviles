@@ -27,7 +27,7 @@ export default StyleSheet.create({
     backgroundColor: COLORS.backgroundWhite,
     borderRadius: RADIUS.md,
     marginVertical: 16,
-    ...SHADOWS.light,
+    ...SHADOWS.medium,
   },
   calendar: {
     borderRadius: RADIUS.md,
@@ -86,6 +86,7 @@ export default StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     gap: 16,
+    ...SHADOWS.medium,
   },
   requestIndicatorContent: {
     flexDirection: 'row',
@@ -130,6 +131,7 @@ export default StyleSheet.create({
     borderWidth: 1,
     padding: 16,
     marginBottom: 12,
+    ...SHADOWS.medium,
   },
   requestHeader: {
     flexDirection: 'row',
@@ -220,6 +222,7 @@ export default StyleSheet.create({
     padding: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    ...SHADOWS.medium,
   },
   noRequestsText: {
     fontSize: FONTS.regular,
@@ -382,6 +385,7 @@ export default StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: COLORS.borderSecondary,
+    ...SHADOWS.medium,
   },
   metricLabel: {
     fontSize: FONTS.small,
@@ -411,10 +415,12 @@ export default StyleSheet.create({
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.borderSecondary,
+    ...SHADOWS.medium,
   },
   filterChipSelected: {
     backgroundColor: COLORS.backgroundBS,
     borderColor: COLORS.primary,
+    ...SHADOWS.medium,
   },
   filterText: {
     fontSize: FONTS.small,
