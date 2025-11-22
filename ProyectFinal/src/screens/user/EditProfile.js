@@ -1,10 +1,9 @@
 // src/screens/EditProfile.js
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, Modal } from "react-native";
+import { View, Text, TextInput, ScrollView, Pressable, Image, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import Entypo from '@expo/vector-icons/Entypo';
 
 // Reutiliza estilos base del perfil (misma UI)
 import profileStyles from "../../styles/screens/user/ProfileStyles";
@@ -61,11 +60,18 @@ export default function EditProfile() {
               <Text style={profileStyles.cardName}>{name}</Text>
               <Text style={profileStyles.cardRole}>{role}</Text>
             </View>
-            <TouchableOpacity onPress={changeAvatar} style={profileStyles.editBtn}>
-              <Ionicons name="swap-horizontal" size={18} color={COLORS.textBlack} />
-              <Text style={profileStyles.editBtnText}>Cambiar imagen</Text>
-            </TouchableOpacity>
           </View>
+          
+          <Pressable 
+            onPress={changeAvatar} 
+            style={({pressed}) => [
+              styles.changeImageBtn,
+              pressed && {opacity: 0.5}
+            ]}
+          >
+            <Ionicons name="create-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.changeImageBtnText}>Editar imagen de perfil</Text>
+          </Pressable>
         </View>
 
         {/* Informacion de perfil */}
@@ -101,7 +107,14 @@ export default function EditProfile() {
         <View style={profileStyles.profileCard}>
           <Text style={profileStyles.sectionTitle}>Disponibilidad de turno</Text>
 
-          <TouchableOpacity style={[profileStyles.infoBox, styles.rowNav]} onPress={() => setShowStatusPicker(true)} activeOpacity={0.50}>
+          <Pressable 
+            style={({pressed}) => [
+              profileStyles.infoBox, 
+              styles.rowNav,
+              pressed && {opacity: 0.5}
+            ]} 
+            onPress={() => setShowStatusPicker(true)}
+          >
             <View style={styles.rowLeft}>
               <Ionicons name="pulse-outline" size={18} color={COLORS.textGray} />
               <View style={styles.rowTextWrap}>
@@ -110,9 +123,16 @@ export default function EditProfile() {
               </View>
             </View>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textGray} />
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity style={[profileStyles.infoBox, styles.rowNav]} onPress={() => setShowShiftsPicker(true)} activeOpacity={0.85}>
+          <Pressable 
+            style={({pressed}) => [
+              profileStyles.infoBox, 
+              styles.rowNav,
+              pressed && {opacity: 0.5}
+            ]} 
+            onPress={() => setShowShiftsPicker(true)}
+          >
             <View style={styles.rowLeft}>
               <Ionicons name="sunny-outline" size={18} color={COLORS.textGray} />
               <View style={styles.rowTextWrap}>
@@ -121,7 +141,7 @@ export default function EditProfile() {
               </View>
             </View>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textGray} />
-          </TouchableOpacity>
+          </Pressable>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Horas máximas por semana</Text>
@@ -171,15 +191,27 @@ export default function EditProfile() {
 
         {/* Guarda y cancela */}
         <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.9}>
-            <Entypo name="save" size={20} color={COLORS.textWhite} />
+          <Pressable 
+            style={({pressed}) => [
+              styles.saveBtn,
+              pressed && {opacity: 0.8}
+            ]} 
+            onPress={handleSave}
+          >
+            <Ionicons name="save-outline" size={20} color={COLORS.textGreen} />
             <Text style={styles.saveBtnText}>Guardar cambios</Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity style={styles.removeBtn} onPress={handleRemove} activeOpacity={0.9}>
+          <Pressable 
+            style={({pressed}) => [
+              styles.removeBtn,
+              pressed && {opacity: 0.7}
+            ]} 
+            onPress={handleRemove}
+          >
             <Ionicons name="trash-outline" size={18} color={COLORS.error} />
             <Text style={styles.removeBtnText}>Cancelar</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </ScrollView>
 
@@ -191,13 +223,26 @@ export default function EditProfile() {
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>Selecciona estado</Text>
             {STATUS_OPTIONS.map(opt => (
-              <TouchableOpacity key={opt} style={styles.modalOption} onPress={() => { setStatus(opt); setShowStatusPicker(false); }} activeOpacity={0.9}>
+              <Pressable 
+                key={opt} 
+                style={({pressed}) => [
+                  styles.modalOption,
+                  pressed && {opacity: 0.7}
+                ]} 
+                onPress={() => { setStatus(opt); setShowStatusPicker(false); }}
+              >
                 <Text style={styles.modalOptionText}>{opt}</Text>
-              </TouchableOpacity>
+              </Pressable>
             ))}
-            <TouchableOpacity style={styles.modalClose} onPress={() => setShowStatusPicker(false)}>
+            <Pressable 
+              style={({pressed}) => [
+                styles.modalClose,
+                pressed && {opacity: 0.7}
+              ]} 
+              onPress={() => setShowStatusPicker(false)}
+            >
               <Text style={styles.modalCloseText}>Cerrar</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -208,13 +253,26 @@ export default function EditProfile() {
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>Turnos preferidos</Text>
             {SHIFT_OPTIONS.map(opt => (
-              <TouchableOpacity key={opt} style={styles.modalOption} onPress={() => { setPreferredShifts(opt); setShowShiftsPicker(false); }} activeOpacity={0.9}>
+              <Pressable 
+                key={opt} 
+                style={({pressed}) => [
+                  styles.modalOption,
+                  pressed && {opacity: 0.7}
+                ]} 
+                onPress={() => { setPreferredShifts(opt); setShowShiftsPicker(false); }}
+              >
                 <Text style={styles.modalOptionText}>{opt}</Text>
-              </TouchableOpacity>
+              </Pressable>
             ))}
-            <TouchableOpacity style={styles.modalClose} onPress={() => setShowShiftsPicker(false)}>
+            <Pressable 
+              style={({pressed}) => [
+                styles.modalClose,
+                pressed && {opacity: 0.7}
+              ]} 
+              onPress={() => setShowShiftsPicker(false)}
+            >
               <Text style={styles.modalCloseText}>Cerrar</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
       </Modal>
