@@ -12,9 +12,9 @@ import { useNavigation } from "@react-navigation/native";
 import profileStyles from "../../styles/screens/admin/ProfileAdminStyles";
 // importacion de estilos de pantalla de edicion de perfil (mantener)
 import styles from "../../styles/screens/admin/EditProfileAdminStyles";
-// Importacion de componente HeaderScreen y MenuFooterAdmin (se deja tal cual)
+// Importacion de componente HeaderScreen y MenuFooterCompany (se deja tal cual)
 import HeaderScreen from "../../components/HeaderScreen";
-import MenuFooterAdmin from "../../components/MenuFooterAdmin";
+import MenuFooterCompany from "../../components/MenuFooterCompany";
 // Importacion de constantes 
 import { COLORS } from "../../components/constants/theme";
 
@@ -269,7 +269,7 @@ export default function EditProfileCompany() {
         </View>
       </ScrollView>
 
-      <MenuFooterAdmin />
+      <MenuFooterCompany />
     </SafeAreaView>
   );
 }

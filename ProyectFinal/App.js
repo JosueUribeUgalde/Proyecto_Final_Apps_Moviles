@@ -1,7 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Welcome, Login, LoginAdmin, DashboardAdmin, Register, History, PasswordReset, Logout,Home, Profile, EditProfile, ConfirmationReplace, Calendar, RequestScreen, CalendarAdmin, ProfileAdmin, EditProfileAdmin, AddReport, Help, Dashboard, LoginCompany, Plan, RegisterCompany, ProfileCompany, EditProfileCompany, PaymentMethod, InvoiceHistory, MembersAdmin } from "./src/screens";
+import { Welcome, Login, LoginAdmin, DashboardAdmin, Register, History, PasswordReset, Logout,Home, Profile, EditProfile, ConfirmationReplace, Calendar, RequestScreen, CalendarAdmin, ProfileAdmin, EditProfileAdmin, AddReport, Help, Dashboard, LoginCompany, Plan, RegisterCompany, ProfileCompany, EditProfileCompany, PaymentMethod, InvoiceHistory, MembersAdmin, MembersCompany, MembersCompanyStyles} from "./src/screens";
 
 
 const Stack = createNativeStackNavigator();
@@ -45,7 +45,7 @@ export default function App() {
           <Stack.Screen name="PaymentMethod" component={PaymentMethod} />
           <Stack.Screen name="InvoiceHistory" component={InvoiceHistory} />
           <Stack.Screen name="MembersAdmin" component={MembersAdmin} />
-
+          <Stack.Screen name="MembersCompany" component={MembersCompany} />
 
         </Stack.Navigator>
       </NavigationContainer>
