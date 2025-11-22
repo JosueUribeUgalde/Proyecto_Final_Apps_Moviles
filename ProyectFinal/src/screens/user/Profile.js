@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, Image, ScrollView, TouchableOpacity, Switch, Modal } from 'react-native';
+import { View, Text, Image, ScrollView, Pressable, Switch, Modal } from 'react-native';
 import HeaderScreen from "../../components/HeaderScreen";
 import MenuFooter from "../../components/MenuFooter";
 import styles, { TOGGLE_COLORS } from "../../styles/screens/user/ProfileStyles";
@@ -67,10 +67,16 @@ export default function Profile() {
               <Text style={styles.cardRole}>{role}</Text>
             </View>
 
-            <TouchableOpacity style={styles.editBtn} onPress={handleEditProfile}>
-              <Ionicons name="create-outline" size={18} color={COLORS.textBlack} />
+            <Pressable 
+              style={({pressed}) => [
+                styles.editBtn,
+                pressed && {opacity: 0.5}
+              ]} 
+              onPress={handleEditProfile}
+            >
+              <Ionicons name="create-outline" size={18} color={COLORS.textGreen} />
               <Text style={styles.editBtnText}>Editar</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           {/* Usuario */}
@@ -98,9 +104,11 @@ export default function Profile() {
           <Text style={styles.sectionTitle}>Preferencias</Text>
           
           {/* Notificaciones: implementación simple con Switch */}
-          <TouchableOpacity
-            style={styles.preferenceItem}
-            activeOpacity={0.9}
+          <Pressable
+            style={({pressed}) => [
+              styles.preferenceItem,
+              pressed && {opacity: 0.7}
+            ]}
             onPress={() => setNotificationsEnabled(v => !v)}
           >
             <View style={styles.preferenceLeft}>
@@ -120,11 +128,14 @@ export default function Profile() {
                 ios_backgroundColor={TOGGLE_COLORS.off}
               />
             </View>
-          </TouchableOpacity>
+          </Pressable>
 
           {/* Reemplazar el TouchableOpacity de Región y hora */}
-          <TouchableOpacity 
-            style={styles.preferenceItem}
+          <Pressable 
+            style={({pressed}) => [
+              styles.preferenceItem,
+              pressed && {opacity: 0.7}
+            ]}
             onPress={() => setIsRegionModalVisible(true)}
           >
             <View style={styles.preferenceLeft}>
@@ -135,7 +146,7 @@ export default function Profile() {
               </View>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textGray} />
-          </TouchableOpacity>
+          </Pressable>
 
           {/* Modal de selección de región */}
           <Modal
@@ -144,20 +155,20 @@ export default function Profile() {
             animationType="fade"
             onRequestClose={() => setIsRegionModalVisible(false)}
           >
-            <TouchableOpacity 
+            <Pressable 
               style={styles.modalOverlay}
-              activeOpacity={1}
               onPress={() => setIsRegionModalVisible(false)}
             >
               <View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>Seleccionar región</Text>
                 
                 {regions.map((region) => (
-                  <TouchableOpacity
+                  <Pressable
                     key={region.code}
-                    style={[
+                    style={({pressed}) => [
                       styles.regionOption,
-                      selectedRegion.code === region.code && styles.regionOptionSelected
+                      selectedRegion.code === region.code && styles.regionOptionSelected,
+                      pressed && {opacity: 0.7}
                     ]}
                     onPress={() => handleRegionSelect(region)}
                   >
@@ -170,10 +181,10 @@ export default function Profile() {
                     {selectedRegion.code === region.code && (
                       <Ionicons name="checkmark" size={24} color={COLORS.primary} />
                     )}
-                  </TouchableOpacity>
+                  </Pressable>
                 ))}
               </View>
-            </TouchableOpacity>
+            </Pressable>
           </Modal>
         </View>
 
@@ -181,7 +192,13 @@ export default function Profile() {
         <View style={styles.accountSection}>
           <Text style={styles.sectionTitle}>Cuenta</Text>
           
-          <TouchableOpacity style={styles.preferenceItem} onPress={() => navigation.navigate('PasswordReset')}>
+          <Pressable 
+            style={({pressed}) => [
+              styles.preferenceItem,
+              pressed && {opacity: 0.7}
+            ]} 
+            onPress={() => navigation.navigate('PasswordReset')}
+          >
             <View style={styles.preferenceLeft}>
               <Ionicons name="key-outline" size={24} color={COLORS.primary} />
               <View style={styles.preferenceTextContainer}>
@@ -190,21 +207,29 @@ export default function Profile() {
               </View>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textGray} />
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
-        <TouchableOpacity style={styles.helpButton}
+        <Pressable
+          style={({pressed}) => [
+            styles.helpButton,
+            pressed && {opacity: 0.7}
+          ]}
           onPress={() => navigation.navigate('Help')}
         >
           <Ionicons name="help-circle-outline" size={24} color={COLORS.primary} />
           <Text style={styles.helpButtonText}>Ayuda</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.signOutButton}
+        </Pressable>
+        
+        <Pressable 
+          style={({pressed}) => [
+            styles.signOutButton,
+            pressed && {opacity: 0.7}
+          ]}
           onPress={handleLogout}
         >
           <Text style={styles.signOutText}>Cerrar sesión</Text>
-        </TouchableOpacity>
+        </Pressable>
       </ScrollView>
 
       <MenuFooter />

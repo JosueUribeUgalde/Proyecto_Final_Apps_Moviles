@@ -94,6 +94,12 @@ const styles = StyleSheet.create({
     color: COLORS.textBlack,
   },
   signOutButton: {
+    backgroundColor: COLORS.backgroundWhite,
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+    borderRadius: RADIUS.md,
+    width: '250',
+    alignSelf: 'center',
     padding: 15,
     marginTop: 20,
     marginBottom: 30,
@@ -102,6 +108,7 @@ const styles = StyleSheet.create({
   signOutText: {
     color: COLORS.error,
     fontSize: FONTS.regular,
+    fontWeight: '600',
   },
 
   /* ================== (NUEVO) Tarjeta con layout solicitado ================== */
@@ -141,7 +148,7 @@ const styles = StyleSheet.create({
   editBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 999,
+    borderRadius: RADIUS.md,
     paddingHorizontal: 12,
     paddingVertical: 8,
     backgroundColor: COLORS.backgroundWhite,
@@ -151,7 +158,7 @@ const styles = StyleSheet.create({
   editBtnText: {
     marginLeft: 6,
     fontSize: FONTS.regular,
-    color: COLORS.textBlack,
+    color: COLORS.textGreen,
     fontWeight: '600',
   },
   badgeRow: {

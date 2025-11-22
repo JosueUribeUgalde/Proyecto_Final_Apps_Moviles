@@ -41,7 +41,6 @@ export default StyleSheet.create({
   },
 
   buttonContainer: {
-    marginTop: 20,
     width: "100%",
     alignItems: "center",
   },
@@ -68,7 +67,7 @@ export default StyleSheet.create({
   },
   block: {
     width: "80%",
-    marginBottom: 12,
+    marginBottom: 0,
     marginTop: 20,
   }
 });
