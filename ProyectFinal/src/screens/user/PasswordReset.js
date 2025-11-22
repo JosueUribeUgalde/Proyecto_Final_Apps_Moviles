@@ -1,27 +1,42 @@
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, Image } from "react-native";
+import { View, Text, Image, KeyboardAvoidingView, ScrollView, Platform } from "react-native";
 import HeaderScreen from "../../components/HeaderScreen";
 import InputLogin from "../../components/InputLogin";
 import ButtonLogin from "../../components/ButtonLogin";
-import Banner from "../../components/Banner";
+import InfoModal from "../../components/InfoModal";
 import { COLORS } from "../../components/constants/theme";
 import { Ionicons } from '@expo/vector-icons';
 import styles from "../../styles/screens/user/PasswordResetStyles";
 
 export default function PasswordReset({ navigation }) {
-    const [showBanner, setShowBanner] = useState(false);
-    const [bannerType, setBannerType] = useState('error');
-    const [bannerMessage, setBannerMessage] = useState('');
+    const [email, setEmail] = useState('');
+    const [showModal, setShowModal] = useState(false);
+    const [modalTitle, setModalTitle] = useState('');
+    const [modalMessage, setModalMessage] = useState('');
 
     const handlePasswordReset = () => {
-        setBannerMessage("Enlace de recuperación enviado a tu correo");
-        setBannerType("success");
-        setShowBanner(true);
-    };
-
-    const handleVerificationCode = () => {
-        console.log('Verification code clicked');
+        // Validar que el email no esté vacío y tenga formato válido
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        
+        if (!email.trim()) {
+            setModalTitle('Error');
+            setModalMessage('Por favor, ingresa tu correo electrónico');
+            setShowModal(true);
+            return;
+        }
+        
+        if (!emailRegex.test(email)) {
+            setModalTitle('Error');
+            setModalMessage('Por favor, ingresa un correo electrónico válido');
+            setShowModal(true);
+            return;
+        }
+        
+        // Si la validación pasa, mostrar mensaje de éxito
+        setModalTitle('Éxito');
+        setModalMessage('Enlace enviado a tu correo');
+        setShowModal(true);
     };
 
     const handleBackToLogin = () => {
@@ -29,7 +44,7 @@ export default function PasswordReset({ navigation }) {
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+        <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
             <HeaderScreen 
                 title="Recuperar contraseña"
                 leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
@@ -38,19 +53,20 @@ export default function PasswordReset({ navigation }) {
                 onRightPress={() => { }}
             />
 
-            <View style={styles.welcomeContainer}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            >
+                <ScrollView 
+                    contentContainerStyle={{ flexGrow: 1, alignItems: 'center', paddingBottom: 20 }}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <View style={styles.welcomeContainer}>
                 <Image
                     source={require('../../../assets/LogoTM.png')}
                     style={styles.logoImage}
-                />
-            </View>
-
-            <View style={styles.bannerContainer}>
-                <Banner
-                    message={bannerMessage}
-                    type={bannerType}
-                    visible={showBanner}
-                    onHide={() => setShowBanner(false)}
                 />
             </View>
 
@@ -70,7 +86,13 @@ export default function PasswordReset({ navigation }) {
 
             <View style={styles.group}>
                 <Text style={styles.label}>Correo electrónico</Text>
-                <InputLogin msj="tu@ejemplo.com" />
+                <InputLogin 
+                    msj="tu@ejemplo.com" 
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                />
             </View>
 
             <Text style={styles.spamText}>
@@ -87,19 +109,18 @@ export default function PasswordReset({ navigation }) {
                 />
             </View>
 
-            <View style={styles.secondaryButtonContainer}>
-                <ButtonLogin
-                    title="Usar código de verificación"
-                    onPress={handleVerificationCode}
-                    backgroundColor={COLORS.secondary}
-                    textColor={COLORS.textBlack}
-                    showBorder={false}
-                />
-            </View>
+                    <Text style={styles.spamText}>
+                        Si no ves el correo en unos minutos, revisa tu carpeta de spam o solicita uno nuevo.
+                    </Text>
+                </ScrollView>
+            </KeyboardAvoidingView>
 
-            <Text style={styles.spamText}>
-                Si no ves el correo en unos minutos, revisa tu carpeta de spam o solicita uno nuevo.
-            </Text>
+            <InfoModal
+                visible={showModal}
+                onClose={() => setShowModal(false)}
+                title={modalTitle}
+                message={modalMessage}
+            />
         </SafeAreaView>
     );
 }
