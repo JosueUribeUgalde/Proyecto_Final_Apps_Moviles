@@ -5,24 +5,64 @@ import { Text, View, Image, Pressable, ScrollView, KeyboardAvoidingView, Platfor
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 // 3. Componentes propios
-import { ButtonLogin, InputLogin, HeaderScreen, Banner } from "../../components";
+import { ButtonLogin, InputLogin, HeaderScreen } from "../../components";
 import InfoModal from "../../components/InfoModal";
-// 4. Constantes y utilidades
+// 4. Servicios de Firebase(funciones de autenticación)
+import { loginUser, isAdminEmail } from '../../services/authService';
+// 5. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
-// 5. Estilos
+// 6. Estilos
 import styles from "../../styles/screens/user/LoginStyles";
-// 6. Archivos estáticos
+// 7. Archivos estáticos
 import LogoSF from '../../../assets/LogoTM.png';
 
 export default function LoginAdmin({ navigation }) {
-  const [showBanner, setShowBanner] = useState(false);
-  const [bannerMessage, setBannerMessage] = useState('');
-  const [bannerType, setBannerType] = useState('error');
-  const [showInfoModal, setShowInfoModal] = useState(false);
+  // Estados para los inputs
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  
+  // Estados para el modal
+  const [showModal, setShowModal] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalMessage, setModalMessage] = useState('');
+  
+  // Estado de carga
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    // TODO: Implementar lógica de autenticación de admin
-    navigation.navigate('DashboardAdmin'); // Navegar a dashboard de admin
+  const handleLogin = async () => {
+    // Validar campos vacíos
+    if (!email.trim() || !password.trim()) {
+      setModalTitle('Error');
+      setModalMessage('Por favor, completa todos los campos');
+      setShowModal(true);
+      return;
+    }
+
+    // ESTA ES LA FUNCION TEST - Josue owner
+    // if (!isAdminEmail(email)) {
+    //   setModalTitle('Acceso Denegado');
+    //   setModalMessage('Este correo no tiene permisos de administrador');
+    //   setShowModal(true);
+    //   return;
+    // }
+
+    setLoading(true);
+
+    // Intentar login con Firebase
+    const result = await loginUser(email, password);
+
+    setLoading(false);
+
+    // El objeto result devuelve{ success: boolean, message: string and user: credential.user }
+    if (result.success) {
+      // Login exitoso - navegar a dashboard
+      navigation.navigate('DashboardAdmin');
+    } else {
+      // Mostrar error
+      setModalTitle('Error de Autenticación');
+      setModalMessage(result.message);
+      setShowModal(true);
+    }
   };
 
   const handleForgotPassword = () => {
@@ -30,7 +70,9 @@ export default function LoginAdmin({ navigation }) {
   };
 
   const handleShowAccountInfo = () => {
-    setShowInfoModal(true);
+    setModalTitle('Cuentas de Administrador');
+    setModalMessage('Las cuentas de administrador son creadas por "Empresa". Comuníquese con el encargado para que habilite una cuenta para usted.');
+    setShowModal(true);
   };
 
   return (
@@ -52,37 +94,31 @@ export default function LoginAdmin({ navigation }) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.welcomeContainer}>
-            <Image
-              source={LogoSF}
-              style={styles.logoImage}
-            />
+            <Image source={LogoSF} style={styles.logoImage} />
             <Text style={styles.welcomeText}>Panel de Administrador</Text>
-          </View>
-
-          {/* Banner para mensajes */}
-          <View style={styles.bannerContainer}>
-            <Banner
-              message={bannerMessage}
-              type={bannerType}
-              visible={showBanner}
-              onHide={() => setShowBanner(false)}
-            />
           </View>
 
           {/* Grupo Email */}
           <View style={styles.group}>
-            <Text style={styles.label}>
-              Email
-            </Text>
-            <InputLogin msj="admin@correo.com" />
+            <Text style={styles.label}>Email</Text>
+            <InputLogin 
+              msj="admin@correo.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
           </View>
 
           {/* Grupo Password */}
           <View style={styles.group}>
-            <Text style={styles.label}>
-              Password
-            </Text>
-            <InputLogin msj="password" secureTextEntry />
+            <Text style={styles.label}>Password</Text>
+            <InputLogin 
+              msj="password" 
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
             <Pressable 
               onPress={handleForgotPassword}
               style={({pressed}) => [
@@ -97,10 +133,10 @@ export default function LoginAdmin({ navigation }) {
           </View>
 
           <ButtonLogin
-            title='Login'
+            title={loading ? 'Iniciando sesión...' : 'Login'}
             onPress={handleLogin}
             icon={<Ionicons name="log-in-outline" size={24} color="white" />}
-            showBorder={false} 
+            showBorder={false}
           />
 
           <View style={styles.dividerContainer}>
@@ -127,10 +163,10 @@ export default function LoginAdmin({ navigation }) {
 
       {/* Modal informativo */}
       <InfoModal
-        visible={showInfoModal}
-        onClose={() => setShowInfoModal(false)}
-        title="Cuentas de Administrador"
-        message='Las cuentas de administrador son creadas por "Empresa". Comuníquese con el encargado para que habilite una cuenta para usted.'
+        visible={showModal}
+        onClose={() => setShowModal(false)}
+        title={modalTitle}
+        message={modalMessage}
       />
     </SafeAreaView>
   );

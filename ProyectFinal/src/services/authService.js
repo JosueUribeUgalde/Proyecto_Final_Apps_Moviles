@@ -1,0 +1,154 @@
+// Servicio de Autenticación con Firebase
+import { 
+  signInWithEmailAndPassword, 
+  signOut, 
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  onAuthStateChanged
+} from 'firebase/auth';
+import { auth } from '../config/firebaseConfig';
+
+/**
+ * Login de usuario (Admin o User normal)
+ * @param {string} email - Correo electrónico
+ * @param {string} password - Contraseña
+ * @returns {Promise<Object>} - Usuario autenticado
+ */
+export const loginUser = async (email, password) => {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    return {
+      success: true,
+      user: userCredential.user,
+      message: 'Login exitoso'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      user: null,
+      message: getErrorMessage(error.code)
+    };
+  }
+};
+
+/**
+ * Registro de nuevo usuario (solo para users normales, NO admin)
+ * @param {string} email - Correo electrónico
+ * @param {string} password - Contraseña
+ * @returns {Promise<Object>} - Usuario creado
+ */
+export const registerUser = async (email, password) => {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    return {
+      success: true,
+      user: userCredential.user,
+      message: 'Cuenta creada exitosamente'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      user: null,
+      message: getErrorMessage(error.code)
+    };
+  }
+};
+
+/**
+ * Cerrar sesión
+ * @returns {Promise<Object>}
+ */
+export const logoutUser = async () => {
+  try {
+    await signOut(auth);
+    return {
+      success: true,
+      message: 'Sesión cerrada exitosamente'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Error al cerrar sesión'
+    };
+  }
+};
+
+/**
+ * Enviar email para restablecer contraseña
+ * @param {string} email - Correo electrónico
+ * @returns {Promise<Object>}
+ */
+export const resetPassword = async (email) => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return {
+      success: true,
+      message: 'Correo de recuperación enviado'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: getErrorMessage(error.code)
+    };
+  }
+};
+
+/**
+ * Obtener usuario actual
+ * @returns {Object|null} - Usuario actual o null
+ */
+export const getCurrentUser = () => {
+  return auth.currentUser;
+};
+
+/**
+ * Escuchar cambios en el estado de autenticación
+ * @param {Function} callback - Función que se ejecuta cuando cambia el estado
+ * @returns {Function} - Función para dejar de escuchar
+ */
+export const onAuthChange = (callback) => {
+  return onAuthStateChanged(auth, callback);
+};
+
+
+//Esta funcion va estar en modo prueba-Josue owner
+/**
+ * Verificar si un email es de administrador
+ * En producción, esto debería verificarse contra Firestore o una base de datos
+ * Por ahora, verificamos el dominio del email o una lista específica
+ * @param {string} email - Correo electrónico
+ * @returns {boolean}
+ */
+export const isAdminEmail = (email) => {
+  // Lista de emails de admin permitidos
+  const adminEmails = [
+    'admin@empresa.com',
+    'admin@correo.com',
+    // Agrega más emails de admin aquí
+  ];
+  
+  // Verificar si el email está en la lista de admins
+  return adminEmails.includes(email.toLowerCase());
+  
+};
+
+/**
+ * Obtener mensaje de error en español
+ * @param {string} errorCode - Código de error de Firebase
+ * @returns {string} - Mensaje de error
+ */
+const getErrorMessage = (errorCode) => {
+  const errorMessages = {
+    'auth/invalid-email': 'El correo electrónico no es válido',
+    'auth/user-disabled': 'Esta cuenta ha sido deshabilitada',
+    'auth/user-not-found': 'No existe una cuenta con este correo',
+    'auth/wrong-password': 'Contraseña incorrecta',
+    'auth/email-already-in-use': 'Este correo ya está registrado',
+    'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres',
+    'auth/network-request-failed': 'Error de conexión. Verifica tu internet',
+    'auth/too-many-requests': 'Demasiados intentos. Intenta más tarde',
+    'auth/invalid-credential': 'Credenciales inválidas'
+  };
+  
+  return errorMessages[errorCode] || 'Error al procesar la solicitud';
+};

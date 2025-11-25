@@ -32,6 +32,10 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+
+# Firebase
+turnmate-26c43-firebase-adminsdk-*.json
 
 # typescript
 *.tsbuildinfo
