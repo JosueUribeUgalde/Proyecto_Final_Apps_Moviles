@@ -3,16 +3,30 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, Image, ScrollView, Pressable, Switch, Modal } from 'react-native';
 import HeaderScreen from "../../components/HeaderScreen";
 import MenuFooter from "../../components/MenuFooter";
+import InfoModal from "../../components/InfoModal";
 import styles, { TOGGLE_COLORS } from "../../styles/screens/user/ProfileStyles";
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../components/constants/theme';
 import { useNavigation } from '@react-navigation/native';
+import { logoutUser } from '../../services/authService';
 
 export default function Profile() {
   const navigation = useNavigation();
   
-  const handleLogout = () => {
-    navigation.navigate('Logout');
+  // Funcion para cerrar sesion con Firebase
+  const handleLogout = async () => {
+    const result = await logoutUser();
+    if (result.success) {
+      // Navegar a la pantalla de login después del logout exitoso
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+    } else {
+      // Mostrar error con InfoModal
+      setErrorMessage(result.message);
+      setShowErrorModal(true);
+    }
   };
 
   const handleEditProfile = () => {
@@ -28,6 +42,9 @@ export default function Profile() {
   // estado simple para el Switch
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [isRegionModalVisible, setIsRegionModalVisible] = useState(false);
+  // Estados para InfoModal de error
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [selectedRegion, setSelectedRegion] = useState({
     name: "México",
     code: "MX"
@@ -231,6 +248,13 @@ export default function Profile() {
           <Text style={styles.signOutText}>Cerrar sesión</Text>
         </Pressable>
       </ScrollView>
+
+      <InfoModal
+        visible={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Error"
+        message={errorMessage}
+      />
 
       <MenuFooter />
     </SafeAreaView>

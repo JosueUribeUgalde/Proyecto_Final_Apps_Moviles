@@ -1,24 +1,38 @@
 // 1. Paquetes core de React/React Native
 import { useState, useEffect } from 'react';
-import { Text, View, Image, Pressable, Alert } from "react-native";
+import { Text, View, Image, Pressable, Alert, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 // 2. Bibliotecas de terceros
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 //import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 // 3. Componentes propios
-import { ButtonLogin, InputLogin, HeaderScreen, Banner } from "../../components";
-// 4. Constantes y utilidades
+import { ButtonLogin, InputLogin, HeaderScreen } from "../../components";
+import InfoModal from "../../components/InfoModal";
+// 4. Servicios de Firebase(funciones de autenticación)
+import { loginUser } from '../../services/authService';
+// 5. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
-// 5. Estilos
+// 6. Estilos
 import styles from "../../styles/screens/user/LoginStyles";
-// 6. Archivos estáticos
+// 7. Archivos estáticos
 import LogoSF from '../../../assets/LogoTM.png';
 import LogoGoogle from '../../../assets/icon_google1.png';
 
 export default function Login({ navigation }) {
-  const [showBanner, setShowBanner] = useState(false);
-  const [bannerMessage, setBannerMessage] = useState('');
-  const [bannerType, setBannerType] = useState('error');
+  // Estados para los inputs
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  
+  // Estados para InfoModal
+  const [showModal, setShowModal] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalMessage, setModalMessage] = useState('');
+  
+  // Estado de carga
+  const [loading, setLoading] = useState(false);
+  
+  // Estado para mostrar/ocultar contraseña
+  const [showPassword, setShowPassword] = useState(false);
 
   // Comenta temporalmente la configuración de Google
   // useEffect(() => {
@@ -28,8 +42,32 @@ export default function Login({ navigation }) {
   //   });
   // }, []);
 
-  const handleLogin = () => {
-    navigation.navigate('Home');
+  const handleLogin = async () => {
+    // Validar campos vacíos
+    if (!email.trim() || !password.trim()) {
+      setModalTitle('Error');
+      setModalMessage('Por favor, completa todos los campos');
+      setShowModal(true);
+      return;
+    }
+
+    setLoading(true);
+
+    // Intentar login con Firebase
+    const result = await loginUser(email, password);
+
+    setLoading(false);
+
+    // El objeto result devuelve{ success: boolean, message: string and user: credential.user }
+    if (result.success) {
+      // Login exitoso - navegar a Home
+      navigation.navigate('Home');
+    } else {
+      // Mostrar error
+      setModalTitle('Error de Autenticación');
+      setModalMessage(result.message);
+      setShowModal(true);
+    }
   };
 
   const handleRegister = () => {
@@ -95,111 +133,147 @@ export default function Login({ navigation }) {
   //   }
   // };
   const handleGoogleSignIn = () => {
-    setBannerMessage('Google Sign-In funciona en el APK compilado');
-    setBannerType('success');
-    setShowBanner(true);
-    
-    // Simula navegación exitosa para desarrollo
-    setTimeout(() => {
-      navigation.navigate('Home');
-    }, 2000);
+    // Mostrar modal informativo sobre Google Sign-In
+    setModalTitle('Próximamente');
+    setModalMessage('El inicio de sesión con Google estará disponible en la versión final de la aplicación (APK).');
+    setShowModal(true);
   };
   return (
 
     <SafeAreaView edges={['top']} style={styles.container}>
       <HeaderScreen
-        title="Login User"
+        title="User Login"
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
         onLeftPress={() => navigation.navigate('Welcome')}
       />
-      <View style={styles.welcomeContainer}>
-        <Image
-          source={LogoSF}
-          style={styles.logoImage}
-        />
-        <Text style={styles.welcomeText}>Welcome back</Text>
-
-      </View>
-
-      {/* Banner para mensajes */}
-      <View style={styles.bannerContainer}>
-        <Banner
-          message={bannerMessage}
-          type={bannerType}
-          visible={showBanner}
-          onHide={() => setShowBanner(false)}
-        />
-      </View>
-
-      {/* Grupo Email */}
-      <View style={styles.group}>
-        <Text style={styles.label}>
-          Email
-        </Text>
-        <InputLogin msj="ejemplo@correo.com" />
-      </View>
-
-      {/* Grupo Password */}
-      <View style={styles.group}>
-        <Text style={styles.label}>
-          Password
-        </Text>
-        <InputLogin msj="password" secureTextEntry />
-        <Pressable 
-          onPress={handleForgotPassword}
-          style={({pressed}) => [
-            styles.forgotPasswordContainer,
-            pressed && {opacity: 0.5}
-          ]}
-        >
-          <Text style={styles.forgotPassword}>
-            Forgot Password?
-          </Text>
-        </Pressable>
-      </View>
-
-      <ButtonLogin
-        title='Login'
-        onPress={handleLogin}
-        icon={<Ionicons name="log-in-outline" size={24} color="white" />}
-        showBorder={false} 
-        />
-
-
-
-      <View style={styles.dividerContainer}>
-        
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>OR</Text>
-        <View style={styles.dividerLine} />
-      </View>
-
-      <ButtonLogin
-        title='Login with Google'
-        onPress={handleGoogleSignIn} // Cambiado para usar la función de Google Sign-In
-        icon={
-          <Image
-            source={LogoGoogle}
-            style={{ width: 24, height: 24 }}
-          />
-        }
-        backgroundColor={COLORS.backgroundWhite}
-        textColor={COLORS.textBlack} 
-      />
       
-      <View style={styles.registerContainer}>
-        <Text style={styles.registerText}>
-          No tienes cuenta?
-        </Text>
-        <Pressable 
-          onPress={handleRegister}
-          style={({ pressed }) => pressed && { opacity: 0.5 }}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1, width: '100%' }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView 
+          contentContainerStyle={{ flexGrow: 1, alignItems: 'center', paddingBottom: 20, width: '100%' }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          style={{ width: '100%' }}
         >
-          <Text style={styles.registerTextClick}>
-            {' '}Regístrate
-          </Text>
-        </Pressable>
-      </View>
+          <View style={styles.welcomeContainer}>
+            <Image
+              source={LogoSF}
+              style={styles.logoImage}
+            />
+            <Text style={styles.welcomeText}>Panel usuario</Text>
+
+          </View>
+
+          {/* Grupo Email */}
+          <View style={styles.group}>
+            <Text style={styles.label}>
+              Email
+            </Text>
+            <InputLogin 
+              msj="ejemplo@correo.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+
+          {/* Grupo Password */}
+          <View style={styles.group}>
+            <Text style={styles.label}>
+              Password
+            </Text>
+            <View style={{ position: 'relative', width: '100%' }}>
+              <InputLogin 
+                msj="password" 
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <Pressable
+                onPress={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: 15,
+                  top: 15,
+                  padding: 5
+                }}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                  size={24} 
+                  color={COLORS.textGray} 
+                />
+              </Pressable>
+            </View>
+            <Pressable 
+              onPress={handleForgotPassword} 
+              style={({pressed}) => [
+                styles.forgotPasswordContainer,
+                pressed && {opacity: 0.5}
+              ]}
+            >
+              <Text style={styles.forgotPassword}>
+                Forgot Password?
+              </Text>
+            </Pressable>
+          </View>
+
+          <ButtonLogin
+            title={loading ? 'Iniciando sesión...' : 'Login'}
+            onPress={handleLogin}
+            icon={<Ionicons name="log-in-outline" size={24} color="white" />}
+            showBorder={false} 
+            />
+
+
+
+          <View style={styles.dividerContainer}>
+            
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <ButtonLogin
+            title='Login with Google'
+            onPress={handleGoogleSignIn} // Cambiado para usar la función de Google Sign-In
+            icon={
+              <Image
+                source={LogoGoogle}
+                style={{ width: 24, height: 24 }}
+              />
+            }
+            backgroundColor={COLORS.backgroundWhite}
+            textColor={COLORS.textBlack} 
+          />
+          
+          <View style={styles.registerContainer}>
+            <Text style={styles.registerText}>
+              No tienes cuenta?
+            </Text>
+            <Pressable 
+              onPress={handleRegister}
+              style={({ pressed }) => pressed && { opacity: 0.5 }}
+            >
+              <Text style={styles.registerTextClick}>
+                {' '}Regístrate
+              </Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Modal informativo */}
+      <InfoModal
+        visible={showModal}
+        onClose={() => setShowModal(false)}
+        title={modalTitle}
+        message={modalMessage}
+      />
     </SafeAreaView>
   );
 }

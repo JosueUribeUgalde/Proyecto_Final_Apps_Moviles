@@ -7,6 +7,7 @@ import { View, Text, Image, ScrollView, Pressable, Switch, Modal } from 'react-n
 // Importacion de componentes propios
 import HeaderScreen from "../../components/HeaderScreen";
 import MenuFooterAdmin from "../../components/MenuFooterAdmin";
+import InfoModal from "../../components/InfoModal";
 // Importacion de estilos y uso de google fonts
 import styles, { TOGGLE_COLORS } from "../../styles/screens/admin/ProfileAdminStyles";
 // Importacion de libreria de iconos
@@ -15,13 +16,26 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../components/constants/theme';
 // Importacion de libreria de navegacion
 import { useNavigation } from '@react-navigation/native';
+// Importacion de servicio de autenticacion
+import { logoutUser } from '../../services/authService';
 
 export default function ProfileAdmin() {
   const navigation = useNavigation();
   
-  // Funcion para cerrar sesion(falta implemntar logica)
-  const handleLogout = () => {
-    navigation.navigate('Logout');
+  // Funcion para cerrar sesion con Firebase
+  const handleLogout = async () => {
+    const result = await logoutUser();
+    if (result.success) {
+      // Navegar a la pantalla de login después del logout exitoso
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'LoginAdmin' }],
+      });
+    } else {
+      // Mostrar error con InfoModal
+      setErrorMessage(result.message);
+      setShowErrorModal(true);
+    }
   };
 
   // Funcion para navegar a pantalla de edicion de perfil
@@ -40,6 +54,9 @@ export default function ProfileAdmin() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   // estado y datos para el modal de seleccion de region
   const [isRegionModalVisible, setIsRegionModalVisible] = useState(false);
+  // Estados para InfoModal de error
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [selectedRegion, setSelectedRegion] = useState({
     name: "México",
     code: "MX"
@@ -245,6 +262,13 @@ export default function ProfileAdmin() {
           <Text style={styles.signOutText}>Cerrar sesión</Text>
         </Pressable>
       </ScrollView>
+
+      <InfoModal
+        visible={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Error"
+        message={errorMessage}
+      />
 
       <MenuFooterAdmin />
     </SafeAreaView>

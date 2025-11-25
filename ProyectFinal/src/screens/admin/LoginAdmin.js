@@ -28,6 +28,9 @@ export default function LoginAdmin({ navigation }) {
   
   // Estado de carga
   const [loading, setLoading] = useState(false);
+  
+  // Estado para mostrar/ocultar contraseña
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     // Validar campos vacíos
@@ -113,12 +116,29 @@ export default function LoginAdmin({ navigation }) {
           {/* Grupo Password */}
           <View style={styles.group}>
             <Text style={styles.label}>Password</Text>
-            <InputLogin 
-              msj="password" 
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
+            <View style={{ position: 'relative', width: '100%' }}>
+              <InputLogin 
+                msj="password" 
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <Pressable
+                onPress={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: 15,
+                  top: 15,
+                  padding: 5
+                }}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                  size={24} 
+                  color={COLORS.textGray} 
+                />
+              </Pressable>
+            </View>
             <Pressable 
               onPress={handleForgotPassword}
               style={({pressed}) => [
