@@ -86,4 +86,34 @@ export default StyleSheet.create({
     width: "100%",
     alignItems: "center",
   },
+  errorsContainer: {
+    marginTop: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: "#ffebee",
+    borderRadius: 4,
+  },
+  errorText: {
+    color: "#c62828",
+    fontSize: 12,
+    marginVertical: 2,
+  },
+  successText: {
+    color: "#2e7d32",
+    fontSize: 12,
+    marginTop: 5,
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    position: "relative",
+  },
+  eyeButton: {
+    position: "absolute",
+    right: 12,
+    padding: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+  },
 });
