@@ -6,7 +6,8 @@ import {
     Image, 
     KeyboardAvoidingView, 
     Platform,
-    ScrollView
+    ScrollView,
+    Pressable
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,10 @@ export default function Register() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    
+    // Estados para mostrar/ocultar contraseñas
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const handleRegister = () => {
         // Validar que todos los campos estén llenos
@@ -79,7 +84,7 @@ export default function Register() {
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView 
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
-                style={{ flex: 1 }}
+                style={{ flex: 1, width: '100%' }}
                 keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
             >
                 <HeaderScreen 
@@ -92,8 +97,8 @@ export default function Register() {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
+                    style={{ width: '100%' }}
                 >
-                    <View style={styles.contentContainer}>
                         {/* Marca con crear cuenta */}
                         <View style={styles.welcomeContainer}>
                             <Image
@@ -104,7 +109,6 @@ export default function Register() {
                         </View>
 
                         {/* Formulario */}
-                        <View style={styles.block}>
                             <View style={styles.group}>
                                 <Text style={styles.label}>Nombre Completo</Text>
                                 <InputLogin 
@@ -127,24 +131,57 @@ export default function Register() {
 
                             <View style={styles.group}>
                                 <Text style={styles.label}>Contraseña</Text>
-                                <InputLogin 
-                                    msj="••••••" 
-                                    secureTextEntry
-                                    value={password}
-                                    onChangeText={setPassword}
-                                />
+                                <View style={{ position: 'relative', width: '100%' }}>
+                                    <InputLogin 
+                                        msj="••••••" 
+                                        secureTextEntry={!showPassword}
+                                        value={password}
+                                        onChangeText={setPassword}
+                                    />
+                                    <Pressable
+                                        onPress={() => setShowPassword(!showPassword)}
+                                        style={{
+                                            position: 'absolute',
+                                            right: 15,
+                                            top: 15,
+                                            padding: 5
+                                        }}
+                                    >
+                                        <Ionicons 
+                                            name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                                            size={24} 
+                                            color={COLORS.textGray} 
+                                        />
+                                    </Pressable>
+                                </View>
                             </View>
 
                             <View style={styles.group}>
                                 <Text style={styles.label}>Confirmar Contraseña</Text>
-                                <InputLogin 
-                                    msj="••••••" 
-                                    secureTextEntry
-                                    value={confirmPassword}
-                                    onChangeText={setConfirmPassword}
-                                />
+                                <View style={{ position: 'relative', width: '100%' }}>
+                                    <InputLogin 
+                                        msj="••••••" 
+                                        secureTextEntry={!showConfirmPassword}
+                                        value={confirmPassword}
+                                        onChangeText={setConfirmPassword}
+                                    />
+                                    <Pressable
+                                        onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        style={{
+                                            position: 'absolute',
+                                            right: 15,
+                                            top: 15,
+                                            padding: 5
+                                        }}
+                                    >
+                                        <Ionicons 
+                                            name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} 
+                                            size={24} 
+                                            color={COLORS.textGray} 
+                                        />
+                                    </Pressable>
+                                </View>
                             </View>
-                        </View>
 
                         {/* Botón crear cuenta */}
                         <View style={styles.buttonContainer}>
@@ -153,9 +190,9 @@ export default function Register() {
                                 onPress={handleRegister}
                                 backgroundColor={COLORS.primary}
                                 textColor={COLORS.textWhite}
+                                showBorder={false}
                             />
                         </View>
-                    </View>
                 </ScrollView>
 
                 {/* Footer fijo */}

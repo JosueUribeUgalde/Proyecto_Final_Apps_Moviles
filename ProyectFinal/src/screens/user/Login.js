@@ -249,6 +249,7 @@ export default function Login({ navigation }) {
             }
             backgroundColor={COLORS.backgroundWhite}
             textColor={COLORS.textBlack} 
+            showBorder={false}
           />
           
           <View style={styles.registerContainer}>
