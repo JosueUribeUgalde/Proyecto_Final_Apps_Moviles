@@ -12,9 +12,9 @@ import { loginUser, isAdminEmail } from '../../services/authService';
 // 5. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
 // 6. Estilos
-import styles from "../../styles/screens/user/LoginStyles";
+import styles from "../../styles/screens/admin/LoginAdminStyles";
 // 7. Archivos estáticos
-import LogoSF from '../../../assets/LogoTM.png';
+import LogoSF from '../../../assets/LogoTM.png'; 
 
 export default function LoginAdmin({ navigation }) {
   // Estados para los inputs
@@ -88,13 +88,14 @@ export default function LoginAdmin({ navigation }) {
       
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+        style={{ flex: 1, width: '100%' }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <ScrollView 
-          contentContainerStyle={{ flexGrow: 1, alignItems: 'center', paddingBottom: 20 }}
+          contentContainerStyle={{ flexGrow: 1, alignItems: 'center', paddingBottom: 20, width: '100%' }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          style={{ width: '100%' }}
         >
           <View style={styles.welcomeContainer}>
             <Image source={LogoSF} style={styles.logoImage} />
@@ -170,10 +171,10 @@ export default function LoginAdmin({ navigation }) {
             onPress={handleShowAccountInfo}
             style={({ pressed }) => [
               styles.infoButtonContainer,
-              pressed && { opacity: 0.7 }
+              pressed && { opacity: 0.5 }
             ]}
           >
-            <Ionicons name="help-circle-outline" size={20} color={COLORS.primary} />
+            <Ionicons name="help-circle-outline" size={20} color={COLORS.textGreen} />
             <Text style={styles.infoButtonText}>
               ¿Cómo crear una cuenta de Administrador?
             </Text>

@@ -13,7 +13,7 @@ export default StyleSheet.create({
     marginBottom: 2,
     color: COLORS.textBlack,
     fontSize: FONTS.small,
-    fontWeight: '600',//Equivale a semi-bold
+    fontWeight: '600', // Equivale a semi-bold
   },
   // Contenedor de cada grupo de input (label + input)
   group: {
@@ -34,30 +34,11 @@ export default StyleSheet.create({
     marginBottom: 16,
     resizeMode: 'contain',
   },
-  // Texto "Panel usuario"
+  // Texto "Panel de Administrador"
   welcomeText: {
     fontSize: FONTS.large,
     fontWeight: 'bold',
     color: COLORS.textBlack,
-  },
-  // Contenedor del texto "No tienes cuenta? Regístrate"
-  registerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-  },
-  // Texto "No tienes cuenta?"
-  registerText: {
-    color: COLORS.textGray,
-    fontWeight: '500',
-    fontSize: FONTS.small,
-  },
-  // Texto "Regístrate" (clickeable)
-  registerTextClick: {
-    color: COLORS.textGreen,
-    fontWeight: '700',
-    fontSize: FONTS.regular,
   },
   // Texto "Forgot Password?" (clickeable)
   forgotPassword: {
@@ -71,7 +52,7 @@ export default StyleSheet.create({
   forgotPasswordContainer: {
     // Este estilo solo se usa para el Pressable wrapper
   },
-  // Contenedor del divisor "OR"
+  // Contenedor del divisor "Información"
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -84,10 +65,24 @@ export default StyleSheet.create({
     height: 1,
     backgroundColor: COLORS.borderGray,
   },
-  // Texto "OR"
+  // Texto "Información"
   dividerText: {
     marginHorizontal: 8,
     color: COLORS.textGray,
     fontSize: FONTS.large,
+  },
+  // Contenedor del botón de información (ícono + texto)
+  infoButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 16,
+  },
+  // Texto clickeable "¿Cómo crear una cuenta de Administrador?"
+  infoButtonText: {
+    color: COLORS.textGreen,
+    fontSize: FONTS.regular,
+    fontWeight: '700',
   },
 });
