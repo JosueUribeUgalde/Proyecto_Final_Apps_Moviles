@@ -95,6 +95,9 @@ export const registerCompany = async (formData) => {
         updatedAt: serverTimestamp(),
       },
 
+      // Array de administradores (IDs de usuarios que pueden administrar la empresa)
+      administradores: [],
+
       createdAt: serverTimestamp(),
     };
 
