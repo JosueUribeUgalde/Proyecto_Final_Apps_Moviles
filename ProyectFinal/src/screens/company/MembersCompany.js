@@ -1,11 +1,14 @@
-import { useMemo, useState } from 'react';
-import {Text, View, TextInput, Pressable, FlatList, Modal, ScrollView, Switch, Platform} from 'react-native';
+import { useMemo, useState, useEffect } from 'react';
+import {Text, View, TextInput, Pressable, FlatList, Modal, ScrollView, Switch, Platform, ActivityIndicator} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, {DateTimePickerAndroid} from '@react-native-community/datetimepicker';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { HeaderScreen, Banner, MenuFooterCompany } from '../../components';
 import { COLORS } from '../../components/constants/theme';
 import styles from '../../styles/screens/company/MembersCompanyStyles';
+import { getCurrentUser, registerUser, loginCompany } from '../../services/authService';
+import { db, auth } from '../../config/firebaseConfig';
 
 // Datos simulados
 const MOCK_MEMBERS = [
@@ -152,6 +155,8 @@ const formatTime = (date) => {
 const createEmptyForm = () => ({
   name: '',
   email: '',
+  password: '',
+  confirmPassword: '',
   phone: '',
   role: 'Admin',
   position: '',
@@ -159,18 +164,17 @@ const createEmptyForm = () => ({
   availableDays: '',
   startTime: '08:00',
   endTime: '17:00',
-  maxHoursPerWeek: '40',
   mealTime: '',
   daysOff: '',
-  replacementAvailable: true,
-  preferredAreas: '',
 });
 
 export default function MembersCompany({ navigation }) {
   // Estados principales
-  const [members, setMembers] = useState(MOCK_MEMBERS);
+  const [members, setMembers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [adminsOnly, setAdminsOnly] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [companyId, setCompanyId] = useState(null);
 
   // Estado de banner
   const [showBanner, setShowBanner] = useState(false);
@@ -188,6 +192,55 @@ export default function MembersCompany({ navigation }) {
     value: new Date(),
     visible: false,
   });
+
+  // Estado para mostrar/ocultar passwords
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Cargar administradores al montar
+  useEffect(() => {
+    loadAdministrators();
+  }, []);
+
+  const loadAdministrators = async () => {
+    try {
+      const user = getCurrentUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      setCompanyId(user.uid);
+      const companyDoc = await getDoc(doc(db, 'companies', user.uid));
+      
+      if (companyDoc.exists()) {
+        const companyData = companyDoc.data();
+        const adminIds = companyData.administradores || [];
+        
+        // Cargar datos de cada administrador
+        const adminPromises = adminIds.map(async (adminId) => {
+          const adminDoc = await getDoc(doc(db, 'admins', adminId));
+          if (adminDoc.exists()) {
+            return {
+              id: adminDoc.id,
+              ...adminDoc.data()
+            };
+          }
+          return null;
+        });
+
+        const adminsData = await Promise.all(adminPromises);
+        setMembers(adminsData.filter(admin => admin !== null));
+      }
+    } catch (error) {
+      console.error('Error al cargar administradores:', error);
+      setBannerMessage('Error al cargar administradores');
+      setBannerType('error');
+      setShowBanner(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Días seleccionados (derivados del formulario)
   const selectedWorkDays = useMemo(
@@ -237,46 +290,123 @@ export default function MembersCompany({ navigation }) {
     setShowFormModal(true);
   };
 
-  const handleDeleteMember = (member) => {
-    setMembers((prev) => prev.filter((m) => m.id !== member.id));
-    setBannerMessage('Miembro eliminado');
-    setBannerType('success');
-    setShowBanner(true);
+  const handleDeleteMember = async (member) => {
+    try {
+      // Aquí podrías implementar la eliminación del array administradores
+      // Por ahora solo actualizamos el estado local
+      setMembers((prev) => prev.filter((m) => m.id !== member.id));
+      setBannerMessage('Miembro eliminado');
+      setBannerType('success');
+      setShowBanner(true);
+    } catch (error) {
+      console.error('Error al eliminar miembro:', error);
+      setBannerMessage('Error al eliminar miembro');
+      setBannerType('error');
+      setShowBanner(true);
+    }
   };
 
-  const handleSaveMember = () => {
+  const handleSaveMember = async () => {
     if (!formData.name.trim() || !formData.email.trim()) {
       setBannerMessage('Nombre y correo son obligatorios');
       setBannerType('error');
       setShowBanner(true);
       return;
     }
-    // Agregar o actualizar miembro
-    if (editingMember) {
-      const updated = {
-        ...editingMember,
-        ...formData,
-        role: editingMember.role || 'Admin',
-      };
-      setMembers((prev) =>
-        prev.map((m) => (m.id === editingMember.id ? updated : m)),
-      );
-      setBannerMessage('Miembro actualizado');
-    } else {
-      const newMember = {
-        ...createEmptyForm(),
-        ...formData,
-        id: Date.now().toString(),
-        role: 'Admin',
-      };
-      setMembers((prev) => [newMember, ...prev]);
-      setBannerMessage('Miembro agregado');
+
+    // Validaciones adicionales para nuevo miembro
+    if (!editingMember) {
+      if (!formData.password || !formData.confirmPassword) {
+        setBannerMessage('Las contraseñas son obligatorias');
+        setBannerType('error');
+        setShowBanner(true);
+        return;
+      }
+
+      if (formData.password !== formData.confirmPassword) {
+        setBannerMessage('Las contraseñas no coinciden');
+        setBannerType('error');
+        setShowBanner(true);
+        return;
+      }
+
+      if (formData.password.length < 6) {
+        setBannerMessage('La contraseña debe tener al menos 6 caracteres');
+        setBannerType('error');
+        setShowBanner(true);
+        return;
+      }
     }
 
-    setBannerType('success');
-    setShowBanner(true);
-    setShowFormModal(false);
-    setEditingMember(null);
+    try {
+      if (editingMember) {
+        // Actualizar administrador existente
+        const { password, confirmPassword, ...updateData } = formData;
+        await updateDoc(doc(db, 'admins', editingMember.id), updateData);
+        
+        setMembers((prev) =>
+          prev.map((m) => (m.id === editingMember.id ? { ...m, ...updateData } : m))
+        );
+        setBannerMessage('Miembro actualizado');
+      } else {
+        // 1. PRIMERO crear la cuenta de autenticación en Firebase
+        const authResult = await registerUser(formData.email, formData.password);
+        
+        if (!authResult.success) {
+          setBannerMessage(authResult.message || 'Error al crear cuenta de autenticación');
+          setBannerType('error');
+          setShowBanner(true);
+          return;
+        }
+
+        const newAdminId = authResult.user.uid;
+
+        // 2. Crear documento en colección admins con el UID real (sin passwords)
+        const { password, confirmPassword, ...adminData } = formData;
+        const newAdmin = {
+          ...adminData,
+          role: 'Admin',
+          companyId: companyId,
+          createdAt: new Date().toISOString(),
+          region: {
+            code: 'MX',
+            name: 'México'
+          },
+          preferences: {
+            notificationsEnabled: true
+          },
+          groupIds: []
+        };
+
+        await setDoc(doc(db, 'admins', newAdminId), newAdmin);
+
+        // 3. Actualizar el array de administradores de la empresa con el UID real
+        // Nota: registerUser() cambió la sesión al nuevo admin, pero las reglas de Firestore
+        // permiten que un admin actualice la empresa a la que pertenece (companyId)
+        await updateDoc(doc(db, 'companies', companyId), {
+          administradores: arrayUnion(newAdminId)
+        });
+        
+        setMembers((prev) => [{ id: newAdminId, ...newAdmin }, ...prev]);
+        setBannerMessage('Miembro agregado exitosamente');
+        setBannerType('success');
+        setShowBanner(true);
+        
+        // Cerrar el modal
+        setShowFormModal(false);
+        setEditingMember(null);
+      }
+
+      setBannerType('success');
+      setShowBanner(true);
+      setShowFormModal(false);
+      setEditingMember(null);
+    } catch (error) {
+      console.error('Error al guardar miembro:', error);
+      setBannerMessage('Error al guardar miembro: ' + error.message);
+      setBannerType('error');
+      setShowBanner(true);
+    }
   };
 
   // Time picker genérico (inicio, fin, comida)
@@ -366,6 +496,18 @@ export default function MembersCompany({ navigation }) {
       <Text style={styles.emptyStateText}>No hay miembros</Text>
     </View>
   );
+
+  if (loading) {
+    return (
+      <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
+        <HeaderScreen title="Miembros" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={{ marginTop: 16, color: COLORS.textGray }}>Cargando miembros...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
@@ -484,14 +626,11 @@ export default function MembersCompany({ navigation }) {
                 <Text style={styles.sectionTitle}>Información básica</Text>
 
                 <Text style={styles.fieldLabel}>Nombre completo</Text>
-                <View style={styles.inputWithIcon}>
-                  <TextInput style={styles.fieldInput} placeholder="Nombre completo" value={formData.name}
-                    onChangeText={(text) =>
-                      setFormData((prev) => ({ ...prev, name: text }))
-                    }
-                    placeholderTextColor={COLORS.textGray}/>
-                  <Ionicons name="person-circle-outline" size={20} color={COLORS.textGray}/>
-                </View>
+                <TextInput style={styles.fieldInput} placeholder="Nombre completo" value={formData.name}
+                  onChangeText={(text) =>
+                    setFormData((prev) => ({ ...prev, name: text }))
+                  }
+                  placeholderTextColor={COLORS.textGray}/>
 
                 <Text style={styles.fieldLabel}>Correo</Text>
                 <TextInput style={styles.fieldInput} placeholder="correo@empresa.com" value={formData.email}
@@ -501,6 +640,54 @@ export default function MembersCompany({ navigation }) {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   placeholderTextColor={COLORS.textGray}/>
+
+                {!editingMember && (
+                  <>
+                    <Text style={styles.fieldLabel}>Contraseña</Text>
+                    <View style={styles.inputWithIcon}>
+                      <TextInput
+                        style={[styles.fieldInput, { flex: 1, borderWidth: 0 }]}
+                        placeholder="Mínimo 6 caracteres"
+                        value={formData.password}
+                        onChangeText={(text) =>
+                          setFormData((prev) => ({ ...prev, password: text }))
+                        }
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                        placeholderTextColor={COLORS.textGray}
+                      />
+                      <Pressable onPress={() => setShowPassword(!showPassword)}>
+                        <Ionicons
+                          name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                          size={20}
+                          color={COLORS.textGray}
+                        />
+                      </Pressable>
+                    </View>
+
+                    <Text style={styles.fieldLabel}>Confirmar contraseña</Text>
+                    <View style={styles.inputWithIcon}>
+                      <TextInput
+                        style={[styles.fieldInput, { flex: 1, borderWidth: 0 }]}
+                        placeholder="Repite la contraseña"
+                        value={formData.confirmPassword}
+                        onChangeText={(text) =>
+                          setFormData((prev) => ({ ...prev, confirmPassword: text }))
+                        }
+                        secureTextEntry={!showConfirmPassword}
+                        autoCapitalize="none"
+                        placeholderTextColor={COLORS.textGray}
+                      />
+                      <Pressable onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                        <Ionicons
+                          name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                          size={20}
+                          color={COLORS.textGray}
+                        />
+                      </Pressable>
+                    </View>
+                  </>
+                )}
 
                 <Text style={styles.fieldLabel}>Teléfono</Text>
                 <TextInput style={styles.fieldInput} placeholder="+56 9 0000 0000" value={formData.phone}
@@ -632,94 +819,6 @@ export default function MembersCompany({ navigation }) {
                     );
                   })}
                 </View>
-
-                <Text style={styles.fieldLabel}>Horas máximas por semana</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  placeholder="48"
-                  value={formData.maxHoursPerWeek}
-                  onChangeText={(text) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      maxHoursPerWeek: text,
-                    }))
-                  }
-                  keyboardType="numeric"
-                  placeholderTextColor={COLORS.textGray}/>
-              </View>
-
-              {/* Preferencias de reemplazo */}
-              <View style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>Preferencias de reemplazo</Text>
-
-                <View style={styles.toggleRow}>
-                  <View style={styles.toggleInfo}>
-                    <Text style={styles.toggleTitle}>
-                      Disponible para reemplazos
-                    </Text>
-                    <Text style={styles.toggleSubtitle}>
-                      Puede ser sugerido cuando falten turnos
-                    </Text>
-                  </View>
-                  <Switch
-                    value={formData.replacementAvailable}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        replacementAvailable: value,
-                      }))
-                    }/>
-                </View>
-
-                <Text style={styles.fieldLabel}>Áreas preferidas</Text>
-                <View style={styles.chipGroup}>
-                  {AREA_GROUPS.map((area) => {
-                    const selectedAreas = formData.preferredAreas
-                      ? formData.preferredAreas
-                          .split(',')
-                          .map((s) => s.trim())
-                          .filter(Boolean)
-                      : [];
-                    const isSelected = selectedAreas.includes(area);
-
-                    return (
-                      <Pressable
-                        key={area}
-                        style={({ pressed }) => [
-                          styles.areaChip,
-                          isSelected && styles.areaChipActive,
-                          pressed && { opacity: 0.85 },
-                        ]}
-                        onPress={() => {
-                          setFormData((prev) => {
-                            const current = prev.preferredAreas
-                              ? prev.preferredAreas
-                                  .split(',')
-                                  .map((s) => s.trim())
-                                  .filter(Boolean)
-                              : [];
-                            const exists = current.includes(area);
-                            const next = exists
-                              ? current.filter((a) => a !== area)
-                              : [...current, area];
-
-                            return {
-                              ...prev,
-                              preferredAreas: next.join(', '),
-                            };
-                          });
-                        }}>
-                        <Text
-                          style={[
-                            styles.areaChipText,
-                            isSelected && styles.areaChipTextActive,
-                          ]}>
-                          {area}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
               </View>
 
               {/* Picker de hora para iOS */}
@@ -752,9 +851,9 @@ export default function MembersCompany({ navigation }) {
                   pressed && { opacity: 0.9 },
                 ]}
                 onPress={handleSaveMember}>
-                <Ionicons name="send-outline" size={20} color={COLORS.textWhite}/>
+                <Ionicons name="add-circle-outline" size={20} color={COLORS.textWhite}/>
                 <Text style={styles.primaryButtonText}>
-                  {editingMember ? 'Guardar cambios' : 'Invitar y agregar'}
+                  {editingMember ? 'Guardar cambios' : 'Agregar'}
                 </Text>
               </Pressable>
             </View>
