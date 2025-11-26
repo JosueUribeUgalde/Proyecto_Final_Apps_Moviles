@@ -6,15 +6,16 @@ import {
     ScrollView,
     Pressable,
     KeyboardAvoidingView,
-    Platform
+    Platform,
+    Alert
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { HeaderScreen, InputLogin, ButtonLogin, Banner } from "../../components";
 import { COLORS } from "../../components/constants/theme";
 import styles from "../../styles/screens/company/RegisterStyles";
+import { registerCompany } from '../../services/companyService';
 
 export default function RegisterCompany({ navigation }) {
     const [formData, setFormData] = useState({
@@ -27,9 +28,14 @@ export default function RegisterCompany({ navigation }) {
         password: '',
         confirmPassword: '',
         logo: null,
-        officialId: null,
-        proofOfAddress: null,
-        fiscalStatus: null
+        officialId: {
+            front: null,
+            back: null
+        },
+        proofOfAddress: {
+            front: null,
+            back: null
+        }
     });
     const [showBanner, setShowBanner] = useState(false);
     const [bannerMessage, setBannerMessage] = useState('');
@@ -37,6 +43,31 @@ export default function RegisterCompany({ navigation }) {
     const [passwordErrors, setPasswordErrors] = useState([]);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [validationErrors, setValidationErrors] = useState({});
+
+    // Función para validar email
+    const isValidEmail = (email) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    };
+
+    // Función para validar RFC (México - 13 caracteres)
+    const isValidRFC = (rfc) => {
+        const rfcRegex = /^[A-ZÑ&]{3,4}\d{6}(?:[A-Z0-9]{3})?$/;
+        return rfcRegex.test(rfc.toUpperCase()) && rfc.length >= 12;
+    };
+
+    // Función para validar teléfono (México - 10 dígitos)
+    const isValidPhone = (phone) => {
+        const phoneRegex = /^\d{10}$/;
+        const cleanPhone = phone.replace(/\D/g, '');
+        return phoneRegex.test(cleanPhone) && cleanPhone.length === 10;
+    };
+
+    // Función para validar dirección
+    const isValidAddress = (address) => {
+        return address && address.trim().length >= 10;
+    };
 
     const validatePassword = (password) => {
         const errors = [];
@@ -70,64 +101,233 @@ export default function RegisterCompany({ navigation }) {
         }
     };
 
-    const handleDocumentPick = async (field) => {
-        const result = await DocumentPicker.getDocumentAsync({
-            type: ['application/pdf'],
-            copyToCacheDirectory: true
+    const handleCameraCapture = async (field, side) => {
+        const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: false,
+            aspect: [4, 3],
+            quality: 0.8,
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
         });
 
-        if (result.type === 'success') {
+        if (!result.canceled) {
             setFormData(prev => ({
                 ...prev,
-                [field]: result.uri
+                [field]: {
+                    ...prev[field],
+                    [side]: result.assets[0].uri
+                }
             }));
         }
     };
 
-    const handleRegister = () => {
-        // Validar contraseña
-        const errors = validatePassword(formData.password);
-        
-        if (formData.password !== formData.confirmPassword) {
-            errors.push('Las contraseñas no coinciden');
+    const validateForm = () => {
+        const newErrors = {};
+
+        // Validar nombre empresa
+        if (!formData.companyName || formData.companyName.trim().length < 3) {
+            newErrors.companyName = 'Nombre de empresa inválido (mínimo 3 caracteres)';
         }
 
-        if (errors.length > 0) {
-            setPasswordErrors(errors);
-            setBannerMessage('Por favor, revisa los requisitos de la contraseña');
+        // Validar email
+        if (!formData.email || !isValidEmail(formData.email)) {
+            newErrors.email = 'Email inválido (ej: empresa@correo.com)';
+        }
+
+        // Validar teléfono
+        if (!formData.phone || !isValidPhone(formData.phone)) {
+            newErrors.phone = 'Teléfono inválido (10 dígitos)';
+        }
+
+        // Validar RFC
+        if (!formData.rfc || !isValidRFC(formData.rfc)) {
+            newErrors.rfc = 'RFC inválido (ej: ABC000000XYZ)';
+        }
+
+        // Validar dirección
+        if (!formData.address || !isValidAddress(formData.address)) {
+            newErrors.address = 'Dirección inválida (mínimo 10 caracteres)';
+        }
+
+        // Validar nombre del representante
+        if (!formData.ownerName || formData.ownerName.trim().length < 3) {
+            newErrors.ownerName = 'Nombre inválido (mínimo 3 caracteres)';
+        }
+
+        // Validar contraseña
+        const passwordErrors = validatePassword(formData.password);
+        if (formData.password !== formData.confirmPassword) {
+            passwordErrors.push('Las contraseñas no coinciden');
+        }
+        if (passwordErrors.length > 0) {
+            newErrors.password = passwordErrors;
+        }
+
+        // Validar documentos
+        if (!formData.officialId.front || !formData.officialId.back) {
+            newErrors.officialId = 'Captura frente y reverso de tu identificación';
+        }
+        
+        // Validar Comprobante de domicilio (frente y reverso)
+        if (!formData.proofOfAddress.front || !formData.proofOfAddress.back) {
+            newErrors.proofOfAddress = 'Captura frente y reverso del comprobante';
+        }
+
+        setValidationErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleRegister = async () => {
+        if (!validateForm()) {
+            setBannerMessage('Por favor, revisa los campos marcados en rojo');
             setBannerType('error');
             setShowBanner(true);
             return;
         }
 
-        setPasswordErrors([]);
-        setBannerMessage('Registro exitoso');
-        setBannerType('success');
-        setShowBanner(true);
-        setTimeout(() => {
-            setShowBanner(false);
-            navigation.navigate('LoginCompany');
-        }, 2000);
+        try {
+            const result = await registerCompany(formData);
+
+            if (result.success) {
+                setBannerMessage(result.message || 'Registro exitoso');
+                setBannerType('success');
+                setShowBanner(true);
+
+                setTimeout(() => {
+                    setShowBanner(false);
+                    navigation.navigate('LoginCompany');
+                }, 2000);
+            } else {
+                setBannerMessage(result.message || 'No se pudo registrar la empresa');
+                setBannerType('error');
+                setShowBanner(true);
+            }
+        } catch (error) {
+            console.error('Error al registrar empresa', error);
+            setBannerMessage('Ocurrió un error al registrar la empresa. Intenta más tarde.');
+            setBannerType('error');
+            setShowBanner(true);
+        }
+    };
+
+    // Componente para capturar documento con 2 lados
+    const DocumentCapture = ({ title, field, type }) => {
+        const isFrontCaptured = formData[field].front;
+        const isBackCaptured = formData[field].back;
+        const hasError = validationErrors[field];
+
+        return (
+            <View style={[
+                styles.documentCaptureContainer,
+                hasError && { borderColor: '#f44336', borderWidth: 2 }
+            ]}>
+                <Text style={styles.sectionTitle}>{title}</Text>
+                
+                {/* Lado Frente */}
+                <Pressable 
+                    onPress={() => handleCameraCapture(field, 'front')}
+                    style={({pressed}) => [
+                        styles.cameraSide,
+                        pressed && {opacity: 0.7},
+                        isFrontCaptured && styles.cameraSideCaptured
+                    ]}
+                >
+                    {isFrontCaptured ? (
+                        <View style={styles.capturedImageContainer}>
+                            <Image 
+                                source={{ uri: formData[field].front }} 
+                                style={styles.capturedImage}
+                            />
+                            <View style={styles.capturedBadge}>
+                                <Ionicons name="checkmark-circle" size={32} color="#4caf50" />
+                            </View>
+                        </View>
+                    ) : (
+                        <View style={styles.cameraPlaceholder}>
+                            <Ionicons name="camera-outline" size={40} color={COLORS.primary} />
+                            <Text style={styles.cameraText}>Frente</Text>
+                        </View>
+                    )}
+                </Pressable>
+
+                {/* Lado Reverso */}
+                <Pressable 
+                    onPress={() => handleCameraCapture(field, 'back')}
+                    style={({pressed}) => [
+                        styles.cameraSide,
+                        pressed && {opacity: 0.7},
+                        isBackCaptured && styles.cameraSideCaptured
+                    ]}
+                >
+                    {isBackCaptured ? (
+                        <View style={styles.capturedImageContainer}>
+                            <Image 
+                                source={{ uri: formData[field].back }} 
+                                style={styles.capturedImage}
+                            />
+                            <View style={styles.capturedBadge}>
+                                <Ionicons name="checkmark-circle" size={32} color="#4caf50" />
+                            </View>
+                        </View>
+                    ) : (
+                        <View style={styles.cameraPlaceholder}>
+                            <Ionicons name="camera-outline" size={40} color={COLORS.primary} />
+                            <Text style={styles.cameraText}>Reverso</Text>
+                        </View>
+                    )}
+                </Pressable>
+
+                {hasError && (
+                    <Text style={styles.errorText}>{validationErrors[field]}</Text>
+                )}
+            </View>
+        );
     };
 
     const renderDocumentButton = (title, field, type = 'document') => (
-        <Pressable 
-            onPress={() => type === 'image' ? handleImagePick(field) : handleDocumentPick(field)}
-            style={({pressed}) => [
-                styles.documentButton,
-                pressed && {opacity: 0.7}
-            ]}
-        >
-            <Ionicons 
-                name={type === 'image' ? "image-outline" : "document-text-outline"} 
-                size={24} 
-                color={COLORS.primary} 
-            />
-            <Text style={styles.documentButtonText}>{title}</Text>
-            {formData[field] && (
-                <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />
+        <View>
+            <Pressable 
+                onPress={() => type === 'image' ? handleImagePick(field) : handleDocumentPick(field)}
+                style={({pressed}) => [
+                    styles.documentButton,
+                    pressed && {opacity: 0.7},
+                    validationErrors[field] && {borderColor: '#f44336', borderWidth: 2}
+                ]}
+            >
+                <Ionicons 
+                    name={type === 'image' ? "image-outline" : "document-text-outline"} 
+                    size={24} 
+                    color={formData[field] ? COLORS.primary : '#999'} 
+                />
+                <Text style={styles.documentButtonText}>{title}</Text>
+                {formData[field] && (
+                    <Ionicons name="checkmark-circle" size={24} color="#4caf50" />
+                )}
+            </Pressable>
+            {validationErrors[field] && (
+                <Text style={styles.errorText}>{validationErrors[field]}</Text>
             )}
-        </Pressable>
+        </View>
+    );
+
+    const renderInputWithError = (label, field, value, onChangeText, keyboardType = 'default', multiline = false) => (
+        <View style={styles.group}>
+            <Text style={styles.label}>{label}</Text>
+            <InputLogin 
+                msj={label}
+                keyboardType={keyboardType}
+                value={value}
+                onChangeText={onChangeText}
+                multiline={multiline}
+                numberOfLines={multiline ? 2 : 1}
+                style={{
+                    borderColor: validationErrors[field] ? '#f44336' : undefined,
+                    borderWidth: validationErrors[field] ? 1.5 : undefined
+                }}
+            />
+            {validationErrors[field] && (
+                <Text style={styles.errorText}>{validationErrors[field]}</Text>
+            )}
+        </View>
     );
 
     return (
@@ -162,64 +362,51 @@ export default function RegisterCompany({ navigation }) {
 
                         {/* Formulario */}
                         <View style={styles.formContainer}>
-                            <View style={styles.group}>
-                                <Text style={styles.label}>Nombre de la Empresa</Text>
-                                <InputLogin 
-                                    msj="Nombre de la empresa" 
-                                    value={formData.companyName}
-                                    onChangeText={(text) => setFormData(prev => ({...prev, companyName: text}))}
-                                />
-                            </View>
+                            {renderInputWithError(
+                                'Nombre de la Empresa',
+                                'companyName',
+                                formData.companyName,
+                                (text) => setFormData(prev => ({...prev, companyName: text}))
+                            )}
 
-                            <View style={styles.group}>
-                                <Text style={styles.label}>Correo Electrónico</Text>
-                                <InputLogin 
-                                    msj="empresa@correo.com"
-                                    keyboardType="email-address"
-                                    value={formData.email}
-                                    onChangeText={(text) => setFormData(prev => ({...prev, email: text}))}
-                                />
-                            </View>
+                            {renderInputWithError(
+                                'Correo Electrónico',
+                                'email',
+                                formData.email,
+                                (text) => setFormData(prev => ({...prev, email: text})),
+                                'email-address'
+                            )}
 
-                            <View style={styles.group}>
-                                <Text style={styles.label}>Teléfono</Text>
-                                <InputLogin 
-                                    msj="(XXX) XXX-XXXX"
-                                    keyboardType="phone-pad"
-                                    value={formData.phone}
-                                    onChangeText={(text) => setFormData(prev => ({...prev, phone: text}))}
-                                />
-                            </View>
+                            {renderInputWithError(
+                                'Teléfono (10 dígitos)',
+                                'phone',
+                                formData.phone,
+                                (text) => setFormData(prev => ({...prev, phone: text.replace(/\D/g, '').slice(0, 10)})),
+                                'phone-pad'
+                            )}
 
-                            <View style={styles.group}>
-                                <Text style={styles.label}>RFC</Text>
-                                <InputLogin 
-                                    msj="XXXX000000XXX"
-                                    autoCapitalize="characters"
-                                    value={formData.rfc}
-                                    onChangeText={(text) => setFormData(prev => ({...prev, rfc: text}))}
-                                />
-                            </View>
+                            {renderInputWithError(
+                                'RFC',
+                                'rfc',
+                                formData.rfc,
+                                (text) => setFormData(prev => ({...prev, rfc: text.toUpperCase().slice(0, 13)}))
+                            )}
 
-                            <View style={styles.group}>
-                                <Text style={styles.label}>Dirección Fiscal</Text>
-                                <InputLogin 
-                                    msj="Dirección completa"
-                                    multiline
-                                    numberOfLines={2}
-                                    value={formData.address}
-                                    onChangeText={(text) => setFormData(prev => ({...prev, address: text}))}
-                                />
-                            </View>
+                            {renderInputWithError(
+                                'Dirección',
+                                'address',
+                                formData.address,
+                                (text) => setFormData(prev => ({...prev, address: text})),
+                                'default',
+                                true
+                            )}
 
-                            <View style={styles.group}>
-                                <Text style={styles.label}>Nombre del Representante</Text>
-                                <InputLogin 
-                                    msj="Nombre completo"
-                                    value={formData.ownerName}
-                                    onChangeText={(text) => setFormData(prev => ({...prev, ownerName: text}))}
-                                />
-                            </View>
+                            {renderInputWithError(
+                                'Nombre del Representante',
+                                'ownerName',
+                                formData.ownerName,
+                                (text) => setFormData(prev => ({...prev, ownerName: text}))
+                            )}
 
                             {/* Contraseña */}
                             <View style={styles.group}>
@@ -279,18 +466,30 @@ export default function RegisterCompany({ navigation }) {
                                     </Pressable>
                                 </View>
                                 {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                                    <Text style={styles.errorText}>Las contraseñas no coinciden</Text>
+                                    <Text style={styles.errorText}>✗ Las contraseñas no coinciden</Text>
                                 )}
                                 {formData.confirmPassword && formData.password === formData.confirmPassword && (
                                     <Text style={styles.successText}>✓ Las contraseñas coinciden</Text>
                                 )}
                             </View>
 
-                            {/* Documentos */}
+                            {/* Documentos - NUEVA VERSIÓN */}
                             <View style={styles.documentsContainer}>
-                                <Text style={styles.sectionTitle}>Documentos Requeridos</Text>
-                                {renderDocumentButton('Identificación Oficial', 'officialId')}
-                                {renderDocumentButton('Comprobante de Domicilio', 'proofOfAddress')}
+                                <Text style={{fontSize: 16, fontWeight: 'bold', marginBottom: 16}}>
+                                    Documentos (Captura con Cámara)
+                                </Text>
+                                
+                                <DocumentCapture 
+                                    title="Identificación Oficial"
+                                    field="officialId"
+                                    type="identification"
+                                />
+                                
+                                <DocumentCapture 
+                                    title="Comprobante de Domicilio"
+                                    field="proofOfAddress"
+                                    type="address"
+                                />
                             </View>
 
                             <View style={styles.buttonContainer}>
