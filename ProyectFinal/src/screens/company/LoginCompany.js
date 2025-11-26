@@ -1,6 +1,6 @@
 // 1. Paquetes core de React/React Native
 import { useState } from 'react';
-import { Text, View, Image, Pressable } from "react-native";
+import { Text, View, Image, Pressable, ActivityIndicator } from "react-native";
 // 2. Bibliotecas de terceros
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
@@ -13,12 +13,50 @@ import { COLORS } from '../../components/constants/theme';
 import styles from "../../styles/screens/user/LoginStyles";
 // 6. Archivos estáticos
 import LogoSF from '../../../assets/LogoTM.png';
+import { loginCompany } from '../../services/authService';
 
 export default function LoginCompany({ navigation }) {
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalMessage, setModalMessage] = useState('');
+  const [showModal, setShowModal] = useState(false);
 
-  const handleLogin = () => {
-    navigation.navigate('Dashboard');
+  const handleLogin = async () => {
+    // Validar campos vacíos
+    if (!email.trim() || !password.trim()) {
+      setModalTitle('Error');
+      setModalMessage('Por favor, completa todos los campos');
+      setShowModal(true);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Intentar login con Firebase
+      const result = await loginCompany(email, password);
+
+      setLoading(false);
+
+      // El objeto result devuelve { success: boolean, message: string, user: credential.user }
+      if (result.success) {
+        // Login exitoso - navegar a dashboard
+        navigation.navigate('Dashboard');
+      } else {
+        // Mostrar error
+        setModalTitle('Error de Autenticación');
+        setModalMessage(result.message);
+        setShowModal(true);
+      }
+    } catch (error) {
+      setLoading(false);
+      setModalTitle('Error');
+      setModalMessage('Ocurrió un error inesperado. Intenta de nuevo.');
+      setShowModal(true);
+    }
   };
 
   const handleForgotPassword = () => {
@@ -54,7 +92,12 @@ export default function LoginCompany({ navigation }) {
         <Text style={styles.label}>
           Email
         </Text>
-        <InputLogin msj="empresa@correo.com" />
+        <InputLogin 
+          msj="empresa@correo.com"
+          value={email}
+          onChangeText={setEmail}
+          editable={!loading}
+        />
       </View>
 
       {/* Grupo Password */}
@@ -62,9 +105,16 @@ export default function LoginCompany({ navigation }) {
         <Text style={styles.label}>
           Password
         </Text>
-        <InputLogin msj="password" secureTextEntry />
+        <InputLogin 
+          msj="password" 
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+          editable={!loading}
+        />
         <Pressable 
           onPress={handleForgotPassword}
+          disabled={loading}
           style={({pressed}) => [
             styles.forgotPasswordContainer,
             pressed && {opacity: 0.5}
@@ -77,10 +127,11 @@ export default function LoginCompany({ navigation }) {
       </View>
 
       <ButtonLogin
-        title='Login'
+        title={loading ? 'Cargando...' : 'Login'}
         onPress={handleLogin}
-        icon={<Ionicons name="log-in-outline" size={24} color="white" />}
-        showBorder={false} 
+        icon={loading ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="log-in-outline" size={24} color="white" />}
+        showBorder={false}
+        disabled={loading}
       />
 
       {/* Sección de registro mejorada */}
@@ -88,6 +139,7 @@ export default function LoginCompany({ navigation }) {
         <Text style={styles.registerText}>¿No tienes una cuenta?</Text>
         <Pressable 
           onPress={handleRegister}
+          disabled={loading}
           style={({pressed}) => [
             styles.registerButton,
             pressed && {opacity: 0.7}
@@ -114,6 +166,7 @@ export default function LoginCompany({ navigation }) {
       {/* Botón de información sobre cuenta de empresa */}
       <Pressable 
         onPress={handleShowAccountInfo}
+        disabled={loading}
         style={({ pressed }) => [
           styles.infoButtonContainer,
           pressed && { opacity: 0.7 }
@@ -125,7 +178,14 @@ export default function LoginCompany({ navigation }) {
         </Text>
       </Pressable>
 
-      {/* saber que */}
+      <InfoModal
+        visible={showModal}
+        onClose={() => setShowModal(false)}
+        title={modalTitle}
+        message={modalMessage}
+      />
+
+      {/* Modal de información */}
       <InfoModal
         visible={showInfoModal}
         onClose={() => setShowInfoModal(false)}

@@ -6,7 +6,8 @@ import {
   sendPasswordResetEmail,
   onAuthStateChanged
 } from 'firebase/auth';
-import { auth } from '../config/firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../config/firebaseConfig';
 
 /**
  * Login de usuario (Admin o User normal)
@@ -21,6 +22,44 @@ export const loginUser = async (email, password) => {
       success: true,
       user: userCredential.user,
       message: 'Login exitoso'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      user: null,
+      message: getErrorMessage(error.code)
+    };
+  }
+};
+
+/**
+ * Login de empresa: exige que exista documento en la coleccion companies
+ * @param {string} email - Correo de la empresa
+ * @param {string} password - Contrasena
+ * @returns {Promise<Object>} - Resultado de autenticacion
+ */
+export const loginCompany = async (email, password) => {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    const companySnap = await getDoc(doc(db, 'companies', user.uid));
+
+    if (!companySnap.exists()) {
+      // Cerrar sesion para evitar que quede autenticado un usuario sin perfil de empresa
+      await signOut(auth);
+      return {
+        success: false,
+        user: null,
+        message: 'Esta cuenta no esta registrada como Empresa.'
+      };
+    }
+
+    return {
+      success: true,
+      user,
+      company: companySnap.data(),
+      message: 'Login de empresa exitoso'
     };
   } catch (error) {
     return {
