@@ -1,281 +1,405 @@
-// src/screens/EditProfile.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, TextInput, ScrollView, Pressable, Image, Modal } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  Pressable,
+  Image,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-
-// Reutiliza estilos base del perfil (misma UI)
 import profileStyles from "../../styles/screens/user/ProfileStyles";
-// Estilos mínimos específicos para Edit
 import styles from "../../styles/screens/user/EditProfileStyles";
-
 import HeaderScreen from "../../components/HeaderScreen";
 import MenuFooter from "../../components/MenuFooter";
+import InfoModal from "../../components/InfoModal";
 import { COLORS } from "../../components/constants/theme";
-
-const STATUS_OPTIONS = ["Disponible", "Indisponible", "Ocupado"];
-const SHIFT_OPTIONS = ["Turnos Matutino", "Turnos nocturnos", "Turnos mixtos"];
+import { getCurrentUser } from "../../services/authService";
+import { getUserProfile, updateUserProfile } from "../../services/userService";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { storage } from "../../config/firebaseConfig";
+import * as ImagePicker from "expo-image-picker";
 
 export default function EditProfile() {
   const navigation = useNavigation();
 
-  const [name, setName] = useState("Damian Elias Nietopa"); // editable
-  const [role] = useState("Workforce Manager");           // solo lectura
-  const [experience] = useState("3 years");               // solo lectura
-  const [status, setStatus] = useState("Available");      // seleccionable
-  const [preferredShifts, setPreferredShifts] = useState("Day shifts"); // seleccionable
-  const [maxHours, setMaxHours] = useState("48");         // editable
-  const [email] = useState("ElMmaian@gmail.com");            // solo lectura
-  const [phone, setPhone] = useState("+52 1234567890");   // editable
+  // Estados para datos del usuario
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const [showStatusPicker, setShowStatusPicker] = useState(false);
-  const [showShiftsPicker, setShowShiftsPicker] = useState(false);
+  // Estados editables
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [avatar, setAvatar] = useState(null);
+  const [avatarChanged, setAvatarChanged] = useState(false);
 
-  const handleSave = () => {
-    navigation.goBack();
+  // Estados de solo lectura (cargados desde Firestore)
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
+  const [position, setPosition] = useState("");
+  const [experience, setExperience] = useState("");
+
+  // Estados para modal de error/éxito
+  const [showModal, setShowModal] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
+
+  // Cargar datos del usuario al montar
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const user = getCurrentUser();
+      if (!user) {
+        setModalTitle("Error");
+        setModalMessage("No hay sesión activa");
+        setShowModal(true);
+        setLoading(false);
+        return;
+      }
+
+      const userProfile = await getUserProfile(user.uid);
+
+      if (userProfile) {
+        setUserData(userProfile);
+        setName(userProfile.name || "");
+        setPhone(userProfile.phone || "");
+        setPosition(userProfile.position || "");
+        setExperience(userProfile.experience || "");
+        setAvatar(userProfile.avatar || null);
+        setEmail(userProfile.email || "");
+        setRole(userProfile.role || "user");
+      } else {
+        setModalTitle("Error");
+        setModalMessage("No se encontraron datos del usuario");
+        setShowModal(true);
+      }
+    } catch (error) {
+      console.error("Error al cargar datos:", error);
+      setModalTitle("Error");
+      setModalMessage("Error al cargar datos del perfil");
+      setShowModal(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Funcion para subir imagen a Firebase Storage
+  const uploadImageToStorage = async (uri, userId) => {
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      const storageRef = ref(storage, `users/${userId}/profile.jpg`);
+      await uploadBytes(storageRef, blob);
+
+      const downloadURL = await getDownloadURL(storageRef);
+      return downloadURL;
+    } catch (error) {
+      console.error("Error al subir imagen:", error);
+      throw error;
+    }
+  };
+
+  // Funcion para eliminar foto anterior de Storage
+  const deleteOldAvatar = async (userId) => {
+    try {
+      const storageRef = ref(storage, `users/${userId}/profile.jpg`);
+      await deleteObject(storageRef);
+    } catch (error) {
+      // Si no existe la foto, no pasa nada
+      console.log("No había foto anterior o error al eliminar:", error);
+    }
+  };
+
+  //Funcion para guardar cambios
+  const handleSave = async () => {
+    if (!name.trim()) {
+      setModalTitle("Error");
+      setModalMessage("El nombre no puede estar vacío");
+      setShowModal(true);
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const user = getCurrentUser();
+      if (!user) return;
+
+      let avatarURL = avatar;
+
+      // Si se cambió el avatar, subirlo a Storage
+      if (avatarChanged && avatar) {
+        // Eliminar foto anterior si existe
+        if (userData?.avatar) {
+          await deleteOldAvatar(user.uid);
+        }
+
+        // Subir nueva foto
+        avatarURL = await uploadImageToStorage(avatar, user.uid);
+      }
+
+      // Actualizar documento en Firestore usando el servicio
+      await updateUserProfile(user.uid, {
+        name: name.trim(),
+        phone: phone.trim(),
+        avatar: avatarURL,
+      });
+
+      setModalTitle("Éxito");
+      setModalMessage("Perfil actualizado correctamente");
+      setShowModal(true);
+
+      // Regresar después de 2 segundos
+      setTimeout(() => {
+        navigation.goBack();
+      }, 2000);
+    } catch (error) {
+      console.error("Error al guardar:", error);
+      setModalTitle("Error");
+      setModalMessage("Error al actualizar el perfil: " + error.message);
+      setShowModal(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  //Funcion para cancelar cambios y regresar a perfil
   const handleRemove = () => {
     navigation.goBack();
   };
 
-  const changeAvatar = () => {
-};
+  // Funcion para cambiar avatar
+  const changeAvatar = async () => {
+    try {
+      // Pedir permisos
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (status !== "granted") {
+        Alert.alert(
+          "Permisos necesarios",
+          "Se necesitan permisos para acceder a la galería"
+        );
+        return;
+      }
+
+      // Abrir galería
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        setAvatar(result.assets[0].uri);
+        setAvatarChanged(true);
+      }
+    } catch (error) {
+      console.error("Error al seleccionar imagen:", error);
+      setModalTitle("Error");
+      setModalMessage("Error al seleccionar la imagen");
+      setShowModal(true);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView edges={["top", "bottom"]} style={profileStyles.container}>
+        <HeaderScreen
+          title="Editar perfil"
+          leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
+          onLeftPress={() => navigation.goBack()}
+        />
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={{ marginTop: 16, color: COLORS.textGray }}>
+            Cargando datos...
+          </Text>
+        </View>
+        <MenuFooter />
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView edges={["top","bottom"]} style={profileStyles.container}>
+    <SafeAreaView edges={["top", "bottom"]} style={profileStyles.container}>
       <HeaderScreen
         title="Editar perfil"
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
         onLeftPress={() => navigation.goBack()}
       />
 
-      <ScrollView>
-        {/* Parte de perfil*/}
-        <View style={profileStyles.profileCard}>
-          <View style={profileStyles.cardHeader}>
-            <Image source={require("../../../assets/i.png")} style={profileStyles.avatar} />
-            <View style={profileStyles.nameAndRole}>
-              <Text style={profileStyles.cardName}>{name}</Text>
-              <Text style={profileStyles.cardRole}>{role}</Text>
-            </View>
-          </View>
-          
-          <Pressable 
-            onPress={changeAvatar} 
-            style={({pressed}) => [
-              styles.changeImageBtn,
-              pressed && {opacity: 0.5}
-            ]}
-          >
-            <Ionicons name="create-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.changeImageBtnText}>Editar imagen de perfil</Text>
-          </Pressable>
-        </View>
-
-        {/* Informacion de perfil */}
-        <View style={profileStyles.profileCard}>
-          <Text style={profileStyles.sectionTitle}>Información</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nombre completo</Text>
-            <View style={[profileStyles.infoBox, styles.inputBox]}>
-              <Ionicons name="person-outline" size={18} color={COLORS.textGray} />
-              <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Nombre" placeholderTextColor={COLORS.textGray}/>
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Puesto</Text>
-            <View style={[profileStyles.infoBox, styles.inputBoxDisabled]}>
-              <Ionicons name="briefcase-outline" size={18} color={COLORS.textGray} />
-              <TextInput style={styles.inputDisabled} value={role} editable={false}/>
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Experiencia</Text>
-            <View style={[profileStyles.infoBox, styles.inputBoxDisabled]}>
-              <Ionicons name="ribbon-outline" size={18} color={COLORS.textGray} />
-              <TextInput style={styles.inputDisabled} value={experience} editable={false}/>
-            </View>
-          </View>
-        </View>
-
-        {/* Disponibilidad */}
-        <View style={profileStyles.profileCard}>
-          <Text style={profileStyles.sectionTitle}>Disponibilidad de turno</Text>
-
-          <Pressable 
-            style={({pressed}) => [
-              profileStyles.infoBox, 
-              styles.rowNav,
-              pressed && {opacity: 0.5}
-            ]} 
-            onPress={() => setShowStatusPicker(true)}
-          >
-            <View style={styles.rowLeft}>
-              <Ionicons name="pulse-outline" size={18} color={COLORS.textGray} />
-              <View style={styles.rowTextWrap}>
-                <Text style={styles.rowTitle}>Estado</Text>
-                <Text style={styles.rowSubtitle}>{status}</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Parte de perfil*/}
+          <View style={profileStyles.profileCard}>
+            <View style={profileStyles.cardHeader}>
+              {avatar ? (
+                <Image
+                  source={{ uri: avatar }}
+                  style={profileStyles.avatar}
+                />
+              ) : (
+                <View style={[profileStyles.avatar, { backgroundColor: COLORS.lightGray, justifyContent: 'center', alignItems: 'center' }]}>
+                  <Ionicons name="person" size={40} color={COLORS.textGray} />
+                </View>
+              )}
+              <View style={profileStyles.nameAndRole}>
+                <Text style={profileStyles.cardName}>{name || 'Sin nombre'}</Text>
+                <Text style={profileStyles.cardRole}>{position || 'Usuario'}</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textGray} />
-          </Pressable>
 
-          <Pressable 
-            style={({pressed}) => [
-              profileStyles.infoBox, 
-              styles.rowNav,
-              pressed && {opacity: 0.5}
-            ]} 
-            onPress={() => setShowShiftsPicker(true)}
-          >
-            <View style={styles.rowLeft}>
-              <Ionicons name="sunny-outline" size={18} color={COLORS.textGray} />
-              <View style={styles.rowTextWrap}>
-                <Text style={styles.rowTitle}>Turnos preferidos</Text>
-                <Text style={styles.rowSubtitle}>{preferredShifts}</Text>
+            <Pressable
+              onPress={changeAvatar}
+              style={({ pressed }) => [
+                styles.changeImageBtn,
+                pressed && { opacity: 0.5 }
+              ]}
+            >
+              <Ionicons name="create-outline" size={18} color={COLORS.primary} />
+              <Text style={styles.changeImageBtnText}>Editar imagen de perfil</Text>
+            </Pressable>
+          </View>
+
+          {/* Informacion de perfil */}
+          <View style={profileStyles.profileCard}>
+            <Text style={profileStyles.sectionTitle}>Información</Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Nombre completo</Text>
+              <View style={[profileStyles.infoBox, styles.inputBox]}>
+                <Ionicons name="person-outline" size={18} color={COLORS.textGray} />
+                <TextInput
+                  style={styles.input}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Nombre"
+                  placeholderTextColor={COLORS.textGray}
+                  editable={!saving}
+                />
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textGray} />
-          </Pressable>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Horas máximas por semana</Text>
-            <View style={[profileStyles.infoBox, styles.inputBox]}>
-              <Ionicons name="time-outline" size={18} color={COLORS.textGray} />
-              <TextInput style={styles.input} value={maxHours} onChangeText={setMaxHours} keyboardType="number-pad" placeholder="0" placeholderTextColor={COLORS.textGray}/>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Puesto</Text>
+              <View style={[profileStyles.infoBox, styles.inputBoxDisabled]}>
+                <Ionicons name="briefcase-outline" size={18} color={COLORS.textGray} />
+                <TextInput
+                  style={styles.inputDisabled}
+                  value={position || 'No asignado'}
+                  editable={false}
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Experiencia</Text>
+              <View style={[profileStyles.infoBox, styles.inputBoxDisabled]}>
+                <Ionicons name="ribbon-outline" size={18} color={COLORS.textGray} />
+                <TextInput
+                  style={styles.inputDisabled}
+                  value={experience || 'No especificada'}
+                  editable={false}
+                />
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* Contacto */}
-        <View style={profileStyles.profileCard}>
-          <Text style={profileStyles.sectionTitle}>Contacto</Text>
+          {/* Contacto */}
+          <View style={profileStyles.profileCard}>
+            <Text style={profileStyles.sectionTitle}>Contacto</Text>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Correo electrónico</Text>
-            <View style={[profileStyles.infoBox, styles.inputBoxDisabled]}>
-              <Ionicons name="mail-outline" size={18} color={COLORS.textGray} />
-              <TextInput style={styles.inputDisabled} value={email} editable={false} keyboardType="email-address"/>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Correo electrónico</Text>
+              <View style={[profileStyles.infoBox, styles.inputBoxDisabled]}>
+                <Ionicons name="mail-outline" size={18} color={COLORS.textGray} />
+                <TextInput
+                  style={styles.inputDisabled}
+                  value={email}
+                  editable={false}
+                  keyboardType="email-address"
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Teléfono</Text>
+              <View style={[profileStyles.infoBox, styles.inputBox]}>
+                <Ionicons name="call-outline" size={18} color={COLORS.textGray} />
+                <TextInput
+                  style={styles.input}
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="Teléfono"
+                  placeholderTextColor={COLORS.textGray}
+                  keyboardType="phone-pad"
+                  editable={!saving}
+                />
+              </View>
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Teléfono</Text>
-            <View style={[profileStyles.infoBox, styles.inputBox]}>
-              <Ionicons name="call-outline" size={18} color={COLORS.textGray} />
-              <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholderTextColor={COLORS.textGray}/>
-            </View>
+          {/* Guarda y cancela */}
+          <View style={styles.actionsRow}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.saveBtn,
+                pressed && { opacity: 0.8 },
+                saving && { opacity: 0.5 }
+              ]}
+              onPress={handleSave}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color={COLORS.textGreen} />
+              ) : (
+                <Ionicons name="save-outline" size={20} color={COLORS.textGreen} />
+              )}
+              <Text style={styles.saveBtnText}>
+                {saving ? 'Guardando...' : 'Guardar cambios'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.removeBtn,
+                pressed && { opacity: 0.7 },
+                saving && { opacity: 0.5 }
+              ]}
+              onPress={handleRemove}
+              disabled={saving}
+            >
+              <Ionicons name="close-outline" size={18} color={COLORS.error} />
+              <Text style={styles.removeBtnText}>Cancelar</Text>
+            </Pressable>
           </View>
-        </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-        {/* Estado de trabajo */}
-        <View style={profileStyles.profileCard}>
-          <Text style={profileStyles.sectionTitle}>Carga de trabajo</Text>
-
-          <View style={styles.chipsRow}>
-            <View style={styles.chip}>
-              <Ionicons name="calendar-outline" size={14} color={COLORS.textBlack} />
-              <Text style={styles.chipText}>Programado: 4 turnos</Text>
-            </View>
-            <View style={styles.chip}>
-              <Ionicons name="hourglass-outline" size={14} color={COLORS.textBlack} />
-              <Text style={styles.chipText}>Esta semana: 32 h</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Guarda y cancela */}
-        <View style={styles.actionsRow}>
-          <Pressable 
-            style={({pressed}) => [
-              styles.saveBtn,
-              pressed && {opacity: 0.8}
-            ]} 
-            onPress={handleSave}
-          >
-            <Ionicons name="save-outline" size={20} color={COLORS.textGreen} />
-            <Text style={styles.saveBtnText}>Guardar cambios</Text>
-          </Pressable>
-
-          <Pressable 
-            style={({pressed}) => [
-              styles.removeBtn,
-              pressed && {opacity: 0.7}
-            ]} 
-            onPress={handleRemove}
-          >
-            <Ionicons name="trash-outline" size={18} color={COLORS.error} />
-            <Text style={styles.removeBtnText}>Cancelar</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
+      <InfoModal
+        visible={showModal}
+        onClose={() => setShowModal(false)}
+        title={modalTitle}
+        message={modalMessage}
+      />
 
       <MenuFooter />
-
-      {/* Estado de disponibilidad  */}
-      <Modal visible={showStatusPicker} transparent animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Selecciona estado</Text>
-            {STATUS_OPTIONS.map(opt => (
-              <Pressable 
-                key={opt} 
-                style={({pressed}) => [
-                  styles.modalOption,
-                  pressed && {opacity: 0.7}
-                ]} 
-                onPress={() => { setStatus(opt); setShowStatusPicker(false); }}
-              >
-                <Text style={styles.modalOptionText}>{opt}</Text>
-              </Pressable>
-            ))}
-            <Pressable 
-              style={({pressed}) => [
-                styles.modalClose,
-                pressed && {opacity: 0.7}
-              ]} 
-              onPress={() => setShowStatusPicker(false)}
-            >
-              <Text style={styles.modalCloseText}>Cerrar</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Turnos lista */}
-      <Modal visible={showShiftsPicker} transparent animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Turnos preferidos</Text>
-            {SHIFT_OPTIONS.map(opt => (
-              <Pressable 
-                key={opt} 
-                style={({pressed}) => [
-                  styles.modalOption,
-                  pressed && {opacity: 0.7}
-                ]} 
-                onPress={() => { setPreferredShifts(opt); setShowShiftsPicker(false); }}
-              >
-                <Text style={styles.modalOptionText}>{opt}</Text>
-              </Pressable>
-            ))}
-            <Pressable 
-              style={({pressed}) => [
-                styles.modalClose,
-                pressed && {opacity: 0.7}
-              ]} 
-              onPress={() => setShowShiftsPicker(false)}
-            >
-              <Text style={styles.modalCloseText}>Cerrar</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
