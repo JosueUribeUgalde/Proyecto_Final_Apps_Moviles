@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ButtonLogin, InputLogin, HeaderScreen } from "../../components";
 import InfoModal from "../../components/InfoModal";
 // 4. Servicios de Firebase(funciones de autenticación)
-import { loginUser } from '../../services/authService';
+import { loginUser, getUserRole, logoutUser } from '../../services/authService';
 // 5. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
 // 6. Estilos
@@ -22,15 +22,15 @@ export default function Login({ navigation }) {
   // Estados para los inputs
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
+
   // Estados para InfoModal
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalMessage, setModalMessage] = useState('');
-  
+
   // Estado de carga
   const [loading, setLoading] = useState(false);
-  
+
   // Estado para mostrar/ocultar contraseña
   const [showPassword, setShowPassword] = useState(false);
 
@@ -53,19 +53,61 @@ export default function Login({ navigation }) {
 
     setLoading(true);
 
-    // Intentar login con Firebase
-    const result = await loginUser(email, password);
+    try {
+      // 1. Intentar login con Firebase
+      const result = await loginUser(email, password);
 
-    setLoading(false);
+      if (!result.success) {
+        // Mostrar error de autenticación
+        setLoading(false);
+        setModalTitle('Error de Autenticación');
+        setModalMessage(result.message);
+        setShowModal(true);
+        return;
+      }
 
-    // El objeto result devuelve{ success: boolean, message: string and user: credential.user }
-    if (result.success) {
-      // Login exitoso - navegar a Home
-      navigation.navigate('Home');
-    } else {
-      // Mostrar error
-      setModalTitle('Error de Autenticación');
-      setModalMessage(result.message);
+      // 2. Obtener el rol del usuario
+      const roleData = await getUserRole(result.user.uid);
+
+      // 3. Verificar el rol y redirigir
+      if (roleData.role === 'user') {
+        // Usuario normal - redirigir a Home
+        setLoading(false);
+        navigation.navigate('Home');
+
+      } else if (roleData.role === 'admin') {
+        // Administrador - mostrar error y cerrar sesión
+        setLoading(false);
+        setModalTitle('Error de Acceso');
+        setModalMessage('Esta cuenta es de administrador. Por favor, usa el panel de administrador para iniciar sesión.');
+        setShowModal(true);
+        // Cerrar sesión en segundo plano
+        logoutUser().catch(err => console.error('Error al cerrar sesión:', err));
+
+      } else if (roleData.role === 'company') {
+        // Empresa - mostrar error y cerrar sesión
+        setLoading(false);
+        setModalTitle('Error de Acceso');
+        setModalMessage('Esta cuenta es de empresa. Por favor, usa el panel de empresa para iniciar sesión.');
+        setShowModal(true);
+        // Cerrar sesión en segundo plano
+        logoutUser().catch(err => console.error('Error al cerrar sesión:', err));
+
+      } else {
+        // No se encontró rol - cuenta sin perfil
+        setLoading(false);
+        setModalTitle('Error');
+        setModalMessage('Esta cuenta no tiene un perfil válido. Por favor, contacta al soporte.');
+        setShowModal(true);
+        // Cerrar sesión en segundo plano
+        logoutUser().catch(err => console.error('Error al cerrar sesión:', err));
+      }
+
+    } catch (error) {
+      setLoading(false);
+      console.error('Error en handleLogin:', error);
+      setModalTitle('Error');
+      setModalMessage('Ocurrió un error inesperado. Por favor, intenta de nuevo.');
       setShowModal(true);
     }
   };
@@ -81,25 +123,25 @@ export default function Login({ navigation }) {
   // const handleGoogleSignIn = async () => {
   //   try {
   //     console.log('Iniciando Google Sign-In...');
-      
+
   //     // Verificar que Google Play Services esté disponible
   //     await GoogleSignin.hasPlayServices();
   //     console.log('Google Play Services disponible');
-      
+
   //     // Realizar el sign in
   //     const userInfo = await GoogleSignin.signIn();
   //     console.log('User data completa:', JSON.stringify(userInfo, null, 2));
-      
+
   //     // Acceso a los datos del usuario - probando diferentes estructuras
   //     const user = userInfo.user || userInfo.data?.user || userInfo;
   //     console.log('User extraído:', user);
-      
+
   //     if (user && (user.name || user.email)) {
   //       // Mostrar mensaje de éxito
   //       setBannerMessage(`¡Bienvenido ${user.name || user.email}!`);
   //       setBannerType('success');
   //       setShowBanner(true);
-        
+
   //       // Navegar a Home después de un breve delay
   //       setTimeout(() => {
   //         navigation.navigate('Home');
@@ -109,14 +151,14 @@ export default function Login({ navigation }) {
   //       setBannerType('error');
   //       setShowBanner(true);
   //     }
-      
+
   //   } catch (error) {
   //     console.error('Google Sign-In Error completo:', error);
   //     console.error('Error code:', error.code);
   //     console.error('Error message:', error.message);
-      
+
   //     let errorMessage = 'Error al iniciar sesión con Google';
-      
+
   //     if (error.code === statusCodes.SIGN_IN_CANCELLED) {
   //       errorMessage = 'Login cancelado por el usuario';
   //     } else if (error.code === statusCodes.IN_PROGRESS) {
@@ -126,7 +168,7 @@ export default function Login({ navigation }) {
   //     } else if (error.code) {
   //       errorMessage = `Error código: ${error.code}`;
   //     }
-      
+
   //     setBannerMessage(errorMessage);
   //     setBannerType('error');
   //     setShowBanner(true);
@@ -146,13 +188,13 @@ export default function Login({ navigation }) {
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
         onLeftPress={() => navigation.navigate('Welcome')}
       />
-      
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1, width: '100%' }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={{ flexGrow: 1, alignItems: 'center', paddingBottom: 20, width: '100%' }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -172,7 +214,7 @@ export default function Login({ navigation }) {
             <Text style={styles.label}>
               Email
             </Text>
-            <InputLogin 
+            <InputLogin
               msj="ejemplo@correo.com"
               value={email}
               onChangeText={setEmail}
@@ -187,8 +229,8 @@ export default function Login({ navigation }) {
               Password
             </Text>
             <View style={{ position: 'relative', width: '100%' }}>
-              <InputLogin 
-                msj="password" 
+              <InputLogin
+                msj="password"
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
@@ -202,18 +244,18 @@ export default function Login({ navigation }) {
                   padding: 5
                 }}
               >
-                <Ionicons 
-                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                  size={24} 
-                  color={COLORS.textGray} 
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={24}
+                  color={COLORS.textGray}
                 />
               </Pressable>
             </View>
-            <Pressable 
-              onPress={handleForgotPassword} 
-              style={({pressed}) => [
+            <Pressable
+              onPress={handleForgotPassword}
+              style={({ pressed }) => [
                 styles.forgotPasswordContainer,
-                pressed && {opacity: 0.5}
+                pressed && { opacity: 0.5 }
               ]}
             >
               <Text style={styles.forgotPassword}>
@@ -226,13 +268,13 @@ export default function Login({ navigation }) {
             title={loading ? 'Iniciando sesión...' : 'Login'}
             onPress={handleLogin}
             icon={<Ionicons name="log-in-outline" size={24} color="white" />}
-            showBorder={false} 
-            />
+            showBorder={false}
+          />
 
 
 
           <View style={styles.dividerContainer}>
-            
+
             <View style={styles.dividerLine} />
             <Text style={styles.dividerText}>OR</Text>
             <View style={styles.dividerLine} />
@@ -248,15 +290,15 @@ export default function Login({ navigation }) {
               />
             }
             backgroundColor={COLORS.backgroundWhite}
-            textColor={COLORS.textBlack} 
+            textColor={COLORS.textBlack}
             showBorder={false}
           />
-          
+
           <View style={styles.registerContainer}>
             <Text style={styles.registerText}>
               No tienes cuenta?
             </Text>
-            <Pressable 
+            <Pressable
               onPress={handleRegister}
               style={({ pressed }) => pressed && { opacity: 0.5 }}
             >
