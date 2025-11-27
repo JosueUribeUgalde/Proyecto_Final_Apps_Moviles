@@ -1,6 +1,6 @@
 // 1. Paquetes core de React/React Native
-import { useState } from 'react';
-import { Text, View, ScrollView, Pressable, Modal, FlatList } from "react-native";
+import { useState, useEffect } from 'react';
+import { Text, View, ScrollView, Pressable, Modal, FlatList, ActivityIndicator } from "react-native";
 // 2. Bibliotecas de terceros
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
@@ -8,24 +8,25 @@ import { Ionicons } from '@expo/vector-icons';
 import { HeaderScreen, MenuFooterAdmin, ButtonRequest } from "../../components";
 // 4. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
-// 5. Estilos
+// 5. Servicios de Firebase
+import { getCurrentUser } from "../../services/authService";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "../../config/firebaseConfig";
+// 6. Estilos
 import styles from "../../styles/screens/admin/DashboardAdminStyles";
 import CalendarAdminStyles from "../../styles/screens/admin/CalendarAdminStyles";
 
 export default function DashboardAdmin({ navigation }) {
+  // Estados para carga de datos
+  const [loading, setLoading] = useState(true);
+  const [adminData, setAdminData] = useState(null);
+
   // Estado para el selector de grupos
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showGroupSelectModal, setShowGroupSelectModal] = useState(false);
 
-  // Mock data para grupos
-  const MOCK_GROUPS = [
-    { id: 1, name: 'Recepción', memberCount: 12 },
-    { id: 2, name: 'Cocina', memberCount: 8 },
-    { id: 3, name: 'Turno Nocturno', memberCount: 5 },
-    { id: 4, name: 'Limpieza', memberCount: 15 },
-  ];
-
-  const [groups] = useState(MOCK_GROUPS);
+  // Estado para grupos del administrador (cargados desde Firebase)
+  const [groups, setGroups] = useState([]);
 
   // Estado para las solicitudes de ausencia (mockup data)
   const [requests, setRequests] = useState([
@@ -52,6 +53,72 @@ export default function DashboardAdmin({ navigation }) {
     }
   ]);
 
+  // Cargar datos del admin al montar el componente
+  useEffect(() => {
+    loadAdminData();
+  }, []);
+
+  // Función para cargar datos del administrador y sus grupos
+  const loadAdminData = async () => {
+    try {
+      const user = getCurrentUser();
+      if (!user) {
+        console.error("No hay sesión activa");
+        setLoading(false);
+        return;
+      }
+
+      // Obtener datos del administrador
+      const adminDoc = await getDoc(doc(db, "admins", user.uid));
+
+      if (adminDoc.exists()) {
+        const data = adminDoc.data();
+        setAdminData(data);
+
+        // Cargar grupos del administrador
+        if (data.groupIds && data.groupIds.length > 0) {
+          await loadAdminGroups(data.groupIds);
+        } else {
+          // Si no tiene grupos asignados, dejar el array vacío
+          setGroups([]);
+        }
+      } else {
+        console.error("No se encontraron datos del administrador");
+      }
+    } catch (error) {
+      console.error("Error al cargar datos:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para cargar los grupos del administrador desde Firestore
+  const loadAdminGroups = async (groupIds) => {
+    try {
+      if (!groupIds || groupIds.length === 0) {
+        setGroups([]);
+        return;
+      }
+
+      // Obtener los documentos de los grupos
+      const groupsData = [];
+      for (const groupId of groupIds) {
+        const groupDoc = await getDoc(doc(db, "groups", groupId));
+        if (groupDoc.exists()) {
+          groupsData.push({
+            id: groupDoc.id,
+            ...groupDoc.data()
+          });
+        }
+      }
+
+      setGroups(groupsData);
+    } catch (error) {
+      console.error("Error al cargar grupos:", error);
+      setGroups([]);
+    }
+  };
+
   const handleApprove = (id) => {
     // TODO: Implementar lógica de aprobación con Firebase
     setRequests(requests.map(req =>
@@ -72,7 +139,7 @@ export default function DashboardAdmin({ navigation }) {
   };
 
   const getStatusStyle = (status) => {
-    switch(status) {
+    switch (status) {
       case 'Pendiente':
         return styles.statusPending;
       case 'Aprobado':
@@ -90,12 +157,34 @@ export default function DashboardAdmin({ navigation }) {
     // Aquí se cargarán los datos específicos del grupo desde Firebase
   };
 
+  // Pantalla de carga mientras se obtienen los datos
+  if (loading) {
+    return (
+      <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
+        <HeaderScreen
+          title="Admin Dashboard"
+          rightIcon={<Ionicons name="notifications-outline" size={24} color={COLORS.textBlack} />}
+          onRightPress={() => { }}
+        />
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={{ marginTop: 16, color: COLORS.textGray }}>
+            Cargando datos...
+          </Text>
+        </View>
+        <View style={styles.footerContainer}>
+          <MenuFooterAdmin />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
       <HeaderScreen
         title="Admin Dashboard"
         rightIcon={<Ionicons name="notifications-outline" size={24} color={COLORS.textBlack} />}
-        onRightPress={() => {}}
+        onRightPress={() => { }}
       />
 
       <ScrollView
@@ -106,9 +195,9 @@ export default function DashboardAdmin({ navigation }) {
         <View style={CalendarAdminStyles.groupSelectorContainer}>
           <Text style={CalendarAdminStyles.groupSelectorTitle}>Selecciona un grupo</Text>
           <Pressable
-            style={({pressed}) => [
+            style={({ pressed }) => [
               CalendarAdminStyles.groupSelectorButton,
-              pressed && {opacity: 0.7}
+              pressed && { opacity: 0.7 }
             ]}
             onPress={() => setShowGroupSelectModal(true)}
           >
@@ -127,95 +216,95 @@ export default function DashboardAdmin({ navigation }) {
           <>
             {/* Métricas principales */}
             <View style={styles.metricsContainer}>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>Total de Miembros</Text>
-            <Text style={styles.metricValue}>128</Text>
-            <Text style={styles.metricSub}>+6 esta semana</Text>
-          </View>
-
-          <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>Turnos Activos</Text>
-            <Text style={styles.metricValue}>23</Text>
-            <Text style={styles.metricSub}>En 5 equipos</Text>
-          </View>
-        </View>
-
-        <View style={styles.metricsContainer}>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>Solicitudes de Ausencia Pendientes</Text>
-            <Text style={styles.metricValue}>23</Text>
-            <Text style={styles.metricSub}>Esperando revisión</Text>
-          </View>
-
-          <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>Reemplazos Abiertos</Text>
-            <Text style={styles.metricValue}>4</Text>
-            <Text style={styles.metricSub}>Todos en progreso</Text>
-          </View>
-        </View>
-
-        {/* Sección de solicitudes */}
-        <View style={styles.requestsSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Solicitudes de Ausencia y Permisos</Text>
-          </View>
-
-          {/* Lista de solicitudes */}
-          {requests.map((request) => (
-            <View key={request.id} style={styles.requestCard}>
-              <View style={styles.requestHeader}>
-                <Text style={styles.requestName}>{request.name}</Text>
-                <View style={getStatusStyle(request.status)}>
-                  <Text style={[
-                    styles.statusText,
-                    request.status === 'Pendiente' && styles.statusPendingText,
-                    request.status === 'Aprobado' && styles.statusApprovedText,
-                    request.status === 'Rechazado' && styles.statusRejectedText,
-                  ]}>
-                    {request.status}
-                  </Text>
-                </View>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricLabel}>Total de Miembros</Text>
+                <Text style={styles.metricValue}>128</Text>
+                <Text style={styles.metricSub}>+6 esta semana</Text>
               </View>
 
-              <View style={styles.requestDetails}>
-                <View style={styles.detailRow}>
-                  <Ionicons name="time-outline" size={16} color={COLORS.textGray} />
-                  <Text style={styles.detailText}>{request.date}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Ionicons name="information-circle-outline" size={16} color={COLORS.textGray} />
-                  <Text style={styles.detailText}>Motivo: {request.reason}</Text>
-                </View>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricLabel}>Turnos Activos</Text>
+                <Text style={styles.metricValue}>23</Text>
+                <Text style={styles.metricSub}>En 5 equipos</Text>
               </View>
-
-              {request.status === 'Pendiente' && (
-                <View style={styles.actionButtons}>
-                  <ButtonRequest
-                    title="Aprobar"
-                    icon="checkmark-circle-outline"
-                    iconColor={COLORS.textGreen}
-                    textColor={COLORS.textGreen}
-                    backgroundColor={COLORS.backgroundBS}
-                    borderColor={COLORS.borderSecondary}
-                    onPress={() => handleApprove(request.id)}
-                    style={{ flex: 1 }}
-                  />
-
-                  <ButtonRequest
-                    title="Rechazar"
-                    icon="close-circle-outline"
-                    iconColor={COLORS.textRed}
-                    textColor={COLORS.textRed}
-                    backgroundColor={COLORS.backgroundWhite}
-                    borderColor={COLORS.borderSecondary}
-                    onPress={() => handleReject(request.id)}
-                    style={{ flex: 1 }}
-                  />
-                </View>
-              )}
             </View>
-          ))}
-        </View>
+
+            <View style={styles.metricsContainer}>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricLabel}>Solicitudes de Ausencia Pendientes</Text>
+                <Text style={styles.metricValue}>23</Text>
+                <Text style={styles.metricSub}>Esperando revisión</Text>
+              </View>
+
+              <View style={styles.metricCard}>
+                <Text style={styles.metricLabel}>Reemplazos Abiertos</Text>
+                <Text style={styles.metricValue}>4</Text>
+                <Text style={styles.metricSub}>Todos en progreso</Text>
+              </View>
+            </View>
+
+            {/* Sección de solicitudes */}
+            <View style={styles.requestsSection}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Solicitudes de Ausencia y Permisos</Text>
+              </View>
+
+              {/* Lista de solicitudes */}
+              {requests.map((request) => (
+                <View key={request.id} style={styles.requestCard}>
+                  <View style={styles.requestHeader}>
+                    <Text style={styles.requestName}>{request.name}</Text>
+                    <View style={getStatusStyle(request.status)}>
+                      <Text style={[
+                        styles.statusText,
+                        request.status === 'Pendiente' && styles.statusPendingText,
+                        request.status === 'Aprobado' && styles.statusApprovedText,
+                        request.status === 'Rechazado' && styles.statusRejectedText,
+                      ]}>
+                        {request.status}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.requestDetails}>
+                    <View style={styles.detailRow}>
+                      <Ionicons name="time-outline" size={16} color={COLORS.textGray} />
+                      <Text style={styles.detailText}>{request.date}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Ionicons name="information-circle-outline" size={16} color={COLORS.textGray} />
+                      <Text style={styles.detailText}>Motivo: {request.reason}</Text>
+                    </View>
+                  </View>
+
+                  {request.status === 'Pendiente' && (
+                    <View style={styles.actionButtons}>
+                      <ButtonRequest
+                        title="Aprobar"
+                        icon="checkmark-circle-outline"
+                        iconColor={COLORS.textGreen}
+                        textColor={COLORS.textGreen}
+                        backgroundColor={COLORS.backgroundBS}
+                        borderColor={COLORS.borderSecondary}
+                        onPress={() => handleApprove(request.id)}
+                        style={{ flex: 1 }}
+                      />
+
+                      <ButtonRequest
+                        title="Rechazar"
+                        icon="close-circle-outline"
+                        iconColor={COLORS.textRed}
+                        textColor={COLORS.textRed}
+                        backgroundColor={COLORS.backgroundWhite}
+                        borderColor={COLORS.borderSecondary}
+                        onPress={() => handleReject(request.id)}
+                        style={{ flex: 1 }}
+                      />
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
           </>
         ) : (
           <View style={CalendarAdminStyles.noGroupSelected}>
@@ -251,10 +340,10 @@ export default function DashboardAdmin({ navigation }) {
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item: group }) => (
                 <Pressable
-                  style={({pressed}) => [
+                  style={({ pressed }) => [
                     CalendarAdminStyles.groupItem,
                     selectedGroup?.id === group.id && CalendarAdminStyles.groupItemSelected,
-                    pressed && {opacity: 0.7}
+                    pressed && { opacity: 0.7 }
                   ]}
                   onPress={() => handleGroupSelect(group)}
                 >
@@ -269,6 +358,19 @@ export default function DashboardAdmin({ navigation }) {
                     <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />
                   )}
                 </Pressable>
+              )}
+              ListEmptyComponent={() => (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <Ionicons name="folder-open-outline" size={48} color={COLORS.textGray} />
+                  <Text style={{
+                    marginTop: 12,
+                    fontSize: 16,
+                    color: COLORS.textGray,
+                    textAlign: 'center'
+                  }}>
+                    No tienes grupos asignados
+                  </Text>
+                </View>
               )}
               ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
               showsVerticalScrollIndicator={false}
