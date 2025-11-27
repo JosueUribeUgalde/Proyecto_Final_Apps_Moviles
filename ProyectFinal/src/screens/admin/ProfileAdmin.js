@@ -1,9 +1,9 @@
 // Libreria para uso de estados
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 // Libreria de navegacion de React Native
 import { SafeAreaView } from "react-native-safe-area-context";
 // Componentes y utilidades de React Native
-import { View, Text, Image, ScrollView, Pressable, Switch, Modal } from 'react-native';
+import { View, Text, Image, ScrollView, Pressable, Switch, Modal, ActivityIndicator } from 'react-native';
 // Importacion de componentes propios
 import HeaderScreen from "../../components/HeaderScreen";
 import MenuFooterAdmin from "../../components/MenuFooterAdmin";
@@ -15,12 +15,75 @@ import { Ionicons } from '@expo/vector-icons';
 // Importacion de constantes
 import { COLORS } from '../../components/constants/theme';
 // Importacion de libreria de navegacion
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 // Importacion de servicio de autenticacion
-import { logoutUser } from '../../services/authService';
+import { logoutUser, getCurrentUser } from '../../services/authService';
+// Importacion de Firestore
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from '../../config/firebaseConfig';
 
 export default function ProfileAdmin() {
   const navigation = useNavigation();
+  
+  // Estados para datos del admin
+  const [adminData, setAdminData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  // estado simple para el Switch
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  // estado y datos para el modal de seleccion de region
+  const [isRegionModalVisible, setIsRegionModalVisible] = useState(false);
+  // Estados para InfoModal de error
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [selectedRegion, setSelectedRegion] = useState({
+    name: "México",
+    code: "MX"
+  });
+
+  // Cargar datos del admin al montar el componente y cada vez que la pantalla recibe foco
+  useFocusEffect(
+    React.useCallback(() => {
+      loadAdminData();
+    }, [])
+  );
+
+  const loadAdminData = async () => {
+    try {
+      const user = getCurrentUser();
+      if (!user) {
+        setErrorMessage('No hay sesión activa');
+        setShowErrorModal(true);
+        setLoading(false);
+        return;
+      }
+
+      const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+      
+      if (adminDoc.exists()) {
+        const data = adminDoc.data();
+        setAdminData(data);
+        
+        // Actualizar preferencias y región desde los datos
+        if (data.preferences?.notificationsEnabled !== undefined) {
+          setNotificationsEnabled(data.preferences.notificationsEnabled);
+        }
+        
+        if (data.region) {
+          setSelectedRegion(data.region);
+        }
+      } else {
+        setErrorMessage('No se encontraron datos del administrador');
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error('Error al cargar datos del admin:', error);
+      setErrorMessage('Error al cargar datos del perfil');
+      setShowErrorModal(true);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Funcion para cerrar sesion con Firebase
   const handleLogout = async () => {
@@ -43,24 +106,34 @@ export default function ProfileAdmin() {
     navigation.navigate('EditProfileAdmin');
   };
 
-  // Datos de usuario (mock data)
-  const [name]= useState("Juan Carlos Administrador");
-  const [email] = useState("admin@empresa.com");
-  const [phone] = useState("+52 9876543210");
-  const [role] = useState("Administrador General");
-  const [user] = useState("Administrador");
+  // Función para actualizar notificaciones en Firestore
+  const handleToggleNotifications = async (newValue) => {
+    setNotificationsEnabled(newValue);
+    
+    try {
+      const user = getCurrentUser();
+      if (!user) return;
 
-  // estado simple para el Switch
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  // estado y datos para el modal de seleccion de region
-  const [isRegionModalVisible, setIsRegionModalVisible] = useState(false);
-  // Estados para InfoModal de error
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [selectedRegion, setSelectedRegion] = useState({
-    name: "México",
-    code: "MX"
-  });
+      await updateDoc(doc(db, 'admins', user.uid), {
+        'preferences.notificationsEnabled': newValue
+      });
+      
+      // Actualizar también el estado local
+      setAdminData(prev => ({
+        ...prev,
+        preferences: {
+          ...prev?.preferences,
+          notificationsEnabled: newValue
+        }
+      }));
+    } catch (error) {
+      console.error('Error al actualizar notificaciones:', error);
+      // Revertir el cambio si falla
+      setNotificationsEnabled(!newValue);
+      setErrorMessage('Error al actualizar preferencias de notificaciones');
+      setShowErrorModal(true);
+    }
+  };
 
   const regions = [
     { name: "México", code: "MX" },
@@ -68,10 +141,52 @@ export default function ProfileAdmin() {
   ];
 
   // Funcion para seleccionar region en el modal
-  const handleRegionSelect = (region) => {
+  const handleRegionSelect = async (region) => {
     setSelectedRegion(region);
     setIsRegionModalVisible(false);
+    
+    try {
+      const user = getCurrentUser();
+      if (!user) return;
+
+      await updateDoc(doc(db, 'admins', user.uid), {
+        region: {
+          code: region.code,
+          name: region.name
+        }
+      });
+      
+      // Actualizar también el estado local
+      setAdminData(prev => ({
+        ...prev,
+        region: {
+          code: region.code,
+          name: region.name
+        }
+      }));
+    } catch (error) {
+      console.error('Error al actualizar región:', error);
+      setErrorMessage('Error al actualizar región');
+      setShowErrorModal(true);
+    }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <HeaderScreen
+          title="Perfil Administrador"
+          leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
+          onLeftPress={() => navigation.goBack()}
+        />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={{ marginTop: 16, color: COLORS.textGray }}>Cargando perfil...</Text>
+        </View>
+        <MenuFooterAdmin />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -87,14 +202,20 @@ export default function ProfileAdmin() {
         {/* Primer card de perfil */}
         <View style={styles.profileCard}>
           <View style={styles.cardHeader}>
-            <Image
-              source={require('../../../assets/i.png')}
-              style={styles.avatar}
-            />
+            {adminData?.photo ? (
+              <Image
+                source={{ uri: adminData.photo }}
+                style={styles.avatar}
+              />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: COLORS.lightGray, justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="person" size={40} color={COLORS.textGray} />
+              </View>
+            )}
 
             <View style={styles.nameAndRole}>
-              <Text style={styles.cardName}>{name}</Text>
-              <Text style={styles.cardRole}>{role}</Text>
+              <Text style={styles.cardName}>{adminData?.name || 'Sin nombre'}</Text>
+              <Text style={styles.cardRole}>{adminData?.position || 'Administrador'}</Text>
             </View>
 
             <Pressable 
@@ -113,19 +234,19 @@ export default function ProfileAdmin() {
           <View style={styles.badgeRow}>
             <View style={styles.badge}>
               <Ionicons name="shield-checkmark-outline" size={16} color={COLORS.textBlack} />
-              <Text style={styles.badgeText}>{user}</Text>
+              <Text style={styles.badgeText}>{adminData?.role || 'Admin'}</Text>
             </View>
           </View>
 
           {/* Cajas de email y teléfono */}
           <View style={styles.infoBox}>
             <Ionicons name="mail-outline" size={20} color={COLORS.textGray} />
-            <Text style={styles.infoText}>{email}</Text>
+            <Text style={styles.infoText}>{adminData?.email || 'Sin email'}</Text>
           </View>
 
           <View style={styles.infoBox}>
             <Ionicons name="call-outline" size={20} color={COLORS.textGray} />
-            <Text style={styles.infoText}>{phone}</Text>
+            <Text style={styles.infoText}>{adminData?.phone || 'Sin teléfono'}</Text>
           </View>
         </View>
 
@@ -139,7 +260,7 @@ export default function ProfileAdmin() {
               styles.preferenceItem,
               pressed && {opacity: 0.7}
             ]}
-            onPress={() => setNotificationsEnabled(v => !v)}
+            onPress={() => handleToggleNotifications(!notificationsEnabled)}
           >
             <View style={styles.preferenceLeft}>
               <Ionicons name="notifications-outline" size={24} color={COLORS.primary} />
@@ -152,7 +273,7 @@ export default function ProfileAdmin() {
             <View style={styles.toggleContainer}>
               <Switch
                 value={notificationsEnabled}
-                onValueChange={setNotificationsEnabled}
+                onValueChange={handleToggleNotifications}
                 trackColor={{ false: TOGGLE_COLORS.off, true: TOGGLE_COLORS.on }}
                 thumbColor={TOGGLE_COLORS.thumb}
                 ios_backgroundColor={TOGGLE_COLORS.off}
@@ -172,7 +293,9 @@ export default function ProfileAdmin() {
               <Ionicons name="globe-outline" size={24} color={COLORS.primary} />
               <View style={styles.preferenceTextContainer}>
                 <Text style={styles.preferenceTitle}>Región y hora</Text>
-                <Text style={styles.preferenceSubtitle}>{selectedRegion.name} ({selectedRegion.code})</Text>
+                <Text style={styles.preferenceSubtitle}>
+                  {selectedRegion?.name || 'México'} ({selectedRegion?.code || 'MX'})
+                </Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textGray} />
