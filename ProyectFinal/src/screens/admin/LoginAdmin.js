@@ -8,27 +8,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { ButtonLogin, InputLogin, HeaderScreen } from "../../components";
 import InfoModal from "../../components/InfoModal";
 // 4. Servicios de Firebase(funciones de autenticación)
-import { loginUser, isAdminEmail } from '../../services/authService';
+import { loginUser, getUserRole, logoutUser } from '../../services/authService';
 // 5. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
 // 6. Estilos
 import styles from "../../styles/screens/admin/LoginAdminStyles";
 // 7. Archivos estáticos
-import LogoSF from '../../../assets/LogoTM.png'; 
+import LogoSF from '../../../assets/LogoTM.png';
 
 export default function LoginAdmin({ navigation }) {
   // Estados para los inputs
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
+
   // Estados para el modal
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalMessage, setModalMessage] = useState('');
-  
+
   // Estado de carga
   const [loading, setLoading] = useState(false);
-  
+
   // Estado para mostrar/ocultar contraseña
   const [showPassword, setShowPassword] = useState(false);
 
@@ -41,29 +41,63 @@ export default function LoginAdmin({ navigation }) {
       return;
     }
 
-    // ESTA ES LA FUNCION TEST - Josue owner
-    // if (!isAdminEmail(email)) {
-    //   setModalTitle('Acceso Denegado');
-    //   setModalMessage('Este correo no tiene permisos de administrador');
-    //   setShowModal(true);
-    //   return;
-    // }
-
     setLoading(true);
 
-    // Intentar login con Firebase
-    const result = await loginUser(email, password);
+    try {
+      // 1. Intentar login con Firebase
+      const result = await loginUser(email, password);
 
-    setLoading(false);
+      if (!result.success) {
+        // Mostrar error de autenticación
+        setLoading(false);
+        setModalTitle('Error de Autenticación');
+        setModalMessage(result.message);
+        setShowModal(true);
+        return;
+      }
 
-    // El objeto result devuelve{ success: boolean, message: string and user: credential.user }
-    if (result.success) {
-      // Login exitoso - navegar a dashboard
-      navigation.navigate('DashboardAdmin');
-    } else {
-      // Mostrar error
-      setModalTitle('Error de Autenticación');
-      setModalMessage(result.message);
+      // 2. Obtener el rol del usuario
+      const roleData = await getUserRole(result.user.uid);
+
+      // 3. Verificar el rol y redirigir
+      if (roleData.role === 'admin') {
+        // Administrador - redirigir a Dashboard
+        setLoading(false);
+        navigation.navigate('DashboardAdmin');
+
+      } else if (roleData.role === 'user') {
+        // Usuario normal - mostrar error y cerrar sesión
+        setLoading(false);
+        setModalTitle('Error de Acceso');
+        setModalMessage('Esta cuenta es de usuario. Por favor, usa el panel de usuario para iniciar sesión.');
+        setShowModal(true);
+        // Cerrar sesión en segundo plano
+        logoutUser().catch(err => console.error('Error al cerrar sesión:', err));
+
+      } else if (roleData.role === 'company') {
+        // Empresa - mostrar error y cerrar sesión
+        setLoading(false);
+        setModalTitle('Error de Acceso');
+        setModalMessage('Esta cuenta es de empresa. Por favor, usa el panel de empresa para iniciar sesión.');
+        setShowModal(true);
+        // Cerrar sesión en segundo plano
+        logoutUser().catch(err => console.error('Error al cerrar sesión:', err));
+
+      } else {
+        // No se encontró rol - cuenta sin perfil
+        setLoading(false);
+        setModalTitle('Error');
+        setModalMessage('Esta cuenta no tiene un perfil válido. Por favor, contacta al soporte.');
+        setShowModal(true);
+        // Cerrar sesión en segundo plano
+        logoutUser().catch(err => console.error('Error al cerrar sesión:', err));
+      }
+
+    } catch (error) {
+      setLoading(false);
+      console.error('Error en handleLogin:', error);
+      setModalTitle('Error');
+      setModalMessage('Ocurrió un error inesperado. Por favor, intenta de nuevo.');
       setShowModal(true);
     }
   };
@@ -85,13 +119,13 @@ export default function LoginAdmin({ navigation }) {
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
         onLeftPress={() => navigation.navigate('Welcome')}
       />
-      
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1, width: '100%' }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={{ flexGrow: 1, alignItems: 'center', paddingBottom: 20, width: '100%' }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -105,7 +139,7 @@ export default function LoginAdmin({ navigation }) {
           {/* Grupo Email */}
           <View style={styles.group}>
             <Text style={styles.label}>Email</Text>
-            <InputLogin 
+            <InputLogin
               msj="admin@correo.com"
               value={email}
               onChangeText={setEmail}
@@ -118,8 +152,8 @@ export default function LoginAdmin({ navigation }) {
           <View style={styles.group}>
             <Text style={styles.label}>Password</Text>
             <View style={{ position: 'relative', width: '100%' }}>
-              <InputLogin 
-                msj="password" 
+              <InputLogin
+                msj="password"
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
@@ -133,18 +167,18 @@ export default function LoginAdmin({ navigation }) {
                   padding: 5
                 }}
               >
-                <Ionicons 
-                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                  size={24} 
-                  color={COLORS.textGray} 
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={24}
+                  color={COLORS.textGray}
                 />
               </Pressable>
             </View>
-            <Pressable 
+            <Pressable
               onPress={handleForgotPassword}
-              style={({pressed}) => [
+              style={({ pressed }) => [
                 styles.forgotPasswordContainer,
-                pressed && {opacity: 0.5}
+                pressed && { opacity: 0.5 }
               ]}
             >
               <Text style={styles.forgotPassword}>
@@ -167,7 +201,7 @@ export default function LoginAdmin({ navigation }) {
           </View>
 
           {/* Botón de información sobre cuentas de administrador */}
-          <Pressable 
+          <Pressable
             onPress={handleShowAccountInfo}
             style={({ pressed }) => [
               styles.infoButtonContainer,

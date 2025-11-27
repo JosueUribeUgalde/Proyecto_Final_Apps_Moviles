@@ -74,4 +74,18 @@ export default StyleSheet.create({
     color: COLORS.textGreen,
     marginLeft: 5,
   },
+  // Contenedor de errores de validación
+  errorsContainer: {
+    marginTop: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: "#ffebee",
+    borderRadius: 4,
+  },
+  // Texto de error (rojo)
+  errorText: {
+    color: "#c62828",
+    fontSize: 12,
+    marginTop: 4,
+  },
 });

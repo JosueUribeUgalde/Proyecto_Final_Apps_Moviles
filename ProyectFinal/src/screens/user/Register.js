@@ -1,190 +1,326 @@
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { 
-    View, 
-    Text, 
-    Image, 
-    KeyboardAvoidingView, 
+import {
+    View,
+    Text,
+    Image,
+    KeyboardAvoidingView,
     Platform,
     ScrollView,
-    Pressable
+    Pressable,
+    ActivityIndicator
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from '@expo/vector-icons';
 import HeaderScreen from "../../components/HeaderScreen";
 import InputLogin from "../../components/InputLogin";
 import ButtonLogin from "../../components/ButtonLogin";
-import InfoModal from "../../components/InfoModal";
 import { COLORS } from "../../components/constants/theme";
-// 5. Estilos
+// Servicios de Firebase
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../../config/firebaseConfig";
+import { createUserProfile } from "../../services/userService";
+// Estilos
 import styles from "../../styles/screens/user/RegisterStyles";
 
 export default function Register() {
     const navigation = useNavigation();
-    const [showModal, setShowModal] = useState(false);
-    const [modalTitle, setModalTitle] = useState('');
-    const [modalMessage, setModalMessage] = useState('');
-    
+    const [loading, setLoading] = useState(false);
+
     const [nombre, setNombre] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    
+
     // Estados para mostrar/ocultar contraseñas
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const handleRegister = () => {
-        // Validar que todos los campos estén llenos
-        if (!nombre.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
-            setModalTitle('Error');
-            setModalMessage('Por favor, completa todos los campos');
-            setShowModal(true);
-            return;
+    // Estado para errores de validación
+    const [validationErrors, setValidationErrors] = useState({});
+    const [passwordErrors, setPasswordErrors] = useState([]);
+
+    // Función para validar contraseña
+    const validatePassword = (password) => {
+        const errors = [];
+
+        if (password.length < 8) {
+            errors.push('Mínimo 8 caracteres');
+        }
+        if (!/[A-Z]/.test(password)) {
+            errors.push('Al menos una mayúscula');
+        }
+        if (!/[0-9]/.test(password)) {
+            errors.push('Al menos un número');
+        }
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+            errors.push('Al menos un carácter especial');
         }
 
-        // Validar formato de email
+        return errors;
+    };
+
+    // Validar formulario
+    const validateForm = () => {
+        const newErrors = {};
+
+        // Validar nombre
+        if (!nombre.trim() || nombre.trim().length < 3) {
+            newErrors.nombre = 'Nombre inválido (mínimo 3 caracteres)';
+        }
+
+        // Validar email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            setModalTitle('Error');
-            setModalMessage('Por favor, ingresa un correo electrónico válido');
-            setShowModal(true);
-            return;
+        if (!email.trim() || !emailRegex.test(email)) {
+            newErrors.email = 'Email inválido (ej: usuario@correo.com)';
         }
 
-        // Validar que las contraseñas coincidan
+        // Validar contraseñas
+        const passErrors = validatePassword(password);
         if (password !== confirmPassword) {
-            setModalTitle('Error');
-            setModalMessage('Las contraseñas no coinciden');
-            setShowModal(true);
+            passErrors.push('Las contraseñas no coinciden');
+        }
+        if (passErrors.length > 0) {
+            newErrors.password = passErrors;
+        }
+
+        setValidationErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleRegister = async () => {
+        // Validar formulario
+        if (!validateForm()) {
             return;
         }
 
-        // Validar longitud mínima de contraseña
-        if (password.length < 6) {
-            setModalTitle('Error');
-            setModalMessage('La contraseña debe tener al menos 6 caracteres');
-            setShowModal(true);
-            return;
-        }
+        setLoading(true);
 
-        // Si todas las validaciones pasan, mostrar éxito y redirigir
-        setModalTitle('Éxito');
-        setModalMessage('Cuenta creada exitosamente');
-        setShowModal(true);
-        
-        // Redirigir a Login después de cerrar el modal
-        setTimeout(() => {
-            setShowModal(false);
-            navigation.navigate('Login');
-        }, 2000);
+        try {
+            // 1. Crear usuario en Firebase Authentication
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            // 2. Crear perfil del usuario en Firestore
+            await createUserProfile(user.uid, {
+                name: nombre,
+                email: email,
+                phone: ""
+            });
+
+            // Limpiar campos
+            setNombre('');
+            setEmail('');
+            setPassword('');
+            setConfirmPassword('');
+            setValidationErrors({});
+            setPasswordErrors([]);
+
+            // Redirigir a Login después de 1 segundo
+            setTimeout(() => {
+                setLoading(false);
+                navigation.navigate('Login');
+            }, 1000);
+
+        } catch (error) {
+            setLoading(false);
+
+            // Manejar errores específicos de Firebase
+            const newErrors = {};
+
+            if (error.code === 'auth/email-already-in-use') {
+                newErrors.email = 'Este correo electrónico ya está registrado';
+            } else if (error.code === 'auth/invalid-email') {
+                newErrors.email = 'El correo electrónico no es válido';
+            } else if (error.code === 'auth/weak-password') {
+                newErrors.password = ['La contraseña es muy débil'];
+            } else if (error.code === 'auth/network-request-failed') {
+                newErrors.general = 'Error de conexión. Verifica tu internet';
+            } else {
+                newErrors.general = 'Ocurrió un error al crear la cuenta';
+            }
+
+            setValidationErrors(newErrors);
+        }
     };
 
     return (
         <SafeAreaView style={styles.container}>
-            <KeyboardAvoidingView 
+            <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={{ flex: 1, width: '100%' }}
                 keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
             >
-                <HeaderScreen 
+                <HeaderScreen
                     title="Registrarse"
                     leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
                     onLeftPress={() => navigation.goBack()}
                 />
-                
-                <ScrollView 
+
+                <ScrollView
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                     style={{ width: '100%' }}
                 >
-                        {/* Marca con crear cuenta */}
-                        <View style={styles.welcomeContainer}>
-                            <Image
-                                source={require('../../../assets/LogoTM.png')}
-                                style={styles.logoImage}
+                    {/* Marca con crear cuenta */}
+                    <View style={styles.welcomeContainer}>
+                        <Image
+                            source={require('../../../assets/LogoTM.png')}
+                            style={styles.logoImage}
+                        />
+                        <Text style={styles.welcomeText}>Crear cuenta</Text>
+                    </View>
+
+                    {/* Formulario */}
+                    <View style={styles.group}>
+                        <Text style={styles.label}>Nombre Completo</Text>
+                        <InputLogin
+                            msj="Tu nombre"
+                            value={nombre}
+                            onChangeText={(text) => {
+                                setNombre(text);
+                                // Limpiar error al escribir
+                                if (validationErrors.nombre) {
+                                    setValidationErrors(prev => ({ ...prev, nombre: undefined }));
+                                }
+                            }}
+                            editable={!loading}
+                        />
+                        {validationErrors.nombre && (
+                            <Text style={styles.errorText}>{validationErrors.nombre}</Text>
+                        )}
+                    </View>
+
+                    <View style={styles.group}>
+                        <Text style={styles.label}>Correo Electrónico</Text>
+                        <InputLogin
+                            msj="tu@correo.com"
+                            value={email}
+                            onChangeText={(text) => {
+                                setEmail(text);
+                                // Limpiar error al escribir
+                                if (validationErrors.email) {
+                                    setValidationErrors(prev => ({ ...prev, email: undefined }));
+                                }
+                            }}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            editable={!loading}
+                        />
+                        {validationErrors.email && (
+                            <Text style={styles.errorText}>{validationErrors.email}</Text>
+                        )}
+                    </View>
+
+                    <View style={styles.group}>
+                        <Text style={styles.label}>Contraseña</Text>
+                        <View style={{ position: 'relative', width: '100%' }}>
+                            <InputLogin
+                                msj="Mínimo 8 caracteres"
+                                secureTextEntry={!showPassword}
+                                value={password}
+                                onChangeText={(text) => {
+                                    setPassword(text);
+                                    setPasswordErrors(validatePassword(text));
+                                    // Limpiar error al escribir
+                                    if (validationErrors.password) {
+                                        setValidationErrors(prev => ({ ...prev, password: undefined }));
+                                    }
+                                }}
+                                editable={!loading}
                             />
-                            <Text style={styles.welcomeText}>Crear cuenta</Text>
+                            <Pressable
+                                onPress={() => setShowPassword(!showPassword)}
+                                style={{
+                                    position: 'absolute',
+                                    right: 15,
+                                    top: 15,
+                                    padding: 5
+                                }}
+                                disabled={loading}
+                            >
+                                <Ionicons
+                                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                                    size={24}
+                                    color={COLORS.textGray}
+                                />
+                            </Pressable>
                         </View>
+                        {passwordErrors.length > 0 && (
+                            <View style={styles.errorsContainer}>
+                                {passwordErrors.map((error, index) => (
+                                    <Text key={index} style={styles.errorText}>
+                                        • {error}
+                                    </Text>
+                                ))}
+                            </View>
+                        )}
+                        {validationErrors.password && Array.isArray(validationErrors.password) && (
+                            <View style={styles.errorsContainer}>
+                                {validationErrors.password.map((error, index) => (
+                                    <Text key={index} style={styles.errorText}>
+                                        • {error}
+                                    </Text>
+                                ))}
+                            </View>
+                        )}
+                    </View>
 
-                        {/* Formulario */}
-                            <View style={styles.group}>
-                                <Text style={styles.label}>Nombre Completo</Text>
-                                <InputLogin 
-                                    msj="Tu nombre" 
-                                    value={nombre}
-                                    onChangeText={setNombre}
+                    <View style={styles.group}>
+                        <Text style={styles.label}>Confirmar Contraseña</Text>
+                        <View style={{ position: 'relative', width: '100%' }}>
+                            <InputLogin
+                                msj="Repite tu contraseña"
+                                secureTextEntry={!showConfirmPassword}
+                                value={confirmPassword}
+                                onChangeText={setConfirmPassword}
+                                editable={!loading}
+                            />
+                            <Pressable
+                                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                style={{
+                                    position: 'absolute',
+                                    right: 15,
+                                    top: 15,
+                                    padding: 5
+                                }}
+                                disabled={loading}
+                            >
+                                <Ionicons
+                                    name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
+                                    size={24}
+                                    color={COLORS.textGray}
                                 />
-                            </View>
+                            </Pressable>
+                        </View>
+                        {confirmPassword && password !== confirmPassword && (
+                            <Text style={styles.errorText}>✗ Las contraseñas no coinciden</Text>
+                        )}
+                        {confirmPassword && password === confirmPassword && password.length >= 8 && (
+                            <Text style={{ color: "#2e7d32", fontSize: 12, marginTop: 4 }}>✓ Las contraseñas coinciden</Text>
+                        )}
+                    </View>
 
-                            <View style={styles.group}>
-                                <Text style={styles.label}>Correo Electrónico</Text>
-                                <InputLogin 
-                                    msj="tu@correo.com"
-                                    value={email}
-                                    onChangeText={setEmail}
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                />
-                            </View>
+                    {/* Error general */}
+                    {validationErrors.general && (
+                        <View style={{ width: "80%", alignSelf: "center" }}>
+                            <Text style={[styles.errorText, { textAlign: "center" }]}>
+                                {validationErrors.general}
+                            </Text>
+                        </View>
+                    )}
 
-                            <View style={styles.group}>
-                                <Text style={styles.label}>Contraseña</Text>
-                                <View style={{ position: 'relative', width: '100%' }}>
-                                    <InputLogin 
-                                        msj="••••••" 
-                                        secureTextEntry={!showPassword}
-                                        value={password}
-                                        onChangeText={setPassword}
-                                    />
-                                    <Pressable
-                                        onPress={() => setShowPassword(!showPassword)}
-                                        style={{
-                                            position: 'absolute',
-                                            right: 15,
-                                            top: 15,
-                                            padding: 5
-                                        }}
-                                    >
-                                        <Ionicons 
-                                            name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                                            size={24} 
-                                            color={COLORS.textGray} 
-                                        />
-                                    </Pressable>
-                                </View>
+                    {/* Botón crear cuenta */}
+                    <View style={styles.buttonContainer}>
+                        {loading ? (
+                            <View style={{ padding: 15, alignItems: 'center' }}>
+                                <ActivityIndicator size="large" color={COLORS.primary} />
+                                <Text style={{ marginTop: 10, color: COLORS.textGray }}>
+                                    Creando cuenta...
+                                </Text>
                             </View>
-
-                            <View style={styles.group}>
-                                <Text style={styles.label}>Confirmar Contraseña</Text>
-                                <View style={{ position: 'relative', width: '100%' }}>
-                                    <InputLogin 
-                                        msj="••••••" 
-                                        secureTextEntry={!showConfirmPassword}
-                                        value={confirmPassword}
-                                        onChangeText={setConfirmPassword}
-                                    />
-                                    <Pressable
-                                        onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                                        style={{
-                                            position: 'absolute',
-                                            right: 15,
-                                            top: 15,
-                                            padding: 5
-                                        }}
-                                    >
-                                        <Ionicons 
-                                            name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} 
-                                            size={24} 
-                                            color={COLORS.textGray} 
-                                        />
-                                    </Pressable>
-                                </View>
-                            </View>
-
-                        {/* Botón crear cuenta */}
-                        <View style={styles.buttonContainer}>
+                        ) : (
                             <ButtonLogin
                                 title="Crear Cuenta"
                                 onPress={handleRegister}
@@ -192,7 +328,8 @@ export default function Register() {
                                 textColor={COLORS.textWhite}
                                 showBorder={false}
                             />
-                        </View>
+                        )}
+                    </View>
                 </ScrollView>
 
                 {/* Footer fijo */}
@@ -200,19 +337,11 @@ export default function Register() {
                     <Text style={styles.footerText}>¿Ya tienes cuenta?</Text>
                     <Text
                         style={styles.footerLink}
-                        onPress={() => navigation.navigate('Login')}>
+                        onPress={() => !loading && navigation.navigate('Login')}>
                         Inicia sesión
                     </Text>
                 </View>
             </KeyboardAvoidingView>
-
-            {/* Modal */}
-            <InfoModal
-                visible={showModal}
-                onClose={() => setShowModal(false)}
-                title={modalTitle}
-                message={modalMessage}
-            />
         </SafeAreaView>
     );
 }

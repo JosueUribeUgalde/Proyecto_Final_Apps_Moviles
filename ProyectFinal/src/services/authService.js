@@ -1,7 +1,7 @@
 // Servicio de Autenticación con Firebase
-import { 
-  signInWithEmailAndPassword, 
-  signOut, 
+import {
+  signInWithEmailAndPassword,
+  signOut,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   onAuthStateChanged
@@ -149,6 +149,56 @@ export const onAuthChange = (callback) => {
   return onAuthStateChanged(auth, callback);
 };
 
+/**
+ * Obtener el rol del usuario autenticado
+ * Verifica en las colecciones: users, admins y companies
+ * @param {string} userId - ID del usuario autenticado
+ * @returns {Promise<Object>} - {role: string, data: Object}
+ */
+export const getUserRole = async (userId) => {
+  try {
+    // 1. Verificar si es usuario normal (colección users)
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (userDoc.exists()) {
+      return {
+        role: 'user',
+        data: userDoc.data()
+      };
+    }
+
+    // 2. Verificar si es administrador (colección admins)
+    const adminDoc = await getDoc(doc(db, 'admins', userId));
+    if (adminDoc.exists()) {
+      return {
+        role: 'admin',
+        data: adminDoc.data()
+      };
+    }
+
+    // 3. Verificar si es empresa (colección companies)
+    const companyDoc = await getDoc(doc(db, 'companies', userId));
+    if (companyDoc.exists()) {
+      return {
+        role: 'company',
+        data: companyDoc.data()
+      };
+    }
+
+    // Si no se encuentra en ninguna colección
+    return {
+      role: null,
+      data: null
+    };
+  } catch (error) {
+    console.error('Error al obtener rol del usuario:', error);
+    return {
+      role: null,
+      data: null,
+      error: error.message
+    };
+  }
+};
+
 
 //Esta funcion va estar en modo prueba-Josue owner
 /**
@@ -165,10 +215,10 @@ export const isAdminEmail = (email) => {
     'admin@correo.com',
     // Agrega más emails de admin aquí
   ];
-  
+
   // Verificar si el email está en la lista de admins
   return adminEmails.includes(email.toLowerCase());
-  
+
 };
 
 /**
@@ -183,11 +233,11 @@ const getErrorMessage = (errorCode) => {
     'auth/user-not-found': 'No existe una cuenta con este correo',
     'auth/wrong-password': 'Contraseña incorrecta',
     'auth/email-already-in-use': 'Este correo ya está registrado',
-    'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres',
+    'auth/weak-password': 'La contraseña debe tener al menos 8 caracteres y cumplir con los requisitos de seguridad',
     'auth/network-request-failed': 'Error de conexión. Verifica tu internet',
     'auth/too-many-requests': 'Demasiados intentos. Intenta más tarde',
     'auth/invalid-credential': 'Credenciales inválidas'
   };
-  
+
   return errorMessages[errorCode] || 'Error al procesar la solicitud';
 };
