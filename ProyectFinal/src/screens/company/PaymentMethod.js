@@ -1,12 +1,23 @@
 // paymentMethod.js
-import React, { useRef, useState } from "react";
-import { View, Text, ScrollView, Pressable, TextInput } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import styles from "../../styles/screens/company/PlanStyles";
+import { getCurrentUser } from "../../services/authService";
+import { db } from "../../config/firebaseConfig";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 // Tarjeta de método de pago
-const MethodCard = ({ item, onSetDefault, onEdit, onRemove, onUpdateWireAccount }) => {
-  const isDefault = item.default === true;
+const MethodCard = ({ item, onRemove }) => {
+  const isDefault = true;
   const isWire = item.id === "wire";
 
   return (
@@ -37,17 +48,12 @@ const MethodCard = ({ item, onSetDefault, onEdit, onRemove, onUpdateWireAccount 
             value={item.accountNumber || ""}
             onChangeText={(txt) => onUpdateWireAccount?.(txt)}
             keyboardType="number-pad"
-            editable={false}/>
+            editable={false}
+          />
         </View>
       ) : (
-        // Para los demás métodos, dejamos las acciones como estaban
+        // Acciones para la tarjeta única
         <View style={styles.rowActions}>
-          <Pressable onPress={() => onSetDefault(item)} style={styles.ghostBtn}>
-            <Text style={styles.ghostText}>{isDefault ? "Seleccionada" : "Usar por defecto"}</Text>
-          </Pressable>
-          <Pressable onPress={() => onEdit(item)} style={styles.outlineBtn}>
-            <Text style={styles.outlineText}>Editar</Text>
-          </Pressable>
           <Pressable onPress={() => onRemove(item)} style={styles.outlineBtn}>
             <Text style={styles.outlineText}>Eliminar</Text>
           </Pressable>
@@ -62,32 +68,12 @@ export default function PaymentMethod() {
   const scrollToForm = () => payScrollRef.current?.scrollToEnd({ animated: true });
   const [editId, setEditId] = useState(null);
 
-  // Métodos de pago (la CLABE de 'wire' estática, generada al azar)
-  const [methods, setMethods] = useState([
-    {
-      id: "card-4242",
-      icon: "card-outline",
-      label: "Visa •••• 4242",
-      default: true,
-      meta: ["Vence 04/27", "Facturación mensual"],
-    },
-    {
-      id: "wire",
-      icon: "cash-outline",
-      label: "Transferencia bancaria",
-      default: false,
-      meta: ["Facturación anual", "Procesa 1-2 días"],
-      // CLABE/numero estático (falso) — 18 dígitos (ejemplo MX CLABE)
-      accountNumber: "646180001234567890",
-    },
-  ]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  // Actualizar el número de cuenta para transferencia bancaria (aunque en UI está bloqueado)
-  const updateWireAccount = (value) => {
-    setMethods((prev) =>
-      prev.map((m) => (m.id === "wire" ? { ...m, accountNumber: value } : m))
-    );
-  };
+  // Métodos de pago
+  const [methods, setMethods] = useState([]);
+  const [removing, setRemoving] = useState(false);
 
   // Campos para tarjetas
   const [cardName, setCardName] = useState("");
@@ -98,58 +84,150 @@ export default function PaymentMethod() {
   const [city, setCity] = useState("");
   const [zip, setZip] = useState("");
 
-  // Acciones para tarjetas (la transferencia no necesita estas acciones)
-  const setDefault = (m) =>
-    setMethods((prev) =>
-      prev
-        .map((x) => ({ ...x, default: x.id === m.id }))
-        .sort((a, b) => (a.default === b.default ? 0 : a.default ? -1 : 1))
-    );
+  useEffect(() => {
+    const loadPayment = async () => {
+      try {
+        const user = getCurrentUser();
+        if (!user) {
+          setLoading(false);
+          return;
+        }
 
-  const onEdit = (m) => {
-    setEditId(m.id);
-    const metaExp = m.meta?.find((x) => x.startsWith("Vence "))?.replace("Vence ", "") || "";
-    setExp(metaExp);
-    setCardName("");
-    setCardNumber("");
-    setCvc("");
-    setBillingStreet("");
-    setCity("");
-    setZip("");
-    setTimeout(scrollToForm, 0);
+        const snap = await getDoc(doc(db, "companies", user.uid));
+        if (snap.exists()) {
+          const data = snap.data();
+          const lastFour = data.payment?.lastFourDigits;
+          const method = data.payment?.method;
+          const cycle = data.payment?.billingCycle || "monthly";
+          if (method === "card" && lastFour) {
+            const card = {
+              id: "card-db",
+              icon: "card-outline",
+              label: `Tarjeta **** ${lastFour}`,
+              default: true,
+              meta: [`Facturación ${cycle}`],
+            };
+            setMethods([card]);
+          }
+        }
+      } catch (error) {
+        console.error("Error al cargar metodos de pago:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPayment();
+  }, []);
+
+  // Actualizar el número de cuenta para transferencia bancaria (aunque en UI está bloqueado)
+  const updateWireAccount = (value) => {
+    setMethods((prev) =>
+      prev.map((m) => (m.id === "wire" ? { ...m, accountNumber: value } : m))
+    );
   };
 
-  const onRemove = (m) => setMethods((prev) => prev.filter((x) => x.id !== m.id));
-
-  const onSaveMethod = () => {
-    if (editId) {
-      setMethods((prev) =>
-        prev.map((x) => {
-          if (x.id !== editId) return x;
-          const next = { ...x };
-          if (cardNumber?.length >= 4) {
-            next.label = `Tarjeta •••• ${cardNumber.slice(-4)}`;
-          }
-          if (exp) {
-            const others = (next.meta || []).filter((m) => !m.startsWith("Vence "));
-            next.meta = [`Vence ${exp}`, ...others];
-          }
-          return next;
-        })
-      );
-      setEditId(null);
-    } else {
-      const m = {
-        id: `card-${Date.now()}`,
-        icon: "card-outline",
-        label: `Tarjeta •••• ${cardNumber.slice(-4)}`,
-        default: false,
-        meta: [`Vence ${exp}`, "Facturación mensual"],
-      };
-      setMethods((prev) => [m, ...prev]);
-      setTimeout(scrollToForm, 0);
+  const onRemove = async (m) => {
+    setRemoving(true);
+    try {
+      const user = getCurrentUser();
+      if (user) {
+        await updateDoc(doc(db, "companies", user.uid), {
+          "payment.method": null,
+          "payment.lastFourDigits": null,
+          "payment.billingCycle": "monthly",
+          "payment.cardName": null,
+          "payment.exp": null,
+          "payment.billingStreet": null,
+          "payment.billingCity": null,
+          "payment.billingZip": null,
+        });
+      }
+      setMethods([]);
+    } catch (error) {
+      console.error("Error al eliminar metodo:", error);
+      Alert.alert("Error", "No se pudo eliminar el método.");
+    } finally {
+      setRemoving(false);
     }
   };
+
+  const onSaveMethod = async () => {
+    const digits = cardNumber.replace(/\D/g, "");
+    if (!cardName || cardName.trim().length < 3) {
+      Alert.alert("Dato faltante", "Ingresa el nombre en la tarjeta.");
+      return;
+    }
+    if (!digits || digits.length !== 18) {
+      Alert.alert("Tarjeta invalida", "La tarjeta debe tener 18 dígitos.");
+      return;
+    }
+    if (!exp || !/^(0[1-9]|1[0-2])\/\d{2}$/.test(exp)) {
+      Alert.alert("Fecha invalida", "Usa formato MM/AA.");
+      return;
+    }
+    if (!cvc || cvc.replace(/\D/g, "").length !== 3) {
+      Alert.alert("CVC invalido", "El CVC debe tener 3 dígitos.");
+      return;
+    }
+    if (zip && zip.replace(/\D/g, "").length > 0 && zip.replace(/\D/g, "").length < 5) {
+      Alert.alert("Codigo postal invalido", "Completa los 5 digitos.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const user = getCurrentUser();
+      if (!user) {
+        Alert.alert("Sesion", "No hay sesion activa");
+        return;
+      }
+
+      // Persistir en Firestore
+      await updateDoc(doc(db, "companies", user.uid), {
+        "payment.method": "card",
+        "payment.lastFourDigits": digits.slice(-4),
+        "payment.billingCycle": "monthly",
+        "payment.cardName": cardName.trim(),
+        "payment.exp": exp,
+        "payment.billingStreet": billingStreet || null,
+        "payment.billingCity": city || null,
+        "payment.billingZip": zip || null,
+      });
+
+      // Actualizar UI local
+      const newCard = {
+        id: `card-${Date.now()}`,
+        icon: "card-outline",
+        label: `Tarjeta **** ${digits.slice(-4)}`,
+        default: true,
+        meta: [`Vence ${exp || "MM/AA"}`, "Facturacion mensual"],
+      };
+      setMethods([newCard]);
+      setCardName("");
+      setCardNumber("");
+      setExp("");
+      setCvc("");
+      setBillingStreet("");
+      setCity("");
+      setZip("");
+      setEditId(null);
+      Alert.alert("Guardado", "Metodo de pago guardado en tu cuenta.");
+    } catch (error) {
+      console.error("Error al guardar metodo:", error);
+      Alert.alert("Error", "No se pudo guardar el metodo de pago.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 40 }}>
+        <ActivityIndicator size="large" />
+        <Text style={{ marginTop: 8 }}>Cargando metodos...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView ref={payScrollRef} contentContainerStyle={styles.scrollPad}>
@@ -178,8 +256,6 @@ export default function PaymentMethod() {
           <MethodCard
             key={m.id}
             item={m}
-            onSetDefault={setDefault}
-            onEdit={onEdit}
             onRemove={onRemove}
             onUpdateWireAccount={(val) => updateWireAccount(val)}
           />
@@ -197,11 +273,12 @@ export default function PaymentMethod() {
       />
       <TextInput
         style={styles.input}
-        placeholder="Número de tarjeta"
+        placeholder="Número de tarjeta (18 dígitos)"
         value={cardNumber}
-        onChangeText={setCardNumber}
+        onChangeText={(text) => setCardNumber(text.replace(/\D/g, "").slice(0, 18))}
         keyboardType="number-pad"
         onFocus={scrollToForm}
+        maxLength={18}
       />
 
       {/* Campos de fecha y CVC */}
@@ -210,20 +287,27 @@ export default function PaymentMethod() {
           style={[styles.input, styles.rowItem]}
           placeholder="MM/AA"
           value={exp}
-          onChangeText={setExp}
+          onChangeText={(text) => {
+            const digits = text.replace(/\D/g, "").slice(0, 4);
+            const formatted = digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+            setExp(formatted);
+          }}
           keyboardType="number-pad"
           onFocus={scrollToForm}
+          maxLength={5}
         />
         <TextInput
           style={[styles.input, styles.rowItem]}
           placeholder="CVC"
           value={cvc}
-          onChangeText={setCvc}
+          onChangeText={(text) => setCvc(text.replace(/\D/g, "").slice(0, 3))}
           secureTextEntry
           keyboardType="number-pad"
           onFocus={scrollToForm}
+          maxLength={3}
         />
       </View>
+      <Text style={styles.metaText}>Formato fecha MM/AA · CVC de 3 dígitos</Text>
 
       {/* Campos de dirección */}
       <TextInput
@@ -252,8 +336,12 @@ export default function PaymentMethod() {
       </View>
 
       {/* Botón guardar (afecta tarjetas; transferencia no lo necesita) */}
-      <Pressable onPress={onSaveMethod} style={styles.saveBtn}>
-        <Text style={styles.saveBtnText}>Guardar método</Text>
+      <Pressable onPress={onSaveMethod} style={styles.saveBtn} disabled={saving}>
+        {saving ? (
+          <ActivityIndicator color="white" />
+        ) : (
+          <Text style={styles.saveBtnText}>Guardar método</Text>
+        )}
       </Pressable>
     </ScrollView>
   );

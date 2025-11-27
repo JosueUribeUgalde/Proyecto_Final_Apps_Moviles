@@ -45,8 +45,7 @@ export const registerCompany = async (formData) => {
     const logoUrl = await uploadFile(logo, `companies/${uid}/logo.jpg`);
     const officialIdFrontUrl = await uploadFile(formData.officialId.front, `companies/${uid}/officialId_front.jpg`);
     const officialIdBackUrl = await uploadFile(formData.officialId.back, `companies/${uid}/officialId_back.jpg`);
-    const proofOfAddressFrontUrl = await uploadFile(formData.proofOfAddress.front, `companies/${uid}/proofOfAddress_front.jpg`);
-    const proofOfAddressBackUrl = await uploadFile(formData.proofOfAddress.back, `companies/${uid}/proofOfAddress_back.jpg`);
+    const proofOfAddressUrl = await uploadFile(formData.proofOfAddress, `companies/${uid}/proofOfAddress.jpg`);
 
     // 3) Armar doc EXACTO con la estructura que quieres
     const planType = selectedPlanType || 'basic';
@@ -66,16 +65,18 @@ export const registerCompany = async (formData) => {
           front: officialIdFrontUrl,
           back: officialIdBackUrl
         },
-        proofOfAddress: {
-          front: proofOfAddressFrontUrl,
-          back: proofOfAddressBackUrl
-        }
+        proofOfAddress: proofOfAddressUrl
       },
 
       payment: {
         billingCycle: 'monthly',
-        method: null,          // lo llenarás en la pantalla de método pago
-        lastFourDigits: null,  // igual
+        method: null,
+        lastFourDigits: null,
+        cardName: null,
+        exp: null,
+        billingStreet: null,
+        billingCity: null,
+        billingZip: null,
         phone,
       },
 
@@ -98,6 +99,7 @@ export const registerCompany = async (formData) => {
       // Array de administradores (IDs de usuarios que pueden administrar la empresa)
       administradores: [],
       foto: null,
+      invoices: [],
       createdAt: serverTimestamp(),
     };
 

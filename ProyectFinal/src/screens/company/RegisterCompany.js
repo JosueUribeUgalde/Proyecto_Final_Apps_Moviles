@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
     View, 
     Text, 
@@ -32,10 +32,7 @@ export default function RegisterCompany({ navigation }) {
             front: null,
             back: null
         },
-        proofOfAddress: {
-            front: null,
-            back: null
-        }
+        proofOfAddress: null,
     });
     const [showBanner, setShowBanner] = useState(false);
     const [bannerMessage, setBannerMessage] = useState('');
@@ -44,6 +41,18 @@ export default function RegisterCompany({ navigation }) {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [validationErrors, setValidationErrors] = useState({});
+    const [placeResults, setPlaceResults] = useState([]);
+    const [loadingPlaces, setLoadingPlaces] = useState(false);
+    const [suppressPlaces, setSuppressPlaces] = useState(false);
+
+    const PLACES_API_KEY = process.env.EXPO_PUBLIC_PLACES_API_KEY || process.env.PLACES_API_KEY || "";
+
+    const normalizeStr = (s) =>
+        (s || "")
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/\p{Diacritic}/gu, "")
+            .trim();
 
     // Función para validar email
     const isValidEmail = (email) => {
@@ -85,6 +94,36 @@ export default function RegisterCompany({ navigation }) {
         return errors;
     };
 
+    const fetchPlaces = async (text) => {
+        if (!PLACES_API_KEY || text.trim().length < 3) {
+            setPlaceResults([]);
+            return;
+        }
+        setLoadingPlaces(true);
+        try {
+            const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(text)}&key=${PLACES_API_KEY}&components=country:mx`;
+            const res = await fetch(url);
+            const data = await res.json();
+            const predictions = data?.predictions || [];
+            setPlaceResults(predictions.map((p) => p.description));
+        } catch (error) {
+            console.error("Error fetching places:", error);
+        } finally {
+            setLoadingPlaces(false);
+        }
+    };
+
+    useEffect(() => {
+        if (suppressPlaces) {
+            setSuppressPlaces(false);
+            return;
+        }
+        const handler = setTimeout(() => {
+            fetchPlaces(formData.address || "");
+        }, 350);
+        return () => clearTimeout(handler);
+    }, [formData.address, suppressPlaces]);
+
     const handleImagePick = async (field) => {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -120,6 +159,22 @@ export default function RegisterCompany({ navigation }) {
         }
     };
 
+    const handleSingleCameraCapture = async (field) => {
+        const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: false,
+            aspect: [4, 3],
+            quality: 0.8,
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        });
+
+        if (!result.canceled) {
+            setFormData(prev => ({
+                ...prev,
+                [field]: result.assets[0].uri
+            }));
+        }
+    };
+
     const validateForm = () => {
         const newErrors = {};
 
@@ -148,6 +203,11 @@ export default function RegisterCompany({ navigation }) {
             newErrors.address = 'Dirección inválida (mínimo 10 caracteres)';
         }
 
+        // Validar logo
+        if (!formData.logo) {
+            newErrors.logo = 'Sube el logo de la empresa';
+        }
+
         // Validar nombre del representante
         if (!formData.ownerName || formData.ownerName.trim().length < 3) {
             newErrors.ownerName = 'Nombre inválido (mínimo 3 caracteres)';
@@ -168,8 +228,8 @@ export default function RegisterCompany({ navigation }) {
         }
         
         // Validar Comprobante de domicilio (frente y reverso)
-        if (!formData.proofOfAddress.front || !formData.proofOfAddress.back) {
-            newErrors.proofOfAddress = 'Captura frente y reverso del comprobante';
+        if (!formData.proofOfAddress) {
+            newErrors.proofOfAddress = 'Captura el comprobante de domicilio';
         }
 
         setValidationErrors(newErrors);
@@ -392,14 +452,77 @@ export default function RegisterCompany({ navigation }) {
                                 (text) => setFormData(prev => ({...prev, rfc: text.toUpperCase().slice(0, 13)}))
                             )}
 
-                            {renderInputWithError(
-                                'Dirección',
-                                'address',
-                                formData.address,
-                                (text) => setFormData(prev => ({...prev, address: text})),
-                                'default',
-                                true
-                            )}
+                            <View style={styles.group}>
+                                <Text style={styles.label}>Dirección</Text>
+                                <InputLogin 
+                                    msj="Calle, número, colonia, CP"
+                                    value={formData.address}
+                                    onChangeText={(text) => setFormData(prev => ({...prev, address: text}))}
+                                    multiline
+                                    numberOfLines={2}
+                                    keyboardType="default"
+                                    style={{
+                                        borderColor: validationErrors.address ? '#f44336' : undefined,
+                                        borderWidth: validationErrors.address ? 1.5 : undefined
+                                    }}
+                                />
+                                {loadingPlaces && (
+                                    <Text style={{ color: COLORS.textGray, marginTop: 4 }}>Buscando direcciones...</Text>
+                                )}
+                                {(() => {
+                                    const currentNorm = normalizeStr(formData.address);
+                                    const normalized = placeResults
+                                        .map((p) => ({
+                                            raw: (p || "").trim(),
+                                            norm: normalizeStr(p),
+                                        }))
+                                        .filter((p) => p.raw.length > 0 && p.norm.length > 0);
+
+                                    const seen = new Set();
+                                    const unique = normalized.filter((p) => {
+                                        if (p.norm === currentNorm) return false;
+                                        if (seen.has(p.norm)) return false;
+                                        seen.add(p.norm);
+                                        return true;
+                                    }).map((p) => p.raw);
+
+                                    if (unique.length === 0) return null;
+                                    return (
+                                        <View style={{
+                                            marginTop: 6,
+                                            borderWidth: 1,
+                                            borderColor: COLORS.borderSecondary,
+                                            borderRadius: 10,
+                                            backgroundColor: COLORS.backgroundWhite,
+                                            elevation: 2,
+                                            shadowColor: "#000",
+                                            shadowOpacity: 0.08,
+                                            shadowRadius: 6,
+                                            shadowOffset: { width: 0, height: 2 },
+                                        }}>
+                                            {unique.slice(0, 5).map((place) => (
+                                                <Pressable
+                                                    key={place}
+                                                    onPress={() => {
+                                                        setFormData(prev => ({...prev, address: place}));
+                                                        setPlaceResults([]);
+                                                        setSuppressPlaces(true);
+                                                    }}
+                                                    style={({pressed}) => [
+                                                        { paddingVertical: 10, paddingHorizontal: 12 },
+                                                        pressed && { opacity: 0.7 }
+                                                    ]}
+                                                >
+                                                    <Text style={{ color: COLORS.textBlack }}>{place}</Text>
+                                                </Pressable>
+                                            ))}
+                                        </View>
+                                    );
+                                })()}
+                                {validationErrors.address && (
+                                    <Text style={styles.errorText}>{validationErrors.address}</Text>
+                                )}
+                            </View>
 
                             {renderInputWithError(
                                 'Nombre del Representante',
@@ -484,12 +607,42 @@ export default function RegisterCompany({ navigation }) {
                                     field="officialId"
                                     type="identification"
                                 />
-                                
-                                <DocumentCapture 
-                                    title="Comprobante de Domicilio"
-                                    field="proofOfAddress"
-                                    type="address"
-                                />
+
+                                <View style={[
+                                    styles.documentCaptureContainer,
+                                    validationErrors.proofOfAddress && { borderColor: '#f44336', borderWidth: 2 }
+                                ]}>
+                                    <Text style={styles.sectionTitle}>Comprobante de Domicilio</Text>
+
+                                    <Pressable 
+                                        onPress={() => handleSingleCameraCapture('proofOfAddress')}
+                                        style={({pressed}) => [
+                                            styles.cameraSide,
+                                            pressed && {opacity: 0.7},
+                                            formData.proofOfAddress && styles.cameraSideCaptured
+                                        ]}
+                                    >
+                                        {formData.proofOfAddress ? (
+                                            <View style={styles.capturedImageContainer}>
+                                                <Image 
+                                                    source={{ uri: formData.proofOfAddress }} 
+                                                    style={styles.capturedImage}
+                                                />
+                                                <View style={styles.capturedBadge}>
+                                                    <Ionicons name="checkmark-circle" size={32} color="#4caf50" />
+                                                </View>
+                                            </View>
+                                        ) : (
+                                            <View style={styles.cameraPlaceholder}>
+                                                <Ionicons name="camera-outline" size={40} color={COLORS.primary} />
+                                                <Text style={styles.cameraText}>Foto</Text>
+                                            </View>
+                                        )}
+                                    </Pressable>
+                                    {validationErrors.proofOfAddress && (
+                                        <Text style={styles.errorText}>{validationErrors.proofOfAddress}</Text>
+                                    )}
+                                </View>
                             </View>
 
                             <View style={styles.buttonContainer}>

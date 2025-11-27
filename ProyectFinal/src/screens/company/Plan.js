@@ -8,6 +8,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
+  TextInput,
+  Alert,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,7 +21,8 @@ import PaymentMethod from "./PaymentMethod";
 
 // 🔥 Firebase
 import { db } from "../../config/firebaseConfig";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, updateDoc, doc, serverTimestamp, getDoc, arrayUnion } from "firebase/firestore";
+import { getCurrentUser } from "../../services/authService";
 
 // Seleccionador de pestañas
 const Selector = ({ value, onChange }) => {
@@ -123,12 +128,32 @@ const PlanCard = ({ plan, onPress }) => {
 export default function Plan({ navigation }) {
   const [tab, setTab] = useState("plans");
   const payScrollRef = useRef(null);
-
-  // 🔥 NUEVO: estados para planes desde Firestore
   const [planes, setPlanes] = useState([]);
   const [cargandoPlanes, setCargandoPlanes] = useState(true);
 
-  const onChoosePlan = (p) => console.log("Elegir plan:", p.id);
+  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [cardName, setCardName] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [exp, setExp] = useState("");
+  const [cvc, setCvc] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [savedPayment, setSavedPayment] = useState(null);
+  const [useSavedCard, setUseSavedCard] = useState(false);
+
+  const onChoosePlan = (p) => {
+    if (p.id === "business") {
+      const phone = "5646672817";
+      Linking.openURL(`https://wa.me/${phone}`).catch(() =>
+        Alert.alert("WhatsApp", "No se pudo abrir WhatsApp")
+      );
+      return;
+    }
+    setSelectedPlan(p);
+    setShowCheckout(true);
+    setSuccessMessage("");
+  };
 
   // Escuchar colección "planes"
   useEffect(() => {
@@ -168,9 +193,11 @@ export default function Plan({ navigation }) {
             tagline: data.eslogan || "",
 
             price:
-              data.precio === null || data.precio === undefined
-                ? "Contactar"
-                : `$${data.precio}`,
+              logicalId === "business"
+                ? "Ponte en contacto"
+                : data.precio === null || data.precio === undefined
+                  ? "Contactar"
+                  : `$${data.precio}`,
 
             period: data.periodo
               ? `mx /${data.periodo}`
@@ -178,6 +205,8 @@ export default function Plan({ navigation }) {
 
             tone,
             badge,
+            priceValue: typeof data.precio === "number" ? data.precio : null,
+            maxUsers: data.maxUsers || data.maxUsuarios || 10,
 
             blocks: {
               incluye: Array.isArray(data.bloques?.incluye) ? data.bloques.incluye : [],
@@ -197,6 +226,26 @@ export default function Plan({ navigation }) {
     );
 
     return () => unsubscribe();
+  }, []);
+
+  // cargar tarjeta guardada
+  useEffect(() => {
+    const loadPayment = async () => {
+      try {
+        const user = getCurrentUser();
+        if (!user) return;
+        const snap = await getDoc(doc(db, "companies", user.uid));
+        if (!snap.exists()) return;
+        const pay = snap.data().payment;
+        if (pay?.method === "card" && pay?.lastFourDigits) {
+          setSavedPayment(pay);
+          setUseSavedCard(true);
+        }
+      } catch (e) {
+        console.error("Error cargando pago guardado", e);
+      }
+    };
+    loadPayment();
   }, []);
 
   return (
@@ -254,6 +303,232 @@ export default function Plan({ navigation }) {
       )}
 
       <MenuFooterCompany />
+
+      <Modal
+        visible={showCheckout}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCheckout(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Confirmar compra</Text>
+              <Pressable onPress={() => setShowCheckout(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={22} color="black" />
+              </Pressable>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Plan seleccionado: {selectedPlan?.tier}
+            </Text>
+            <Text style={styles.modalPrice}>
+              {selectedPlan?.price || "$0"} {selectedPlan?.period}
+            </Text>
+
+            {savedPayment ? (
+              <View style={styles.payHero}>
+                <Text style={styles.payHeroTitle}>Usar tarjeta guardada</Text>
+                <Text style={styles.payHeroSubtitle}>Tarjeta **** {savedPayment.lastFourDigits}</Text>
+                <View style={styles.rowActions}>
+                  <Pressable
+                    style={[styles.ghostBtn, { flex: 1 }, useSavedCard && { opacity: 0.9 }]}
+                    onPress={() => setUseSavedCard(true)}
+                  >
+                    <Text style={styles.ghostText}>Pagar con tarjeta guardada</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.outlineBtn, { flex: 1 }, !useSavedCard && { opacity: 0.9 }]}
+                    onPress={() => setUseSavedCard(false)}
+                  >
+                    <Text style={styles.outlineText}>Actualizar tarjeta</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.modalSubtitle}>Agrega una tarjeta para pagar</Text>
+            )}
+
+            {!useSavedCard && (
+              <>
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>Nombre en la tarjeta</Text>
+          <TextInput
+            style={styles.modalInput}
+            placeholder="Nombre Apellido"
+            value={cardName}
+            onChangeText={setCardName}
+                  />
+                </View>
+
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>Numero de tarjeta (18 dígitos)</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="##################"
+                    value={cardNumber}
+                    keyboardType="number-pad"
+                    onChangeText={(text) => setCardNumber(text.replace(/\D/g, "").slice(0, 18))}
+                    maxLength={18}
+                  />
+                </View>
+
+                <View style={styles.modalRow}>
+                  <View style={[styles.modalField, { flex: 1 }]}>
+                    <Text style={styles.modalLabel}>Exp MM/AA</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="04/27"
+                      value={exp}
+                      keyboardType="number-pad"
+                      onChangeText={(text) => {
+                        const digits = text.replace(/\D/g, "").slice(0, 4);
+                        const formatted = digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+                        setExp(formatted);
+                      }}
+                      maxLength={5}
+                    />
+                  </View>
+                  <View style={[styles.modalField, { flex: 1 }]}>
+                    <Text style={styles.modalLabel}>CVC</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="123"
+                      value={cvc}
+                      keyboardType="number-pad"
+                      secureTextEntry
+                      onChangeText={(text) => setCvc(text.replace(/\D/g, "").slice(0, 3))}
+                      maxLength={3}
+                    />
+                  </View>
+                </View>
+              </>
+            )}
+
+            {!!successMessage && (
+              <Text style={styles.successText}>{successMessage}</Text>
+            )}
+
+            <Pressable
+              style={[styles.modalPayBtn, paying && { opacity: 0.6 }]}
+              disabled={paying}
+              onPress={async () => {
+                const digits = cardNumber.replace(/\D/g, "");
+                if (!useSavedCard) {
+                  if (!cardName || cardName.trim().length < 3) {
+                    Alert.alert("Tarjeta invalida", "Ingresa el nombre en la tarjeta.");
+                    return;
+                  }
+                  if (!digits || digits.length !== 18) {
+                    Alert.alert("Tarjeta invalida", "La tarjeta debe tener 18 dígitos.");
+                    return;
+                  }
+                  if (!exp || !/^(0[1-9]|1[0-2])\/\d{2}$/.test(exp)) {
+                    Alert.alert("Fecha invalida", "Usa formato MM/AA.");
+                    return;
+                  }
+                  if (!cvc || cvc.replace(/\D/g, "").length !== 3) {
+                    Alert.alert("CVC invalido", "El CVC debe tener 3 dígitos.");
+                    return;
+                  }
+                } else if (!savedPayment) {
+                  Alert.alert("Sin tarjeta", "No hay tarjeta guardada, agrega una nueva.");
+                  return;
+                }
+                if (!selectedPlan) return;
+                setPaying(true);
+                try {
+                  const user = getCurrentUser();
+                  if (!user) {
+                    Alert.alert("Sesion", "No hay sesion activa");
+                    return;
+                  }
+                  const companyRef = doc(db, "companies", user.uid);
+                  const companySnap = await getDoc(companyRef);
+                  let phone = null;
+                  if (companySnap.exists()) {
+                    phone = companySnap.data()?.phone || null;
+                  }
+                  const invoiceId = `INV-${Date.now()}`;
+                  const amountNumber = typeof selectedPlan.priceValue === "number" ? selectedPlan.priceValue : 0;
+
+                  const paymentUpdate = useSavedCard && savedPayment
+                    ? {
+                        method: savedPayment.method,
+                        lastFourDigits: savedPayment.lastFourDigits,
+                        cardName: savedPayment.cardName || null,
+                        exp: savedPayment.exp || null,
+                        billingStreet: savedPayment.billingStreet || null,
+                        billingCity: savedPayment.billingCity || null,
+                        billingZip: savedPayment.billingZip || null,
+                      }
+                    : {
+                        method: "card",
+                        lastFourDigits: digits.slice(-4),
+                        cardName: cardName.trim(),
+                        exp,
+                        billingStreet: null,
+                        billingCity: null,
+                        billingZip: null,
+                      };
+
+                  await updateDoc(companyRef, {
+                    plan: {
+                      type: selectedPlan.id,
+                      status: "active",
+                      features: selectedPlan.blocks?.incluye || [],
+                      maxUsers: selectedPlan.maxUsers || 10,
+                      startDate: serverTimestamp(),
+                      endDate: null,
+                      price: selectedPlan.priceValue || null,
+                      period: selectedPlan.period || "monthly",
+                    },
+                    "payment.billingCycle": "monthly",
+                    "payment.method": paymentUpdate.method,
+                    "payment.lastFourDigits": paymentUpdate.lastFourDigits,
+                    "payment.cardName": paymentUpdate.cardName,
+                    "payment.exp": paymentUpdate.exp,
+                    "payment.billingStreet": paymentUpdate.billingStreet,
+                    "payment.billingCity": paymentUpdate.billingCity,
+                    "payment.billingZip": paymentUpdate.billingZip,
+                    "payment.phone": phone,
+                    invoices: arrayUnion({
+                      id: invoiceId,
+                      amount: amountNumber,
+                      plan: selectedPlan.id,
+                      status: "pagada",
+                      issuedAt: serverTimestamp(),
+                      paidAt: serverTimestamp(),
+                      period: "mensual",
+                    }),
+                  });
+
+                  setSuccessMessage("Compra realizada por un mes. Plan activado.");
+                  setTimeout(() => {
+                    setShowCheckout(false);
+                    setCardName("");
+                    setCardNumber("");
+                    setExp("");
+                    setCvc("");
+                    setSuccessMessage("");
+                  }, 1600);
+                } catch (error) {
+                  console.error("Error al procesar pago:", error);
+                  Alert.alert("Error", "No se pudo completar el pago.");
+                } finally {
+                  setPaying(false);
+                }
+              }}
+            >
+              {paying ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.modalPayText}>Pagar y activar</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

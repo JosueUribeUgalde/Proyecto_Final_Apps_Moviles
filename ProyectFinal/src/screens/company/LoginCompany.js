@@ -1,6 +1,6 @@
 // 1. Paquetes core de React/React Native
 import { useState } from 'react';
-import { Text, View, Image, Pressable, ActivityIndicator } from "react-native";
+import { Text, View, Image, Pressable, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 // 2. Bibliotecas de terceros
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,7 @@ import InfoModal from "../../components/InfoModal";
 // 4. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
 // 5. Estilos
-import styles from "../../styles/screens/user/LoginStyles";
+import styles from "../../styles/screens/admin/LoginAdminStyles";
 // 6. Archivos estáticos
 import LogoSF from '../../../assets/LogoTM.png';
 import { loginCompany } from '../../services/authService';
@@ -23,6 +23,7 @@ export default function LoginCompany({ navigation }) {
   const [modalTitle, setModalTitle] = useState('');
   const [modalMessage, setModalMessage] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     // Validar campos vacíos
@@ -78,105 +79,125 @@ export default function LoginCompany({ navigation }) {
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
         onLeftPress={() => navigation.navigate('Welcome')}
       />
-      
-      <View style={styles.welcomeContainer}>
-        <Image
-          source={LogoSF}
-          style={styles.logoImage}
-        />
-        <Text style={styles.welcomeText}>Panel de Empresa</Text>
-      </View>
 
-      {/* Grupo Email */}
-      <View style={styles.group}>
-        <Text style={styles.label}>
-          Email
-        </Text>
-        <InputLogin 
-          msj="empresa@correo.com"
-          value={email}
-          onChangeText={setEmail}
-          editable={!loading}
-        />
-      </View>
-
-      {/* Grupo Password */}
-      <View style={styles.group}>
-        <Text style={styles.label}>
-          Password
-        </Text>
-        <InputLogin 
-          msj="password" 
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-          editable={!loading}
-        />
-        <Pressable 
-          onPress={handleForgotPassword}
-          disabled={loading}
-          style={({pressed}) => [
-            styles.forgotPasswordContainer,
-            pressed && {opacity: 0.5}
-          ]}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1, width: '100%' }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, alignItems: 'center', paddingBottom: 20, width: '100%' }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          style={{ width: '100%' }}
         >
-          <Text style={styles.forgotPassword}>
-            Has olvidado tu contraseña?
-          </Text>
-        </Pressable>
-      </View>
+          <View style={styles.welcomeContainer}>
+            <Image source={LogoSF} style={styles.logoImage} />
+            <Text style={styles.welcomeText}>Panel de Empresa</Text>
+          </View>
 
-      <ButtonLogin
-        title={loading ? 'Cargando...' : 'Login'}
-        onPress={handleLogin}
-        icon={loading ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="log-in-outline" size={24} color="white" />}
-        showBorder={false}
-        disabled={loading}
-      />
-
-      {/* Sección de registro mejorada */}
-      <View style={styles.registerContainer}>
-        <Text style={styles.registerText}>¿No tienes una cuenta?</Text>
-        <Pressable 
-          onPress={handleRegister}
-          disabled={loading}
-          style={({pressed}) => [
-            styles.registerButton,
-            pressed && {opacity: 0.7}
-          ]}
-        >
-          <View style={{flexDirection: 'row', alignItems: 'center', marginLeft: 10}}>
-            <Text style={styles.registerButtonText}>Regístrate</Text>
-            <Ionicons 
-              name="arrow-forward" 
-              size={16} 
-              color={COLORS.primary} 
-              style={{marginLeft: 6}}
+          {/* Email */}
+          <View style={styles.group}>
+            <Text style={styles.label}>Email</Text>
+            <InputLogin
+              msj="empresa@correo.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              editable={!loading}
             />
           </View>
-        </Pressable>
-      </View>
 
-      <View style={styles.dividerContainer}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>Información</Text>
-        <View style={styles.dividerLine} />
-      </View>
+          {/* Password */}
+          <View style={styles.group}>
+            <Text style={styles.label}>Password</Text>
+            <View style={{ position: 'relative', width: '100%' }}>
+              <InputLogin
+                msj="password"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+                editable={!loading}
+              />
+              <Pressable
+                onPress={() => setShowPassword(!showPassword)}
+                disabled={loading}
+                style={{
+                  position: 'absolute',
+                  right: 15,
+                  top: 15,
+                  padding: 5,
+                }}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={24}
+                  color={COLORS.textGray}
+                />
+              </Pressable>
+            </View>
+            <Pressable
+              onPress={handleForgotPassword}
+              disabled={loading}
+              style={({ pressed }) => [
+                styles.forgotPasswordContainer,
+                pressed && { opacity: 0.5 }
+              ]}
+            >
+              <Text style={styles.forgotPassword}>Has olvidado tu contraseña?</Text>
+            </Pressable>
+          </View>
 
-      {/* Botón de información sobre cuenta de empresa */}
-      <Pressable 
-        onPress={handleShowAccountInfo}
-        disabled={loading}
-        style={({ pressed }) => [
-          styles.infoButtonContainer,
-          pressed && { opacity: 0.7 }
-        ]}
-      >
-        <Ionicons name="help-circle-outline" size={20} color={COLORS.primary} />
-        <Text style={styles.infoButtonText}>
-          ¿Cómo crear una cuenta de Empresa?
-        </Text>
-      </Pressable>
+          <ButtonLogin
+            title={loading ? 'Cargando...' : 'Login'}
+            onPress={handleLogin}
+            icon={loading ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="log-in-outline" size={24} color="white" />}
+            showBorder={false}
+            disabled={loading}
+          />
+
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>Información</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <Pressable
+            onPress={handleShowAccountInfo}
+            disabled={loading}
+            style={({ pressed }) => [
+              styles.infoButtonContainer,
+              pressed && { opacity: 0.7 }
+            ]}
+          >
+            <Ionicons name="help-circle-outline" size={20} color={COLORS.textGreen} />
+            <Text style={styles.infoButtonText}>¿Cómo crear una cuenta de Empresa?</Text>
+          </Pressable>
+
+          <View style={styles.registerContainer}>
+            <Text style={styles.registerText}>¿No tienes una cuenta?</Text>
+            <Pressable
+              onPress={handleRegister}
+              disabled={loading}
+              style={({ pressed }) => [
+                styles.registerButton,
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
+                <Text style={styles.registerButtonText}>Regístrate</Text>
+                <Ionicons
+                  name="arrow-forward"
+                  size={16}
+                  color={COLORS.primary}
+                  style={{ marginLeft: 6 }}
+                />
+              </View>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <InfoModal
         visible={showModal}
@@ -185,7 +206,6 @@ export default function LoginCompany({ navigation }) {
         message={modalMessage}
       />
 
-      {/* Modal de información */}
       <InfoModal
         visible={showInfoModal}
         onClose={() => setShowInfoModal(false)}
@@ -202,3 +222,4 @@ export default function LoginCompany({ navigation }) {
     </SafeAreaView>
   );
 }
+

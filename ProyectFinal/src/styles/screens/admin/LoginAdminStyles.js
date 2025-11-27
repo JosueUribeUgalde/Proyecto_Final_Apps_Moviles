@@ -85,4 +85,26 @@ export default StyleSheet.create({
     fontSize: FONTS.regular,
     fontWeight: '700',
   },
+
+  // Registro (adaptado desde login company)
+  registerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    gap: 6,
+  },
+  registerText: {
+    color: COLORS.textGray,
+    fontSize: FONTS.regular,
+  },
+  registerButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  registerButtonText: {
+    color: COLORS.primary,
+    fontWeight: '700',
+    fontSize: FONTS.regular,
+  },
 });

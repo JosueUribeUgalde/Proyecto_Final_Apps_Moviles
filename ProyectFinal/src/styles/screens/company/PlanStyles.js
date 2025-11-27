@@ -302,4 +302,82 @@ export default StyleSheet.create({
     fontWeight: "800", 
     fontSize: FONTS.regular 
   },
+
+  /* ============= MODAL CHECKOUT ============= */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "center",
+    padding: 16,
+  },
+  modalCard: {
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.lg,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  modalTitle: {
+    fontSize: FONTS.large,
+    fontWeight: "800",
+    color: COLORS.textBlack,
+  },
+  modalCloseBtn: {
+    padding: 6,
+  },
+  modalSubtitle: {
+    fontSize: FONTS.regular,
+    color: COLORS.textGray,
+  },
+  modalPrice: {
+    fontSize: FONTS.big || 28,
+    fontWeight: "900",
+    color: COLORS.textBlack,
+  },
+  modalField: {
+    gap: 6,
+    marginTop: 4,
+  },
+  modalLabel: {
+    fontSize: FONTS.small,
+    color: COLORS.textGray,
+    fontWeight: "600",
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: FONTS.regular,
+    color: COLORS.textBlack,
+  },
+  modalRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  modalPayBtn: {
+    height: 48,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+  },
+  modalPayText: {
+    color: COLORS.textWhite,
+    fontWeight: "800",
+    fontSize: FONTS.regular,
+  },
+  successText: {
+    color: COLORS.textGreen,
+    fontWeight: "700",
+  },
 });

@@ -3,10 +3,11 @@ import React, { useState } from "react";
 // Libreria de navegacion de React Native
 import { SafeAreaView } from "react-native-safe-area-context";
 // Componentes y utilidades de React Native
-import { View, Text, Image, ScrollView, Pressable, Switch, Modal } from 'react-native';
+import { View, Text, Image, ScrollView, Pressable, Switch, Modal, ActivityIndicator } from 'react-native';
 // Importacion de componentes propios
 import HeaderScreen from "../../components/HeaderScreen";
 import MenuFooterCompany from "../../components/MenuFooterCompany";
+import InfoModal from "../../components/InfoModal";
 // Importacion de estilos y uso de google fonts
 import styles, { TOGGLE_COLORS } from "../../styles/screens/company/ProfileCompanyStyles";
 // Importacion de libreria de iconos
@@ -14,14 +15,88 @@ import { Ionicons } from '@expo/vector-icons';
 // Importacion de constantes
 import { COLORS } from '../../components/constants/theme';
 // Importacion de libreria de navegacion
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+// Servicios y Firestore
+import { logoutUser, getCurrentUser } from '../../services/authService';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from '../../config/firebaseConfig';
 
-export default function ProfileAdmin() {
+export default function ProfileCompany() {
   const navigation = useNavigation();
-  
-  // Funcion para cerrar sesion(falta implemntar logica)
-  const handleLogout = () => {
-    navigation.navigate('Logout');
+  const [companyData, setCompanyData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // estado simple para el Switch
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  // estado y datos para el modal de seleccion de region
+  const [isRegionModalVisible, setIsRegionModalVisible] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState({
+    name: "Mexico",
+    code: "MX"
+  });
+
+  const regions = [
+    { name: "Mexico", code: "MX" },
+    { name: "Estados Unidos", code: "US" }
+  ];
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadCompanyData();
+    }, [])
+  );
+
+  const loadCompanyData = async () => {
+    try {
+      const user = getCurrentUser();
+      if (!user) {
+        setErrorMessage('No hay sesion activa');
+        setShowErrorModal(true);
+        setLoading(false);
+        return;
+      }
+
+      const companySnap = await getDoc(doc(db, 'companies', user.uid));
+      if (!companySnap.exists()) {
+        setErrorMessage('No se encontro el perfil de la empresa');
+        setShowErrorModal(true);
+        setLoading(false);
+        return;
+      }
+
+      const data = companySnap.data();
+      setCompanyData(data);
+
+      if (data.preferences?.notificationsEnabled !== undefined) {
+        setNotificationsEnabled(data.preferences.notificationsEnabled);
+      }
+
+      if (data.region) {
+        setSelectedRegion(data.region);
+      }
+    } catch (error) {
+      console.error('Error al cargar perfil de empresa:', error);
+      setErrorMessage('Error al cargar el perfil');
+      setShowErrorModal(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Funcion para cerrar sesion
+  const handleLogout = async () => {
+    const result = await logoutUser();
+    if (result.success) {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'LoginCompany' }],
+      });
+    } else {
+      setErrorMessage(result.message);
+      setShowErrorModal(true);
+    }
   };
 
   // Funcion para navegar a pantalla de edicion de perfil
@@ -29,38 +104,82 @@ export default function ProfileAdmin() {
     navigation.navigate('EditProfileCompany');
   };
 
-  // Datos de usuario (mock data)
-  const [name]= useState("Juan Carlos Mendez");
-  const [email] = useState("Company@empresa.com");
-  const [phone] = useState("+52 9876543210");
-  const [role] = useState("Dueño de empresa");
-  const [user] = useState("Empresario Verificado");
+  const handleToggleNotifications = async (newValue) => {
+    setNotificationsEnabled(newValue);
+    try {
+      const user = getCurrentUser();
+      if (!user) return;
 
-  // estado simple para el Switch
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  // estado y datos para el modal de seleccion de region
-  const [isRegionModalVisible, setIsRegionModalVisible] = useState(false);
-  const [selectedRegion, setSelectedRegion] = useState({
-    name: "México",
-    code: "MX"
-  });
+      await updateDoc(doc(db, 'companies', user.uid), {
+        'preferences.notificationsEnabled': newValue
+      });
 
-  const regions = [
-    { name: "México", code: "MX" },
-    { name: "Estados Unidos", code: "US" }
-  ];
+      setCompanyData(prev => ({
+        ...prev,
+        preferences: {
+          ...prev?.preferences,
+          notificationsEnabled: newValue
+        }
+      }));
+    } catch (error) {
+      console.error('Error al actualizar notificaciones:', error);
+      setNotificationsEnabled(!newValue);
+      setErrorMessage('No se pudieron actualizar las notificaciones');
+      setShowErrorModal(true);
+    }
+  };
 
   // Funcion para seleccionar region en el modal
-  const handleRegionSelect = (region) => {
+  const handleRegionSelect = async (region) => {
     setSelectedRegion(region);
     setIsRegionModalVisible(false);
+
+    try {
+      const user = getCurrentUser();
+      if (!user) return;
+
+      await updateDoc(doc(db, 'companies', user.uid), {
+        region: {
+          code: region.code,
+          name: region.name,
+        },
+      });
+
+      setCompanyData(prev => ({
+        ...prev,
+        region: {
+          code: region.code,
+          name: region.name,
+        },
+      }));
+    } catch (error) {
+      console.error('Error al actualizar region:', error);
+      setErrorMessage('No se pudo actualizar la region');
+      setShowErrorModal(true);
+    }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <HeaderScreen
+          title="Perfil Empresarial"
+          leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
+          onLeftPress={() => navigation.goBack()}
+        />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={{ marginTop: 16, color: COLORS.textGray }}>Cargando perfil...</Text>
+        </View>
+        <MenuFooterCompany />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <HeaderScreen
         title="Perfil Empresarial"
-        rightIcon={<Ionicons name="notifications-outline" size={24} color="black" />}
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
         onLeftPress={() => navigation.goBack()}
       />
@@ -70,14 +189,20 @@ export default function ProfileAdmin() {
         {/* Primer card de perfil */}
         <View style={styles.profileCard}>
           <View style={styles.cardHeader}>
-            <Image
-              source={require('../../../assets/i.png')}
-              style={styles.avatar}
-            />
+            {companyData?.logo ? (
+              <Image
+                source={{ uri: companyData.logo }}
+                style={styles.avatar}
+              />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: COLORS.lightGray, justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="business" size={40} color={COLORS.textGray} />
+              </View>
+            )}
 
             <View style={styles.nameAndRole}>
-              <Text style={styles.cardName}>{name}</Text>
-              <Text style={styles.cardRole}>{role}</Text>
+              <Text style={styles.cardName}>{companyData?.companyName || 'Sin nombre'}</Text>
+              <Text style={styles.cardRole}>{companyData?.ownerName || 'Representante'}</Text>
             </View>
 
             <Pressable 
@@ -96,19 +221,19 @@ export default function ProfileAdmin() {
           <View style={styles.badgeRow}>
             <View style={styles.badge}>
               <Ionicons name="shield-checkmark-outline" size={16} color={COLORS.textBlack} />
-              <Text style={styles.badgeText}>{user}</Text>
+              <Text style={styles.badgeText}>{companyData?.plan?.status === 'active' ? 'Empresa activa' : 'Empresa'}</Text>
             </View>
           </View>
 
-          {/* Cajas de email y teléfono */}
+          {/* Cajas de email y telefono */}
           <View style={styles.infoBox}>
             <Ionicons name="mail-outline" size={20} color={COLORS.textGray} />
-            <Text style={styles.infoText}>{email}</Text>
+            <Text style={styles.infoText}>{companyData?.email || 'Sin email'}</Text>
           </View>
 
           <View style={styles.infoBox}>
             <Ionicons name="call-outline" size={20} color={COLORS.textGray} />
-            <Text style={styles.infoText}>{phone}</Text>
+            <Text style={styles.infoText}>{companyData?.phone || 'Sin telefono'}</Text>
           </View>
         </View>
 
@@ -116,13 +241,13 @@ export default function ProfileAdmin() {
         <View style={styles.preferencesSection}>
           <Text style={styles.sectionTitle}>Preferencias</Text>
           
-          {/* Notificaciones: implementación simple con Switch */}
+          {/* Notificaciones: implementacion simple con Switch */}
           <Pressable
             style={({pressed}) => [
               styles.preferenceItem,
               pressed && {opacity: 0.7}
             ]}
-            onPress={() => setNotificationsEnabled(v => !v)}
+            onPress={() => handleToggleNotifications(!notificationsEnabled)}
           >
             <View style={styles.preferenceLeft}>
               <Ionicons name="notifications-outline" size={24} color={COLORS.primary} />
@@ -135,7 +260,7 @@ export default function ProfileAdmin() {
             <View style={styles.toggleContainer}>
               <Switch
                 value={notificationsEnabled}
-                onValueChange={setNotificationsEnabled}
+                onValueChange={handleToggleNotifications}
                 trackColor={{ false: TOGGLE_COLORS.off, true: TOGGLE_COLORS.on }}
                 thumbColor={TOGGLE_COLORS.thumb}
                 ios_backgroundColor={TOGGLE_COLORS.off}
@@ -143,7 +268,7 @@ export default function ProfileAdmin() {
             </View>
           </Pressable>
 
-          {/* Región y hora */}
+          {/* Region y hora */}
           <Pressable 
             style={({pressed}) => [
               styles.preferenceItem,
@@ -154,14 +279,14 @@ export default function ProfileAdmin() {
             <View style={styles.preferenceLeft}>
               <Ionicons name="globe-outline" size={24} color={COLORS.primary} />
               <View style={styles.preferenceTextContainer}>
-                <Text style={styles.preferenceTitle}>Región y hora</Text>
+                <Text style={styles.preferenceTitle}>Region y hora</Text>
                 <Text style={styles.preferenceSubtitle}>{selectedRegion.name} ({selectedRegion.code})</Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textGray} />
           </Pressable>
 
-          {/* Modal de selección de región */}
+          {/* Modal de seleccion de region */}
           <Modal
             visible={isRegionModalVisible}
             transparent={true}
@@ -171,7 +296,7 @@ export default function ProfileAdmin() {
               style={styles.modalOverlay}
               onPress={() => setIsRegionModalVisible(false)}>
               <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Seleccionar región</Text>
+                <Text style={styles.modalTitle}>Seleccionar region</Text>
                 
                 {regions.map((region) => (
                   <Pressable
@@ -195,17 +320,17 @@ export default function ProfileAdmin() {
           </Modal>
         </View>
 
-          {/* Facturación */}
+          {/* Facturacion */}
             <View style={styles.preferencesSection}>
-                <Text style={styles.sectionTitle}>Facturación</Text>
+                <Text style={styles.sectionTitle}>Facturacion</Text>
 
-          {/* Métodos de pago */}
+          {/* Metodos de pago */}
                 <Pressable style={({ pressed }) => [styles.preferenceItem, pressed && { opacity: 0.7 }]}
                   onPress={() => navigation.navigate('PaymentMethod')}>
               <View style={styles.preferenceLeft}>
                 <Ionicons name="card-outline" size={24} color={COLORS.primary} />
               <View style={styles.preferenceTextContainer}>
-                <Text style={styles.preferenceTitle}>Métodos de pago</Text>
+                <Text style={styles.preferenceTitle}>Metodos de pago</Text>
                 <Text style={styles.preferenceSubtitle}>Gestiona tus tarjetas y bancos</Text>
               </View>
               </View>
@@ -225,7 +350,7 @@ export default function ProfileAdmin() {
 
           {/* Estilo activo o no */}
                 <View style={styles.billingPill}>
-                <Text style={styles.billingPillText}>Activo</Text>
+                <Text style={styles.billingPillText}>{companyData?.plan?.status === 'active' ? 'Activo' : 'Inactivo'}</Text>
                 </View>
               </View>
                 </Pressable>
@@ -244,7 +369,7 @@ export default function ProfileAdmin() {
                 </Pressable>
             </View>
 
-        {/* Tercer card de cuenta(cambio contraseña) */}
+        {/* Tercer card de cuenta(cambio contrasena) */}
         <View style={styles.accountSection}>
           <Text style={styles.sectionTitle}>Cuenta</Text>
           
@@ -258,7 +383,7 @@ export default function ProfileAdmin() {
             <View style={styles.preferenceLeft}>
               <Ionicons name="key-outline" size={24} color={COLORS.primary} />
               <View style={styles.preferenceTextContainer}>
-                <Text style={styles.preferenceTitle}>Cambiar contraseña</Text>
+                <Text style={styles.preferenceTitle}>Cambiar contrasena</Text>
                 <Text style={styles.preferenceSubtitle}>Actualizar credenciales</Text>
               </View>
             </View>
@@ -285,9 +410,16 @@ export default function ProfileAdmin() {
           ]}
           onPress={handleLogout}
         >
-          <Text style={styles.signOutText}>Cerrar sesión</Text>
+          <Text style={styles.signOutText}>Cerrar sesion</Text>
         </Pressable>
       </ScrollView>
+
+      <InfoModal
+        visible={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Error"
+        message={errorMessage}
+      />
 
       <MenuFooterCompany />
     </SafeAreaView>
