@@ -1,24 +1,46 @@
-import React, { useMemo, useState, useRef } from "react";
-import { View, Text, ScrollView, Pressable, FlatList, KeyboardAvoidingView, Platform } from "react-native";
+import React, { useMemo, useState, useRef, useEffect } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import styles from "../../styles/screens/company/PlanStyles";
 import { MenuFooterCompany } from "../../components";
 import PaymentMethod from "./PaymentMethod";
 
+// 🔥 Firebase
+import { db } from "../../config/firebaseConfig";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+
 // Seleccionador de pestañas
 const Selector = ({ value, onChange }) => {
-  const items = useMemo(() => ([
-    { key: "plans", label: "Planes" },
-    { key: "payments", label: "Métodos de pago" },
-  ]), []);
+  const items = useMemo(
+    () => [
+      { key: "plans", label: "Planes" },
+      { key: "payments", label: "Métodos de pago" },
+    ],
+    []
+  );
   return (
     <View style={styles.selector}>
       {items.map((it) => {
         const active = it.key === value;
         return (
-          <Pressable key={it.key} onPress={() => onChange(it.key)} style={[styles.segmentBtn, active && styles.segmentBtnActive]}>
-            <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{it.label}</Text>
+          <Pressable
+            key={it.key}
+            onPress={() => onChange(it.key)}
+            style={[styles.segmentBtn, active && styles.segmentBtnActive]}
+          >
+            <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+              {it.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -26,106 +48,28 @@ const Selector = ({ value, onChange }) => {
   );
 };
 
-// Datos de planes
-const PLANS = [
-  {
-    id: "Free",
-    tier: "Free",
-    tagline: "Para empezar sin costo",
-    price: "$0",
-    period: "mx /mes",
-    tone: undefined,
-    badge: { label: "Actual", tone: "success" },
-    blocks: {
-      incluye: [
-        "Hasta 10 miembros",
-        "Tableros y tareas básicas",
-        "Reasignación básica con IA",
-        "Panel de administración",
-      ],
-      limites: [
-        "Historial 30 días",
-        "2 grupos de trabajo",
-      ],
-      soporte: ["Centro de ayuda y comunidad"],
-    },
-  },
-  {
-    id: "Plus",
-    tier: "Plus",
-    tagline: "Para equipos en crecimiento",
-    price: "$199",
-    period: "mx /mes",
-    tone: undefined,
-    badge: { label: "Ahorra 15% anual", tone: "primary" },
-    blocks: {
-      incluye: [
-        "Hasta 25 miembros",
-        "Automatizaciones básicas",
-        "Asignación por carga y skills",
-        "Panel de administración avanzado",
-      ],
-      limites: ["Historial 1 año", "Proyectos ilimitados (uso justo)"],
-      soporte: ["Soporte por email 24-48h"],
-    },
-  },
-  {
-    id: "Pro",
-    tier: "Pro",
-    tagline: "Control y SLA",
-    price: "$799",
-    period: "mx /mes",
-    tone: "pro",
-    badge: { label: "Recomendado", tone: "primary" },
-    blocks: {
-      incluye: [
-        "Hasta 100 miembros",
-        "SSO, roles granulares",
-        "Automatizaciones avanzadas + IA asistida",
-        "Panel de administración avanzado",
-      ],
-      limites: ["Historial 3 años"],
-      soporte: ["SLA 24/7 priorizado"],
-    },
-  },
-  {
-    id: "Business",
-    tier: "Business",
-    tagline: "Ilimitado, seguridad y cuenta dedicada",
-    price: "Contactar",
-    period: "",
-    tone: undefined,
-    badge: { label: "Personalizado", tone: "primary" },
-    blocks: {
-      incluye: [
-        "Miembros ilimitados",
-        "Integraciones avanzadas y auditoría",
-        "Onboarding y Gerente de cuenta",
-        "Panel de administración avanzado",
-      ],
-      limites: ["Contratos y facturación anual", "Cumplimiento y seguridad"],
-      soporte: ["SLA personalizado + canal dedicado"],
-    },
-  },
-];
-
 // componnentes dentro de tarjeta de plan
 const Badge = ({ label }) => (
-  <View style={styles.planBadge}><Text style={styles.planBadgeText}>{label}</Text></View>
-);
-
-const Bullets = ({ items, icon = "checkmark-circle", iconStyle }) => (
-  <View style={styles.features}>
-    {items.map((t, i) => (
-      <View key={i} style={styles.featureRow}>
-        <Ionicons name={icon} size={18} style={[styles.featureIcon, iconStyle]} />
-        <Text style={styles.featureText}>{t}</Text>
-      </View>
-    ))}
+  <View style={styles.planBadge}>
+    <Text style={styles.planBadgeText}>{label}</Text>
   </View>
 );
 
-// Tarjeta de plan
+const Bullets = ({ items, icon = "checkmark-circle", iconStyle }) => {
+  const safeItems = Array.isArray(items) ? items : [];
+  return (
+    <View style={styles.features}>
+      {safeItems.map((t, i) => (
+        <View key={i} style={styles.featureRow}>
+          <Ionicons name={icon} size={18} style={[styles.featureIcon, iconStyle]} />
+          <Text style={styles.featureText}>{t}</Text>
+        </View>
+      ))}
+    </View>
+  );
+};
+
+// Tarjeta de plan (la dejamos igual, ya que vamos a adaptar los datos)
 const PlanCard = ({ plan, onPress }) => {
   const toneStyle = plan.tone === "pro" ? styles.card_pro : null;
   return (
@@ -151,12 +95,20 @@ const PlanCard = ({ plan, onPress }) => {
 
       <View style={styles.featureGroup}>
         <Text style={styles.featureHeader}>Límites</Text>
-        <Bullets items={plan.blocks.limites} icon="alert-circle" iconStyle={styles.limitIcon} />
+        <Bullets
+          items={plan.blocks.limites}
+          icon="alert-circle"
+          iconStyle={styles.limitIcon}
+        />
       </View>
 
       <View style={styles.featureGroup}>
         <Text style={styles.featureHeader}>Soporte</Text>
-        <Bullets items={plan.blocks.soporte} icon="headset" iconStyle={styles.limitIcon} />
+        <Bullets
+          items={plan.blocks.soporte}
+          icon="headset"
+          iconStyle={styles.limitIcon}
+        />
       </View>
 
       <Pressable onPress={() => onPress(plan)} style={styles.ctaBtn}>
@@ -168,10 +120,84 @@ const PlanCard = ({ plan, onPress }) => {
   );
 };
 
-export default function Plan() {
+export default function Plan({ navigation }) {
   const [tab, setTab] = useState("plans");
   const payScrollRef = useRef(null);
+
+  // 🔥 NUEVO: estados para planes desde Firestore
+  const [planes, setPlanes] = useState([]);
+  const [cargandoPlanes, setCargandoPlanes] = useState(true);
+
   const onChoosePlan = (p) => console.log("Elegir plan:", p.id);
+
+  // Escuchar colección "planes"
+  useEffect(() => {
+    const colRef = collection(db, "planes");
+    const qPlanes = query(colRef, orderBy("orden", "asc"));
+
+    const unsubscribe = onSnapshot(
+      qPlanes,
+      (snap) => {
+        const lista = snap.docs.map((docSnap) => {
+          const data = docSnap.data();
+          const logicalId = data.id || docSnap.id; // "free", "plus", "pro", "business"
+
+          // Mapeamos los datos en español a la estructura que ya usaba tu UI
+          let tone = undefined;
+          let badge = null;
+
+          switch (logicalId) {
+            case "free":
+              badge = { label: "Actual", tone: "success" };
+              break;
+            case "plus":
+              badge = { label: "Ahorra 15% anual", tone: "primary" };
+              break;
+            case "pro":
+              badge = { label: "Recomendado", tone: "primary" };
+              tone = "pro";
+              break;
+            case "business":
+              badge = { label: "Personalizado", tone: "primary" };
+              break;
+          }
+
+          return {
+            id: logicalId, // usamos el id lógico
+            tier: data.nombre || logicalId, // título del plan
+            tagline: data.eslogan || "",
+
+            price:
+              data.precio === null || data.precio === undefined
+                ? "Contactar"
+                : `$${data.precio}`,
+
+            period: data.periodo
+              ? `mx /${data.periodo}`
+              : "",
+
+            tone,
+            badge,
+
+            blocks: {
+              incluye: Array.isArray(data.bloques?.incluye) ? data.bloques.incluye : [],
+              limites: Array.isArray(data.bloques?.limites) ? data.bloques.limites : [],
+              soporte: Array.isArray(data.bloques?.soporte) ? data.bloques.soporte : [],
+            },
+          };
+        });
+
+        setPlanes(lista);
+        setCargandoPlanes(false);
+      },
+      (error) => {
+        console.error("Error escuchando planes:", error);
+        setCargandoPlanes(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   return (
     <SafeAreaView style={styles.screen} edges={["top", "bottom"]}>
@@ -191,16 +217,32 @@ export default function Plan() {
 
       {/* Si la pestaña seleccionada es "Planes" */}
       {tab === "plans" ? (
-        // ----- Sección de planes -----
-        <ScrollView ref={payScrollRef} contentContainerStyle={styles.scrollPad}>
-          <FlatList
-            data={PLANS} // lista de planes disponibles
-            keyExtractor={(it) => it.id}
-            renderItem={({ item }) => <PlanCard plan={item} onPress={onChoosePlan} />}
-            contentContainerStyle={styles.listGap}
-            scrollEnabled={false}
-          />
-        </ScrollView>
+        cargandoPlanes ? (
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              paddingTop: 40,
+            }}
+          >
+            <ActivityIndicator size="large" />
+            <Text style={{ marginTop: 8 }}>Cargando planes...</Text>
+          </View>
+        ) : (
+          // ----- Sección de planes -----
+          <ScrollView ref={payScrollRef} contentContainerStyle={styles.scrollPad}>
+            <FlatList
+              data={planes}
+              keyExtractor={(it) => it.id}
+              renderItem={({ item }) => (
+                <PlanCard plan={item} onPress={onChoosePlan} />
+              )}
+              contentContainerStyle={styles.listGap}
+              scrollEnabled={false}
+            />
+          </ScrollView>
+        )
       ) : (
         // Sección de métodos de pago (dividida a otro archivo)
         <KeyboardAvoidingView
