@@ -367,6 +367,7 @@ export default function MembersCompany({ navigation }) {
           ...adminData,
           role: 'Admin',
           companyId: companyId,
+          photo: null,
           createdAt: new Date().toISOString(),
           region: {
             code: 'MX',
