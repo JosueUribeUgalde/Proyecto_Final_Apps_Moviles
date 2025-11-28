@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
     View, 
     Text, 
@@ -44,6 +44,8 @@ export default function RegisterCompany({ navigation }) {
     const [placeResults, setPlaceResults] = useState([]);
     const [loadingPlaces, setLoadingPlaces] = useState(false);
     const [suppressPlaces, setSuppressPlaces] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const submittingRef = useRef(false);
 
     const PLACES_API_KEY = process.env.EXPO_PUBLIC_PLACES_API_KEY || process.env.PLACES_API_KEY || "";
 
@@ -263,11 +265,20 @@ export default function RegisterCompany({ navigation }) {
         return Object.keys(newErrors).length === 0;
     };
 
+    const setSubmittingGuard = (value) => {
+        submittingRef.current = value;
+        setSubmitting(value);
+    };
+
     const handleRegister = async () => {
+        if (submittingRef.current) return;
+        setSubmittingGuard(true);
+
         if (!validateForm()) {
             setBannerMessage('Por favor, revisa los campos marcados en rojo');
             setBannerType('error');
             setShowBanner(true);
+            setSubmittingGuard(false);
             return;
         }
 
@@ -281,18 +292,21 @@ export default function RegisterCompany({ navigation }) {
 
                 setTimeout(() => {
                     setShowBanner(false);
+                    setSubmittingGuard(false);
                     navigation.navigate('LoginCompany');
                 }, 2000);
             } else {
                 setBannerMessage(result.message || 'No se pudo registrar la empresa');
                 setBannerType('error');
                 setShowBanner(true);
+                setSubmittingGuard(false);
             }
         } catch (error) {
             console.error('Error al registrar empresa', error);
             setBannerMessage('Ocurrió un error al registrar la empresa. Intenta más tarde.');
             setBannerType('error');
             setShowBanner(true);
+            setSubmittingGuard(false);
         }
     };
 
@@ -436,15 +450,46 @@ export default function RegisterCompany({ navigation }) {
                     <View style={styles.contentContainer}>
                         <View style={styles.welcomeContainer}>
                             <Pressable onPress={() => handleImagePick('logo')}>
-                                {formData.logo ? (
-                                    <Image source={{ uri: formData.logo }} style={styles.logoImage} />
-                                ) : (
-                                    <View style={styles.logoPlaceholder}>
-                                        <Ionicons name="business-outline" size={50} color={COLORS.primary} />
-                                        <Text style={styles.logoPlaceholderText}>Logo empresa</Text>
-                                    </View>
-                                )}
+                                <View style={{
+                                    padding: 12,
+                                    borderRadius: 16,
+                                    borderWidth: 1.5,
+                                    borderStyle: formData.logo ? "solid" : "dashed",
+                                    borderColor: formData.logo ? COLORS.primary : COLORS.borderSecondary,
+                                    backgroundColor: formData.logo ? "#f2f8ff" : "#fff",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    minHeight: 150,
+                                    width: 170,
+                                    alignSelf: "center",
+                                    shadowColor: "#000",
+                                    shadowOpacity: 0.06,
+                                    shadowRadius: 6,
+                                    shadowOffset: { width: 0, height: 3 },
+                                    elevation: 3,
+                                }}>
+                                    {formData.logo ? (
+                                        <>
+                                            <Image source={{ uri: formData.logo }} style={[styles.logoImage, { marginBottom: 12 }]} />
+                                            <Text style={{ color: COLORS.primary, fontWeight: "600" }}>Cambiar logo</Text>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <View style={[styles.logoPlaceholder, { width: 90, height: 90, borderRadius: 45 }]}>
+                                                <Ionicons name="business-outline" size={50} color={COLORS.primary} />
+                                            </View>
+                                            <Text style={{ marginTop: 10, color: COLORS.textBlack, fontWeight: "700" }}>
+                                                Sube tu logo
+                                            </Text>
+                                        </>
+                                    )}
+                                </View>
                             </Pressable>
+                            {validationErrors.logo && (
+                                <Text style={[styles.errorText, { textAlign: "center", marginTop: 8 }]}>
+                                    {validationErrors.logo}
+                                </Text>
+                            )}
                         </View>
 
                         {/* Formulario */}
@@ -674,8 +719,8 @@ export default function RegisterCompany({ navigation }) {
 
                             <View style={styles.buttonContainer}>
                                 <ButtonLogin
-                                    title="Registrar Empresa"
-                                    onPress={handleRegister}
+                                    title={submitting ? "Registrando..." : "Registrar Empresa"}
+                                    onPress={submitting ? undefined : handleRegister}
                                     icon={<Ionicons name="business" size={24} color="white" />}
                                 />
                             </View>
