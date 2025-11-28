@@ -1,6 +1,6 @@
 // 1. Paquetes core de React/React Native
-import { useState, useRef } from 'react';
-import { Text, View, ScrollView, Pressable, Alert, Dimensions, Modal, FlatList } from "react-native";
+import { useState, useRef, useEffect } from 'react';
+import { Text, View, ScrollView, Pressable, Alert, Dimensions, Modal, FlatList, ActivityIndicator } from "react-native";
 
 // 2. Bibliotecas de terceros
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,6 +18,12 @@ import InfoModal from "../../components/InfoModal";
 
 // 4. Constantes y utilidades
 import { COLORS, RADIUS } from '../../components/constants/theme';
+
+// 4.5 Servicios de Firebase
+import { getCurrentUser } from "../../services/authService";
+import { getAdminProfile } from "../../services/companyService";
+import { getGroupsByIds } from "../../services/groupService";
+import { getPeticionesByIds } from "../../services/peticionService";
 
 // 5. Estilos
 import styles from "../../styles/screens/admin/CalendarAdminStyles";
@@ -52,69 +58,77 @@ export default function CalendarAdmin({ navigation }) {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState('Esta semana');
   
+  // Estados para datos de Firebase
+  const [loading, setLoading] = useState(true);
+  const [adminData, setAdminData] = useState(null);
+  const [groups, setGroupsData] = useState([]);
+  const [allPendingRequests, setAllPendingRequests] = useState([]);
+  
   // Referencias para capturar las gráficas como imágenes
   const lineChartRef = useRef();
   const barChartRef = useRef();
   const pieChartRef = useRef();
   
-  // Grupos estáticos (después se cargarán desde Firebase)
-  const groups = [
-    { id: 1, name: 'Recepción', color: COLORS.primary },
-    { id: 2, name: 'Cocina', color: COLORS.textGreen },
-    { id: 3, name: 'Meseros', color: COLORS.primary },
-    { id: 4, name: 'Bar', color: COLORS.textGreen },
-    { id: 5, name: 'Anfitriones', color: COLORS.primary },
-    { id: 6, name: 'Operaciones', color: COLORS.textGreen },
-  ];
-  
-  // Peticiones pendientes con fechas
-  const pendingRequests = [
-    {
-      id: 1,
-      name: 'Alex Johnson',
-      position: 'Recepción',
-      date: today,
-      time: '9:00 AM - 1:00 PM',
-      reason: 'Enfermedad',
-      status: 'Pendiente'
-    },
-    {
-      id: 2,
-      name: 'Priya Patel',
-      position: 'Mesero',
-      date: today,
-      time: '12:00 PM - 8:00 PM',
-      reason: 'Personal',
-      status: 'Pendiente'
-    },
-    {
-      id: 3,
-      name: 'Diego Ramos',
-      position: 'Anfitrión',
-      date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-      time: '10:00 AM - 6:00 PM',
-      reason: 'Vacaciones',
-      status: 'Pendiente'
-    },
-    {
-      id: 4,
-      name: 'María López',
-      position: 'Cocina',
-      date: today,
-      time: '2:00 PM - 10:00 PM',
-      reason: 'Cita médica', 
-      status: 'Pendiente'
-    },
-    {
-      id: 5,
-      name: 'Carlos Méndez',
-      position: 'Bar',
-      date: today,
-      time: '6:00 PM - 11:00 PM',
-      reason: 'Personal',
-      status: 'Pendiente'
-    },
-  ];
+  // Cargar datos del admin y sus peticiones al montar
+  useEffect(() => {
+    loadAdminDataAndPetitions();
+  }, []);
+
+  const loadAdminDataAndPetitions = async () => {
+    try {
+      setLoading(true);
+      const user = getCurrentUser();
+      if (!user) {
+        console.error("No hay sesión activa");
+        setLoading(false);
+        return;
+      }
+
+      // Obtener datos del admin
+      const adminProfile = await getAdminProfile(user.uid);
+      if (!adminProfile) {
+        console.error("No se encontraron datos del admin");
+        setLoading(false);
+        return;
+      }
+
+      setAdminData(adminProfile);
+
+      // Cargar grupos del admin
+      if (adminProfile.groupIds && adminProfile.groupIds.length > 0) {
+        const groupsData = await getGroupsByIds(adminProfile.groupIds);
+        setGroupsData(groupsData);
+
+        // Cargar peticiones de todos los grupos
+        await loadAllPetitions(groupsData);
+      }
+    } catch (error) {
+      console.error("Error al cargar datos del admin:", error);
+      setBannerMessage("Error al cargar datos");
+      setBannerType("error");
+      setShowBanner(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAllPetitions = async (groupsData) => {
+    try {
+      let allPeticiones = [];
+
+      // Obtener peticiones pendientes de cada grupo
+      for (const group of groupsData) {
+        if (group.peticionesPendientesIds && group.peticionesPendientesIds.length > 0) {
+          const peticiones = await getPeticionesByIds(group.peticionesPendientesIds);
+          allPeticiones = [...allPeticiones, ...peticiones];
+        }
+      }
+
+      setAllPendingRequests(allPeticiones);
+    } catch (error) {
+      console.error("Error al cargar peticiones:", error);
+    }
+  };
 
   // Datos para las gráficas (después se conectarán con Firebase)
   // Simulando datos reales de asistencia - NÚMEROS ABSOLUTOS
@@ -526,25 +540,19 @@ export default function CalendarAdmin({ navigation }) {
   // Marcar fechas con peticiones pendientes
   const getMarkedDates = () => {
     const marked = {};
-    
-    pendingRequests.forEach(request => {
-      if (!marked[request.date]) {
+    allPendingRequests.forEach(request => {
+      if (request.date) {
         marked[request.date] = {
           marked: true,
-          dotColor: COLORS.primary,
+          dotColor: COLORS.primary
         };
       }
     });
-
-    if (selectedDate) {
-      marked[selectedDate] = {
-        ...marked[selectedDate],
-        selected: true,
-        selectedColor: COLORS.primary,
-        selectedTextColor: '#FFFFFF'
-      };
-    }
-
+    marked[selectedDate] = {
+      ...marked[selectedDate],
+      selected: true,
+      selectedColor: COLORS.primary
+    };
     return marked;
   };
 
@@ -553,15 +561,15 @@ export default function CalendarAdmin({ navigation }) {
   };
 
   const getRequestsForDate = () => {
-    return pendingRequests.filter(req => req.date === selectedDate);
+    return allPendingRequests.filter(req => req.date === selectedDate);
   };
 
   const formatSelectedDate = () => {
     if (!selectedDate) return '';
-    const date = new Date(selectedDate);
-    const day = date.getDate();
+    const [year, monthStr, dayStr] = selectedDate.split('-');
+    const day = parseInt(dayStr, 10);
     const monthNames = LocaleConfig.locales['es'].monthNames;
-    const month = monthNames[date.getMonth()];
+    const month = monthNames[parseInt(monthStr, 10) - 1];
     return `${day} de ${month}`;
   };
 
@@ -592,10 +600,18 @@ export default function CalendarAdmin({ navigation }) {
         </View>
       )}
       
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Calendario */}
-        <View style={styles.calendarContainer}>
-          <Calendar
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={{ marginTop: 16, color: COLORS.textGray }}>
+            Cargando peticiones...
+          </Text>
+        </View>
+      ) : (
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Calendario */}
+          <View style={styles.calendarContainer}>
+            <Calendar
             current={today}
             onDayPress={onDayPress}
             markedDates={getMarkedDates()}
@@ -961,7 +977,8 @@ export default function CalendarAdmin({ navigation }) {
 
         {/* Espacio inferior */}
         <View style={{ height: 20 }} />
-      </ScrollView>
+        </ScrollView>
+      )}
       
       <View style={styles.footerContainer}>
         <MenuFooterAdmin />
