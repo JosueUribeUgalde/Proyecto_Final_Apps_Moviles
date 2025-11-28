@@ -25,6 +25,13 @@ export default StyleSheet.create({
     width: '100%',
   },
 
+  // Banner container
+  bannerContainer: {
+    width: '100%',
+    height: 60,
+    alignItems: 'center',
+  },
+
   // Contenedor de métricas (cards de estadísticas)
   metricsContainer: {
     flexDirection: 'row',
@@ -123,6 +130,12 @@ export default StyleSheet.create({
     fontWeight: '600',
     color: COLORS.textBlack,
   },
+  requestPosition: {
+    fontSize: FONTS.small,
+    color: COLORS.textGray,
+    fontWeight: '600',
+    marginTop: 2,
+  },
   
   // Contenedor de detalles (fecha y motivo)
   requestDetails: {
@@ -162,15 +175,18 @@ export default StyleSheet.create({
   // Texto de los badges
   statusText: {
     fontSize: FONTS.small,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   statusPendingText: {
+    fontWeight: '600',
     color: COLORS.primary,
   },
   statusApprovedText: {
+    fontWeight: '600',
     color: COLORS.textGreen,
   },
   statusRejectedText: {
+    fontWeight: '600',
     color: COLORS.error,
   },
 

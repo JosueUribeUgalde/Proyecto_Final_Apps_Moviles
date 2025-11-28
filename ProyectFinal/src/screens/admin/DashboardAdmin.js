@@ -6,12 +6,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 // 3. Componentes propios
 import { HeaderScreen, MenuFooterAdmin, ButtonRequest } from "../../components";
+import InfoModal from "../../components/InfoModal";
 // 4. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
 // 5. Servicios de Firebase
 import { getCurrentUser } from "../../services/authService";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../config/firebaseConfig";
+import { getPeticionesByIds, approvePeticion, rejectPeticion } from "../../services/peticionService";
 // 6. Estilos
 import styles from "../../styles/screens/admin/DashboardAdminStyles";
 import CalendarAdminStyles from "../../styles/screens/admin/CalendarAdminStyles";
@@ -28,8 +30,14 @@ export default function DashboardAdmin({ navigation }) {
   // Estado para grupos del administrador (cargados desde Firebase)
   const [groups, setGroups] = useState([]);
 
-  // Estado para las solicitudes de ausencia (mockup data - cambiar a [] para ver estado vacío)
-  const [requests, setRequests] = useState([]);
+  // Estado para las solicitudes de ausencia pendientes
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [processingRequest, setProcessingRequest] = useState(null);
+
+  // Estados para InfoModal
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [infoModalTitle, setInfoModalTitle] = useState('');
+  const [infoModalMessage, setInfoModalMessage] = useState('');
 
   // Cargar datos del admin al montar el componente
   useEffect(() => {
@@ -97,42 +105,101 @@ export default function DashboardAdmin({ navigation }) {
     }
   };
 
-  const handleApprove = (id) => {
-    // TODO: Implementar lógica de aprobación con Firebase
-    setRequests(requests.map(req =>
-      req.id === id ? { ...req, status: 'Aprobado' } : req
-    ));
-  };
+  // Función para cargar peticiones pendientes de un grupo específico
+  const loadGroupPeticiones = async (groupId) => {
+    try {
+      // Obtener el grupo actualizado para tener los IDs de peticiones
+      const groupDoc = await getDoc(doc(db, "groups", groupId));
+      if (!groupDoc.exists()) return;
 
-  const handleReject = (id) => {
-    // TODO: Implementar lógica de rechazo con Firebase
-    setRequests(requests.map(req =>
-      req.id === id ? { ...req, status: 'Rechazado' } : req
-    ));
-  };
-
-  const handleApproveAll = () => {
-    // TODO: Implementar lógica de aprobación masiva
-    setRequests(requests.map(req => ({ ...req, status: 'Aprobado' })));
-  };
-
-  const getStatusStyle = (status) => {
-    switch (status) {
-      case 'Pendiente':
-        return styles.statusPending;
-      case 'Aprobado':
-        return styles.statusApproved;
-      case 'Rechazado':
-        return styles.statusRejected;
-      default:
-        return styles.statusPending;
+      const groupData = groupDoc.data();
+      
+      // Cargar peticiones pendientes
+      if (groupData.peticionesPendientesIds && groupData.peticionesPendientesIds.length > 0) {
+        const peticiones = await getPeticionesByIds(groupData.peticionesPendientesIds);
+        // Filtrar solo las pendientes
+        const pendientes = peticiones.filter(p => p.status === 'Pendiente');
+        setPendingRequests(pendientes);
+      } else {
+        setPendingRequests([]);
+      }
+    } catch (error) {
+      console.error("Error al cargar peticiones del grupo:", error);
+      setPendingRequests([]);
     }
   };
 
-  const handleGroupSelect = (group) => {
+  const handleApprove = async (request) => {
+    if (processingRequest) return;
+    
+    try {
+      setProcessingRequest(request.id);
+      await approvePeticion(request.id, request.groupId);
+      
+      setInfoModalTitle('¡Aprobada!');
+      setInfoModalMessage('Solicitud aprobada exitosamente');
+      setShowInfoModal(true);
+      
+      // Recargar peticiones del grupo
+      if (selectedGroup) {
+        await loadGroupPeticiones(selectedGroup.id);
+        // Recargar datos del grupo para actualizar contadores
+        const groupDoc = await getDoc(doc(db, "groups", selectedGroup.id));
+        if (groupDoc.exists()) {
+          setSelectedGroup({
+            id: groupDoc.id,
+            ...groupDoc.data()
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error al aprobar:", error);
+      setInfoModalTitle('Error');
+      setInfoModalMessage('Error al aprobar la solicitud. Inténtalo de nuevo.');
+      setShowInfoModal(true);
+    } finally {
+      setProcessingRequest(null);
+    }
+  };
+
+  const handleReject = async (request) => {
+    if (processingRequest) return;
+    
+    try {
+      setProcessingRequest(request.id);
+      await rejectPeticion(request.id, request.groupId);
+      
+      setInfoModalTitle('Rechazada');
+      setInfoModalMessage('Solicitud rechazada correctamente');
+      setShowInfoModal(true);
+      
+      // Recargar peticiones del grupo
+      if (selectedGroup) {
+        await loadGroupPeticiones(selectedGroup.id);
+        // Recargar datos del grupo para actualizar contadores
+        const groupDoc = await getDoc(doc(db, "groups", selectedGroup.id));
+        if (groupDoc.exists()) {
+          setSelectedGroup({
+            id: groupDoc.id,
+            ...groupDoc.data()
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error al rechazar:", error);
+      setInfoModalTitle('Error');
+      setInfoModalMessage('Error al rechazar la solicitud. Inténtalo de nuevo.');
+      setShowInfoModal(true);
+    } finally {
+      setProcessingRequest(null);
+    }
+  };
+
+  const handleGroupSelect = async (group) => {
     setSelectedGroup(group);
     setShowGroupSelectModal(false);
-    // Aquí se cargarán los datos específicos del grupo desde Firebase
+    // Cargar peticiones pendientes del grupo
+    await loadGroupPeticiones(group.id);
   };
 
   // Pantalla de carga mientras se obtienen los datos
@@ -230,69 +297,69 @@ export default function DashboardAdmin({ navigation }) {
             {/* Sección de solicitudes */}
             <View style={styles.requestsSection}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Solicitudes de Ausencia y Permisos</Text>
+                <Text style={styles.sectionTitle}>Solicitudes de Ausencia Pendientes</Text>
               </View>
 
               {/* Lista de solicitudes */}
-              {requests.length > 0 ? (
-                requests.map((request) => (
+              {pendingRequests.length > 0 ? (
+                pendingRequests.map((request) => (
                   <View key={request.id} style={styles.requestCard}>
                     <View style={styles.requestHeader}>
-                      <Text style={styles.requestName}>{request.name}</Text>
-                      <View style={getStatusStyle(request.status)}>
-                        <Text style={[
-                          styles.statusText,
-                          request.status === 'Pendiente' && styles.statusPendingText,
-                          request.status === 'Aprobado' && styles.statusApprovedText,
-                          request.status === 'Rechazado' && styles.statusRejectedText,
-                        ]}>
-                          {request.status}
-                        </Text>
+                      <View>
+                        <Text style={styles.requestName}>{request.userName}</Text>
+                        <Text style={styles.requestPosition}>{request.position}</Text>
+                      </View>
+                      <View style={styles.statusPending}>
+                        <Text style={styles.statusPendingText}>{request.status}</Text>
                       </View>
                     </View>
 
                     <View style={styles.requestDetails}>
                       <View style={styles.detailRow}>
-                        <Ionicons name="time-outline" size={16} color={COLORS.textGray} />
+                        <Ionicons name="calendar-outline" size={16} color={COLORS.textGray} />
                         <Text style={styles.detailText}>{request.date}</Text>
                       </View>
                       <View style={styles.detailRow}>
+                        <Ionicons name="time-outline" size={16} color={COLORS.textGray} />
+                        <Text style={styles.detailText}>{request.startTime}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
                         <Ionicons name="information-circle-outline" size={16} color={COLORS.textGray} />
-                        <Text style={styles.detailText}>Motivo: {request.reason}</Text>
+                        <Text style={styles.detailText}>{request.reason}</Text>
                       </View>
                     </View>
 
-                    {request.status === 'Pendiente' && (
-                      <View style={styles.actionButtons}>
-                        <ButtonRequest
-                          title="Aprobar"
-                          icon="checkmark-circle-outline"
-                          iconColor={COLORS.textGreen}
-                          textColor={COLORS.textGreen}
-                          backgroundColor={COLORS.backgroundBS}
-                          borderColor={COLORS.borderSecondary}
-                          onPress={() => handleApprove(request.id)}
-                          style={{ flex: 1 }}
-                        />
+                    <View style={styles.actionButtons}>
+                      <ButtonRequest
+                        title={processingRequest === request.id ? "Procesando..." : "Aprobar"}
+                        icon="checkmark-circle-outline"
+                        iconColor={COLORS.textGreen}
+                        textColor={COLORS.textGreen}
+                        backgroundColor={COLORS.backgroundBS}
+                        borderColor={COLORS.borderSecondary}
+                        onPress={() => handleApprove(request)}
+                        style={{ flex: 1 }}
+                        disabled={processingRequest !== null}
+                      />
 
-                        <ButtonRequest
-                          title="Rechazar"
-                          icon="close-circle-outline"
-                          iconColor={COLORS.textRed}
-                          textColor={COLORS.textRed}
-                          backgroundColor={COLORS.backgroundWhite}
-                          borderColor={COLORS.borderSecondary}
-                          onPress={() => handleReject(request.id)}
-                          style={{ flex: 1 }}
-                        />
-                      </View>
-                    )}
+                      <ButtonRequest
+                        title={processingRequest === request.id ? "Procesando..." : "Rechazar"}
+                        icon="close-circle-outline"
+                        iconColor={COLORS.textRed}
+                        textColor={COLORS.textRed}
+                        backgroundColor={COLORS.backgroundWhite}
+                        borderColor={COLORS.borderSecondary}
+                        onPress={() => handleReject(request)}
+                        style={{ flex: 1 }}
+                        disabled={processingRequest !== null}
+                      />
+                    </View>
                   </View>
                 ))
               ) : (
                 <View style={styles.emptyRequestsContainer}>
                   <Ionicons name="calendar-outline" size={64} color={COLORS.textGray} />
-                  <Text style={styles.emptyRequestsText}>No hay solicitudes</Text>
+                  <Text style={styles.emptyRequestsText}>No hay solicitudes pendientes</Text>
                   <Text style={styles.emptyRequestsSubtext}>
                     Las solicitudes de ausencia y permisos aparecerán aquí
                   </Text>
@@ -376,6 +443,14 @@ export default function DashboardAdmin({ navigation }) {
       <View style={styles.footerContainer}>
         <MenuFooterAdmin />
       </View>
+
+      {/* Modal de Información */}
+      <InfoModal
+        visible={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        title={infoModalTitle}
+        message={infoModalMessage}
+      />
     </SafeAreaView>
   );
 }

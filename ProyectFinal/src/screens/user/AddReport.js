@@ -207,9 +207,7 @@ export default function ScreenTemplate({ navigation }) {
       };
 
       // Crear la petición en Firestore
-      const peticionId = await createPeticion(peticionData);
-
-      console.log('Petición creada exitosamente:', peticionId);
+      await createPeticion(peticionData);
 
       // Mostrar mensaje de éxito
       setInfoModalTitle('¡Petición Enviada!');

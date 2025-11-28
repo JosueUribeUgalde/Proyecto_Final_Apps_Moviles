@@ -723,4 +723,175 @@ export default StyleSheet.create({
     fontSize: FONTS.regular,
     fontWeight: '600',
   },
+
+  // ========== MODAL DE EDICIÓN DE MIEMBRO ==========
+  // Overlay del modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Contenedor del modal
+  modalContainer: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.md,
+    padding: 20,
+    width: '90%',
+    maxHeight: '85%',
+    ...SHADOWS.dark,
+  },
+
+  // Header del modal
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+
+  // Título grande del modal
+  modalTitleLarge: {
+    fontSize: FONTS.large,
+    fontWeight: '700',
+    color: COLORS.textBlack,
+    flex: 1,
+  },
+
+  // Contenido scrolleable del modal
+  modalScrollContent: {
+    paddingBottom: 16,
+  },
+
+  // Tarjeta de sección dentro del modal
+  sectionCard: {
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+    ...SHADOWS.medium,
+  },
+
+  // Título de sección
+  sectionTitle: {
+    fontSize: FONTS.large,
+    fontWeight: '700',
+    color: COLORS.textBlack,
+    marginBottom: 16,
+  },
+
+  // Etiqueta de campo
+  fieldLabel: {
+    fontSize: FONTS.small,
+    fontWeight: '600',
+    color: COLORS.textBlack,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+
+  // Input de campo
+  fieldInput: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.sm,
+    padding: 12,
+    fontSize: FONTS.regular,
+    color: COLORS.textBlack,
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+  },
+
+  // Fila de campos
+  fieldRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+
+  // Columna de campo
+  fieldColumn: {
+    flex: 1,
+  },
+
+  // Grupo de chips
+  chipGroup: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+
+  // Chip de área
+  areaChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+    backgroundColor: COLORS.backgroundWhite,
+  },
+
+  // Chip activo
+  areaChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+
+  // Texto del chip
+  areaChipText: {
+    fontSize: FONTS.small,
+    color: COLORS.textBlack,
+    fontWeight: '500',
+  },
+
+  // Texto del chip activo
+  areaChipTextActive: {
+    color: COLORS.textWhite,
+  },
+
+  // Contenedor de botones en columna
+  modalButtonsColumn: {
+    gap: 12,
+    marginTop: 16,
+  },
+
+  // Botón primario
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.primary,
+    ...SHADOWS.medium,
+  },
+
+  // Texto del botón primario
+  primaryButtonText: {
+    color: COLORS.textWhite,
+    fontSize: FONTS.regular,
+    fontWeight: '600',
+  },
+
+  // Botón de remover
+  removeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.error,
+    ...SHADOWS.medium,
+  },
+
+  // Texto del botón de remover
+  removeButtonText: {
+    color: COLORS.textWhite,
+    fontSize: FONTS.regular,
+    fontWeight: '600',
+  },
 });

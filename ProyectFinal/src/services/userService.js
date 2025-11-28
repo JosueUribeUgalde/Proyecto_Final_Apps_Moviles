@@ -34,6 +34,7 @@ export const createUserProfile = async (userId, userData) => {
             experience: "", // Se completará en el perfil
             companyId: userData.companyId || "", // Se asignará cuando se una a una empresa
             groupIds: [], // Grupos a los que pertenece
+            historialesIds: [], // IDs de peticiones en historial
             avatar: "", // URL de foto de perfil
             region: {
                 name: "México", // Región por defecto
@@ -42,16 +43,12 @@ export const createUserProfile = async (userId, userData) => {
             preferences: {
                 notificationsEnabled: true // Notificaciones habilitadas por defecto
             },
-            availability: {
-                availableDays: ["Lun", "Mar", "Mié", "Jue", "Vie"], // Días disponibles por defecto
-                startTime: "08:00",
-                endTime: "17:00",
-                mealTime: "14:00",
-                daysOff: ["Sáb", "Dom"], // Días libres por defecto
-                maxHoursPerWeek: 40,
-                replacementAvailable: false,
-                preferredAreas: [] // Áreas preferidas vacías
-            },
+            // Campos de disponibilidad en el nivel raíz para fácil acceso
+            availableDays: "Lun • Mar • Mié • Jue • Vie", // Días disponibles por defecto
+            startTime: "08:00",
+            endTime: "17:00",
+            mealTime: "14:00",
+            daysOff: "Sáb • Dom", // Días libres por defecto
             stats: {
                 shiftsThisWeek: 0,
                 totalShifts: 0,
