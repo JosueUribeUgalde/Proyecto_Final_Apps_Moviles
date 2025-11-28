@@ -11,7 +11,7 @@ styles/
 │   ├── ButtonStyles.js
 │   ├── HeaderScreenStyles.js
 │   ├── InfoModalStyles.js
-│   ├── InputStyles.js
+│   ├── InputStyles.jspe
 │   ├── MenuFooterStyles.js
 │   └── RazonOptionStyles.js
 │
