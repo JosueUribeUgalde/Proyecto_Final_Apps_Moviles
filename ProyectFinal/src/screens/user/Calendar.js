@@ -38,16 +38,16 @@ export default function CalendarScreen({ navigation }) {
   const [showBanner, setShowBanner] = useState(false);
   const today = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(today);
-  
+
   // Datos de turnos de ejemplo con fechas actuales
   const getAppointmentsForCurrentMonth = () => {
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth();
-    
+
     // Generar fechas para los próximos días
     const appointments = {};
-    
+
     // Turno para hoy
     const todayStr = today.toISOString().split('T')[0];
     appointments[todayStr] = [
@@ -64,7 +64,7 @@ export default function CalendarScreen({ navigation }) {
         status: 'Pendiente'
       }
     ];
-    
+
     // Turno para mañana
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
@@ -77,7 +77,7 @@ export default function CalendarScreen({ navigation }) {
         status: 'Confirmado'
       }
     ];
-    
+
     // Turno para pasado mañana
     const dayAfter = new Date(today);
     dayAfter.setDate(today.getDate() + 2);
@@ -90,7 +90,7 @@ export default function CalendarScreen({ navigation }) {
         status: 'Pendiente'
       }
     ];
-    
+
     return appointments;
   };
 
@@ -99,12 +99,12 @@ export default function CalendarScreen({ navigation }) {
   // Marcar fechas con turnos
   const getMarkedDates = () => {
     const marked = {};
-    
+
     // Marcar fechas con turnos
     Object.keys(appointments).forEach(date => {
       const hasConfirmed = appointments[date].some(apt => apt.status === 'Confirmado');
       const hasPending = appointments[date].some(apt => apt.status === 'Pendiente');
-      
+
       marked[date] = {
         marked: true,
         dotColor: hasConfirmed ? COLORS.primary : COLORS.textGray,
@@ -163,9 +163,9 @@ export default function CalendarScreen({ navigation }) {
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
         rightIcon={<Ionicons name="notifications-outline" size={24} color="black" />}
         onLeftPress={() => navigation.goBack()}
-        onRightPress={() => {}}
+        onRightPress={() => { }}
       />
-      
+
       {/* Banner para mensajes */}
       <View style={styles.bannerContainer}>
         <Banner
@@ -175,7 +175,7 @@ export default function CalendarScreen({ navigation }) {
           onHide={() => setShowBanner(false)}
         />
       </View>
-      
+
       {/* Contenido principal */}
       <ScrollView style={styles.content}>
         {/* Calendario */}
@@ -221,7 +221,7 @@ export default function CalendarScreen({ navigation }) {
           <Text style={styles.sectionTitle}>
             Turnos del Día ({formatSelectedDate()})
           </Text>
-          
+
           {getSelectedDateAppointments().length > 0 ? (
             <FlatList
               data={getSelectedDateAppointments()}
@@ -239,7 +239,7 @@ export default function CalendarScreen({ navigation }) {
           )}
         </View>
       </ScrollView>
-      
+
       {/* Footer */}
       <View style={styles.footerContainer}>
         <MenuFooter />

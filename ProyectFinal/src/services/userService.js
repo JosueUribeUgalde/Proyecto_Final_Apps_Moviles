@@ -43,12 +43,12 @@ export const createUserProfile = async (userId, userData) => {
             preferences: {
                 notificationsEnabled: true // Notificaciones habilitadas por defecto
             },
-            // Campos de disponibilidad en el nivel raíz para fácil acceso
-            availableDays: "Lun • Mar • Mié • Jue • Vie", // Días disponibles por defecto
-            startTime: "08:00",
-            endTime: "17:00",
-            mealTime: "14:00",
-            daysOff: "Sáb • Dom", // Días libres por defecto
+            // Campos de disponibilidad en el nivel raíz - N/A por defecto hasta que el usuario los complete
+            availableDays: "N/A",
+            startTime: "N/A",
+            endTime: "N/A",
+            mealTime: "N/A",
+            daysOff: "N/A",
             stats: {
                 shiftsThisWeek: 0,
                 totalShifts: 0,
