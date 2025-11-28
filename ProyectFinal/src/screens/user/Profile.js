@@ -238,6 +238,41 @@ export default function Profile() {
             <Ionicons name="call-outline" size={20} color={COLORS.textGray} />
             <Text style={styles.infoText}>{userData?.phone || 'Sin teléfono'}</Text>
           </View>
+
+          {/* Horarios Laborales */}
+          <View style={{ marginTop: 16 }}>
+            <Text style={[styles.sectionTitle, { marginBottom: 12, fontSize: 14, color: COLORS.textGray }]}>
+              Horarios Laborales
+            </Text>
+
+            <View style={styles.infoBox}>
+              <Ionicons name="calendar-outline" size={20} color={COLORS.textGray} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.infoText, { fontSize: 12, color: COLORS.textGray }]}>Días de trabajo</Text>
+                <Text style={styles.infoText}>{userData?.availableDays || 'N/A'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.infoBox}>
+              <Ionicons name="time-outline" size={20} color={COLORS.textGray} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.infoText, { fontSize: 12, color: COLORS.textGray }]}>Horario</Text>
+                <Text style={styles.infoText}>
+                  {userData?.startTime && userData?.endTime && userData.startTime !== 'N/A' && userData.endTime !== 'N/A'
+                    ? `${userData.startTime} - ${userData.endTime}`
+                    : 'N/A'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.infoBox}>
+              <Ionicons name="restaurant-outline" size={20} color={COLORS.textGray} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.infoText, { fontSize: 12, color: COLORS.textGray }]}>Hora de comida</Text>
+                <Text style={styles.infoText}>{userData?.mealTime || 'N/A'}</Text>
+              </View>
+            </View>
+          </View>
         </View>
 
         {/* Preferencias */}

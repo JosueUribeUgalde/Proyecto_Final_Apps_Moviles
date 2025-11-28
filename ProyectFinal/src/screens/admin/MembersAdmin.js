@@ -24,7 +24,7 @@ const parseDays = (value) => {
   return value
     .split('•')
     .map((d) => d.trim())
-    .filter(Boolean);
+    .filter(d => d && d !== 'N/A');
 };
 
 const formatDays = (days) => {
@@ -476,7 +476,11 @@ export default function MembersAdmin({ navigation }) {
 
   // Verificar si un miembro tiene datos incompletos
   const hasIncompleteData = (member) => {
-    return !member.position || !member.experience || !member.startTime || !member.endTime || !member.availableDays;
+    return !member.position ||
+      !member.experience ||
+      !member.startTime || member.startTime === 'N/A' ||
+      !member.endTime || member.endTime === 'N/A' ||
+      !member.availableDays || member.availableDays === 'N/A';
   };
 
   // Abrir modal de edición de miembro
@@ -760,20 +764,19 @@ export default function MembersAdmin({ navigation }) {
   const renderListHeader = () => (
     <>
       {/* Team Directory Section */}
-      <View style={styles.directoryCard}>
-        <Text style={styles.directoryTitle}>Buscar a miembro</Text>
+      {/* Team Directory Section */}
+      <Text style={styles.directoryTitle}>Buscar un miembro</Text>
 
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search-outline" size={20} color={COLORS.textGray} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Buscar..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor={COLORS.textGray}
-          />
-        </View>
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search-outline" size={20} color={COLORS.textGray} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholderTextColor={COLORS.textGray}
+        />
       </View>
 
       {!searchQuery && (
@@ -868,6 +871,21 @@ export default function MembersAdmin({ navigation }) {
               </>
             )}
           </View>
+
+          {/* Warning Explanation Banner */}
+          {selectedGroup && members.some(m => hasIncompleteData(m)) && (
+            <View style={styles.warningBannerContainer}>
+              <Ionicons name="warning" size={24} color="#b60000ff" style={styles.warningIcon} />
+              <View style={styles.warningTextContainer}>
+                <Text style={styles.warningTitle}>
+                  Información Incompleta Detectada
+                </Text>
+                <Text style={styles.warningDescription}>
+                  El icono de advertencia indica miembros con horarios o puesto sin asignar. Pulse los tres puntos (...) para actualizar su información.
+                </Text>
+              </View>
+            </View>
+          )}
         </>
       )}
 
@@ -1718,3 +1736,4 @@ export default function MembersAdmin({ navigation }) {
     </SafeAreaView>
   );
 }
+

@@ -29,6 +29,7 @@ export default function Register() {
 
     const [nombre, setNombre] = useState('');
     const [email, setEmail] = useState('');
+    const [telefono, setTelefono] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -75,6 +76,14 @@ export default function Register() {
             newErrors.email = 'Email inválido (ej: usuario@correo.com)';
         }
 
+        // Validar teléfono
+        const phoneRegex = /^[0-9]{10}$/;
+        if (!telefono.trim()) {
+            newErrors.telefono = 'El teléfono es requerido';
+        } else if (!phoneRegex.test(telefono.replace(/\s/g, ''))) {
+            newErrors.telefono = 'Teléfono inválido (10 dígitos)';
+        }
+
         // Validar contraseñas
         const passErrors = validatePassword(password);
         if (password !== confirmPassword) {
@@ -105,12 +114,13 @@ export default function Register() {
             await createUserProfile(user.uid, {
                 name: nombre,
                 email: email,
-                phone: ""
+                phone: telefono
             });
 
             // Limpiar campos
             setNombre('');
             setEmail('');
+            setTelefono('');
             setPassword('');
             setConfirmPassword('');
             setValidationErrors({});
@@ -210,6 +220,29 @@ export default function Register() {
                         />
                         {validationErrors.email && (
                             <Text style={styles.errorText}>{validationErrors.email}</Text>
+                        )}
+                    </View>
+
+                    <View style={styles.group}>
+                        <Text style={styles.label}>Teléfono</Text>
+                        <InputLogin
+                            msj="10 dígitos"
+                            value={telefono}
+                            onChangeText={(text) => {
+                                // Solo permitir números
+                                const numericText = text.replace(/[^0-9]/g, '');
+                                setTelefono(numericText);
+                                // Limpiar error al escribir
+                                if (validationErrors.telefono) {
+                                    setValidationErrors(prev => ({ ...prev, telefono: undefined }));
+                                }
+                            }}
+                            keyboardType="phone-pad"
+                            maxLength={10}
+                            editable={!loading}
+                        />
+                        {validationErrors.telefono && (
+                            <Text style={styles.errorText}>{validationErrors.telefono}</Text>
                         )}
                     </View>
 

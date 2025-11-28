@@ -113,7 +113,7 @@ export default function DashboardAdmin({ navigation }) {
       if (!groupDoc.exists()) return;
 
       const groupData = groupDoc.data();
-      
+
       // Cargar peticiones pendientes
       if (groupData.peticionesPendientesIds && groupData.peticionesPendientesIds.length > 0) {
         const peticiones = await getPeticionesByIds(groupData.peticionesPendientesIds);
@@ -131,15 +131,15 @@ export default function DashboardAdmin({ navigation }) {
 
   const handleApprove = async (request) => {
     if (processingRequest) return;
-    
+
     try {
       setProcessingRequest(request.id);
       await approvePeticion(request.id, request.groupId);
-      
+
       setInfoModalTitle('¡Aprobada!');
       setInfoModalMessage('Solicitud aprobada exitosamente');
       setShowInfoModal(true);
-      
+
       // Recargar peticiones del grupo
       if (selectedGroup) {
         await loadGroupPeticiones(selectedGroup.id);
@@ -164,15 +164,15 @@ export default function DashboardAdmin({ navigation }) {
 
   const handleReject = async (request) => {
     if (processingRequest) return;
-    
+
     try {
       setProcessingRequest(request.id);
       await rejectPeticion(request.id, request.groupId);
-      
+
       setInfoModalTitle('Rechazada');
       setInfoModalMessage('Solicitud rechazada correctamente');
       setShowInfoModal(true);
-      
+
       // Recargar peticiones del grupo
       if (selectedGroup) {
         await loadGroupPeticiones(selectedGroup.id);
@@ -259,6 +259,14 @@ export default function DashboardAdmin({ navigation }) {
 
         {selectedGroup ? (
           <>
+            {/* Descripción del grupo */}
+            {selectedGroup.description && selectedGroup.description.trim() !== '' && (
+              <View style={styles.descriptionContainer}>
+                <Text style={styles.descriptionLabel}>Descripción del Grupo</Text>
+                <Text style={styles.descriptionText}>{selectedGroup.description}</Text>
+              </View>
+            )}
+
             {/* Métricas principales */}
             <View style={styles.metricsContainer}>
               <View style={styles.metricCard}>
@@ -285,14 +293,6 @@ export default function DashboardAdmin({ navigation }) {
                 <Text style={styles.metricSub}>Esperando revisión</Text>
               </View>
             </View>
-
-            {/* Descripción del grupo */}
-            {selectedGroup.description && selectedGroup.description.trim() !== '' && (
-              <View style={styles.descriptionContainer}>
-                <Text style={styles.descriptionLabel}>Descripción del Grupo</Text>
-                <Text style={styles.descriptionText}>{selectedGroup.description}</Text>
-              </View>
-            )}
 
             {/* Sección de solicitudes */}
             <View style={styles.requestsSection}>

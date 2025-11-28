@@ -7,7 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 
 // 3. Componentes propios
-import { HeaderScreen, Banner, MenuFooterAdmin, ButtonRequest } from "../../components";
+import { HeaderScreen, MenuFooterAdmin, ButtonRequest } from "../../components";
 
 // 4. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
@@ -23,9 +23,7 @@ import styles from "../../styles/screens/admin/RequestStyles";
 
 export default function RequestScreen({ navigation }) {
   // Estados de UI
-  const [showBanner, setShowBanner] = useState(false);
-  const [bannerMessage, setBannerMessage] = useState('');
-  const [bannerType, setBannerType] = useState('success');
+
   const [selectedFilter, setSelectedFilter] = useState('Pendientes');
   const [searchQuery, setSearchQuery] = useState('');
   const [showThisWeek, setShowThisWeek] = useState(false);
@@ -77,9 +75,7 @@ export default function RequestScreen({ navigation }) {
       }
     } catch (error) {
       console.error("Error al cargar datos del admin:", error);
-      setBannerMessage('Error al cargar datos');
-      setBannerType('error');
-      setShowBanner(true);
+
     } finally {
       setLoading(false);
     }
@@ -104,7 +100,7 @@ export default function RequestScreen({ navigation }) {
       }
 
       setPendingRequests(allPeticiones);
-      
+
       // Ordenar historial por fecha (más reciente primero)
       const sortedHistorial = allHistorial.sort((a, b) => {
         const dateA = a.approvedAt || a.rejectedAt || a.createdAt;
@@ -124,7 +120,7 @@ export default function RequestScreen({ navigation }) {
   // Formatear fecha de Firebase Timestamp
   const formatDate = (timestamp) => {
     if (!timestamp) return 'Fecha no disponible';
-    
+
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
     const now = new Date();
     const diffTime = Math.abs(now - date);
@@ -170,22 +166,18 @@ export default function RequestScreen({ navigation }) {
 
   const handleApprove = async (request) => {
     if (processingRequest) return;
-    
+
     try {
       setProcessingRequest(request.id);
       await approvePeticion(request.id, request.groupId);
-      
-      setBannerMessage('Solicitud aprobada exitosamente');
-      setBannerType('success');
-      setShowBanner(true);
-      
+
+
+
       // Recargar datos
       await loadAdminData();
     } catch (error) {
       console.error("Error al aprobar:", error);
-      setBannerMessage('Error al aprobar la solicitud');
-      setBannerType('error');
-      setShowBanner(true);
+
     } finally {
       setProcessingRequest(null);
     }
@@ -193,22 +185,18 @@ export default function RequestScreen({ navigation }) {
 
   const handleReject = async (request) => {
     if (processingRequest) return;
-    
+
     try {
       setProcessingRequest(request.id);
       await rejectPeticion(request.id, request.groupId);
-      
-      setBannerMessage('Solicitud rechazada');
-      setBannerType('error');
-      setShowBanner(true);
-      
+
+
+
       // Recargar datos
       await loadAdminData();
     } catch (error) {
       console.error("Error al rechazar:", error);
-      setBannerMessage('Error al rechazar la solicitud');
-      setBannerType('error');
-      setShowBanner(true);
+
     } finally {
       setProcessingRequest(null);
     }
@@ -216,10 +204,10 @@ export default function RequestScreen({ navigation }) {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
-      <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor={COLORS.background} 
-        translucent={false} 
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={COLORS.background}
+        translucent={false}
       />
       <HeaderScreen
         title="Solicitudes"
@@ -231,16 +219,7 @@ export default function RequestScreen({ navigation }) {
         }}
       />
 
-      {showBanner && (
-        <View style={styles.bannerContainer}>
-          <Banner
-            message={bannerMessage}
-            type={bannerType}
-            visible={showBanner}
-            onHide={() => setShowBanner(false)}
-          />
-        </View>
-      )}
+
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -251,161 +230,161 @@ export default function RequestScreen({ navigation }) {
         </View>
       ) : (
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Filters Section */}
-        <View style={styles.filtersContainer}>
-          <View style={styles.filtersHeader}>
-            <Text style={styles.filtersTitle}>Filtros</Text>
-          </View>
+          {/* Filters Section */}
+          <View style={styles.filtersContainer}>
+            <View style={styles.filtersHeader}>
+              <Text style={styles.filtersTitle}>Filtros</Text>
+            </View>
 
-          <View style={styles.filterChipsContainer}>
-            {filters.map((filter) => (
-              <Pressable
-                key={filter}
-                style={[
-                  styles.filterChip,
-                  selectedFilter === filter && styles.filterChipActive,
-                ]}
-                onPress={() => setSelectedFilter(filter)}
-              >
-                <Text
+            <View style={styles.filterChipsContainer}>
+              {filters.map((filter) => (
+                <Pressable
+                  key={filter}
                   style={[
-                    styles.filterChipText,
-                    selectedFilter === filter && styles.filterChipTextActive,
+                    styles.filterChip,
+                    selectedFilter === filter && styles.filterChipActive,
                   ]}
+                  onPress={() => setSelectedFilter(filter)}
                 >
-                  {filter}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        {/* Search */}
-        <View style={styles.searchWeekContainer}>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search-outline" size={20} color={COLORS.textGray} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar por miembro"
-              placeholderTextColor={COLORS.textGray}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-        </View>
-
-        {/* Pending Absence Requests Section */}
-        <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>Solicitudes de Ausencia Pendientes</Text>
-            <Text style={styles.sectionSubtitle}>Acciones Masivas</Text>
-          </View>
-        </View>
-
-        {/* Request Cards */}
-        {filteredRequests.length > 0 ? (
-          filteredRequests.map((request) => (
-            <View key={request.id} style={styles.requestCard}>
-              <View style={styles.requestHeader}>
-                <View>
-                  <Text style={styles.requestName}>{request.userName}</Text>
-                  <Text style={styles.requestPosition}>{request.position}</Text>
-                </View>
-                <View style={styles.statusBadge}>
-                  <Text style={styles.statusText}>{request.status}</Text>
-                </View>
-              </View>
-              
-              <View style={styles.requestDetails}>
-                <View style={styles.detailRow}>
-                  <Ionicons name="calendar-outline" size={16} color={COLORS.textGray} />
-                  <Text style={styles.detailText}>{request.date}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Ionicons name="time-outline" size={16} color={COLORS.textGray} />
-                  <Text style={styles.detailText}>{request.startTime}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Ionicons name="information-circle-outline" size={16} color={COLORS.textGray} />
-                  <Text style={styles.detailText}>{request.reason}</Text>
-                </View>
-              </View>
-
-              {request.status === 'Pendiente' && (
-                <View style={styles.actionButtons}>
-                  <ButtonRequest
-                    title={processingRequest === request.id ? "Procesando..." : "Aprobar"}
-                    icon="checkmark-circle-outline"
-                    iconColor={COLORS.textGreen}
-                    textColor={COLORS.textGreen}
-                    backgroundColor={COLORS.backgroundBS}
-                    borderColor={COLORS.borderSecondary}
-                    onPress={() => handleApprove(request)}
-                    style={{ flex: 1 }}
-                    disabled={processingRequest !== null}
-                  />
-
-                  <ButtonRequest
-                    title={processingRequest === request.id ? "Procesando..." : "Rechazar"}
-                    icon="close-circle-outline"
-                    iconColor={COLORS.textRed}
-                    textColor={COLORS.textRed}
-                    backgroundColor={COLORS.backgroundWhite}
-                    borderColor={COLORS.borderSecondary}
-                    onPress={() => handleReject(request)}
-                    style={{ flex: 1 }}
-                    disabled={processingRequest !== null}
-                  />
-                </View>
-              )}
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      selectedFilter === filter && styles.filterChipTextActive,
+                    ]}
+                  >
+                    {filter}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
-          ))
-        ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="search-outline" size={48} color={COLORS.textGray} />
-            <Text style={styles.emptyStateText}>No se encontraron solicitudes</Text>
-            <Text style={styles.emptyStateSubtext}>
-              {searchQuery.trim() !== '' 
-                ? `No hay resultados para "${searchQuery}"`
-                : 'No hay solicitudes pendientes'}
-            </Text>
           </View>
-        )}
 
-        {/* Recent Decisions Section */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Decisiones Recientes</Text>
-          <Pressable
-            style={styles.viewAllButton}
-            onPress={() => setShowDecisionsModal(true)}
-          >
-            <Text style={styles.viewAllText}>Ver Todas</Text>
-          </Pressable>
-        </View>
-
-        {/* Decision Cards */}
-        {recentDecisions.map((decision) => (
-          <View key={decision.id} style={styles.decisionCard}>
-            <View style={styles.decisionHeader}>
-              <Text style={styles.decisionStatus}>{decision.status}</Text>
-              <Text style={styles.decisionRole}>{decision.position}</Text>
+          {/* Search */}
+          <View style={styles.searchWeekContainer}>
+            <View style={styles.searchContainer}>
+              <Ionicons name="search-outline" size={20} color={COLORS.textGray} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Buscar por miembro"
+                placeholderTextColor={COLORS.textGray}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
             </View>
-            <Text style={styles.decisionDate}>
-              {formatDate(decision.approvedAt || decision.rejectedAt || decision.createdAt)}
-            </Text>
           </View>
-        ))}
 
-        {recentDecisions.length === 0 && (
-          <View style={styles.emptyState}>
-            <Ionicons name="document-text-outline" size={48} color={COLORS.textGray} />
-            <Text style={styles.emptyStateText}>No hay decisiones recientes</Text>
+          {/* Pending Absence Requests Section */}
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>Solicitudes de Ausencia Pendientes</Text>
+              <Text style={styles.sectionSubtitle}>Acciones Masivas</Text>
+            </View>
           </View>
-        )}
 
-        {/* Bottom spacing */}
-        <View style={{ height: 30 }} />
-      </ScrollView>
+          {/* Request Cards */}
+          {filteredRequests.length > 0 ? (
+            filteredRequests.map((request) => (
+              <View key={request.id} style={styles.requestCard}>
+                <View style={styles.requestHeader}>
+                  <View>
+                    <Text style={styles.requestName}>{request.userName}</Text>
+                    <Text style={styles.requestPosition}>{request.position}</Text>
+                  </View>
+                  <View style={styles.statusBadge}>
+                    <Text style={styles.statusText}>{request.status}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.requestDetails}>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.textGray} />
+                    <Text style={styles.detailText}>{request.date}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="time-outline" size={16} color={COLORS.textGray} />
+                    <Text style={styles.detailText}>{request.startTime}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="information-circle-outline" size={16} color={COLORS.textGray} />
+                    <Text style={styles.detailText}>{request.reason}</Text>
+                  </View>
+                </View>
+
+                {request.status === 'Pendiente' && (
+                  <View style={styles.actionButtons}>
+                    <ButtonRequest
+                      title={processingRequest === request.id ? "Procesando..." : "Aprobar"}
+                      icon="checkmark-circle-outline"
+                      iconColor={COLORS.textGreen}
+                      textColor={COLORS.textGreen}
+                      backgroundColor={COLORS.backgroundBS}
+                      borderColor={COLORS.borderSecondary}
+                      onPress={() => handleApprove(request)}
+                      style={{ flex: 1 }}
+                      disabled={processingRequest !== null}
+                    />
+
+                    <ButtonRequest
+                      title={processingRequest === request.id ? "Procesando..." : "Rechazar"}
+                      icon="close-circle-outline"
+                      iconColor={COLORS.textRed}
+                      textColor={COLORS.textRed}
+                      backgroundColor={COLORS.backgroundWhite}
+                      borderColor={COLORS.borderSecondary}
+                      onPress={() => handleReject(request)}
+                      style={{ flex: 1 }}
+                      disabled={processingRequest !== null}
+                    />
+                  </View>
+                )}
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="search-outline" size={48} color={COLORS.textGray} />
+              <Text style={styles.emptyStateText}>No se encontraron solicitudes</Text>
+              <Text style={styles.emptyStateSubtext}>
+                {searchQuery.trim() !== ''
+                  ? `No hay resultados para "${searchQuery}"`
+                  : 'No hay solicitudes pendientes'}
+              </Text>
+            </View>
+          )}
+
+          {/* Recent Decisions Section */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Decisiones Recientes</Text>
+            <Pressable
+              style={styles.viewAllButton}
+              onPress={() => setShowDecisionsModal(true)}
+            >
+              <Text style={styles.viewAllText}>Ver Todas</Text>
+            </Pressable>
+          </View>
+
+          {/* Decision Cards */}
+          {recentDecisions.map((decision) => (
+            <View key={decision.id} style={styles.decisionCard}>
+              <View style={styles.decisionHeader}>
+                <Text style={styles.decisionStatus}>{decision.status}</Text>
+                <Text style={styles.decisionRole}>{decision.position}</Text>
+              </View>
+              <Text style={styles.decisionDate}>
+                {formatDate(decision.approvedAt || decision.rejectedAt || decision.createdAt)}
+              </Text>
+            </View>
+          ))}
+
+          {recentDecisions.length === 0 && (
+            <View style={styles.emptyState}>
+              <Ionicons name="document-text-outline" size={48} color={COLORS.textGray} />
+              <Text style={styles.emptyStateText}>No hay decisiones recientes</Text>
+            </View>
+          )}
+
+          {/* Bottom spacing */}
+          <View style={{ height: 30 }} />
+        </ScrollView>
       )}
 
       {/* Decisions Modal */}
@@ -416,14 +395,14 @@ export default function RequestScreen({ navigation }) {
         onRequestClose={() => setShowDecisionsModal(false)}
         statusBarTranslucent
       >
-        <StatusBar 
-          barStyle="light-content" 
-          backgroundColor="rgba(0, 0, 0, 0.5)" 
-          translucent={true} 
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="rgba(0, 0, 0, 0.5)"
+          translucent={true}
         />
         <View style={styles.modalOverlay}>
-          <Pressable 
-            style={styles.modalOverlayTouchable} 
+          <Pressable
+            style={styles.modalOverlayTouchable}
             onPress={() => setShowDecisionsModal(false)}
           />
           <View style={styles.modalContent}>
@@ -462,7 +441,7 @@ export default function RequestScreen({ navigation }) {
                       </Text>
                     </View>
                   </View>
-                  
+
                   <View style={styles.modalDecisionDetails}>
                     <View style={styles.modalDetailRow}>
                       <Ionicons name="calendar-outline" size={14} color={COLORS.textGray} />
