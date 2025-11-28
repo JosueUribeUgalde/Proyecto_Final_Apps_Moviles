@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   View,
@@ -16,16 +16,9 @@ import MenuFooterCompany from "../../components/MenuFooterCompany";
 import { COLORS } from "../../components/constants/theme";
 import styles from "../../styles/screens/company/InvoiceHistoryStyles";
 import { useNavigation } from "@react-navigation/native";
-
-// Datos de facturas
-const INVOICES = [
-  { id: "INV-0123", title: "Marzo 2025",    issued: "05 Mar 2025", due: "05 Mar 2025", paid: null,         amount: 199, status: "proximo" },
-  { id: "INV-0122", title: "Febrero 2025",  issued: "05 Feb 2025", due: "05 Feb 2025", paid: "06 Feb 2025", amount: 199, status:  "fallida", failNote: "Falló el pago" },
-  { id: "INV-0121", title: "Enero 2025",    issued: "05 Ene 2025", due: "05 Ene 2025", paid: "06 Ene 2025", amount: 199, status: "pagada"  },
-  { id: "INV-0120", title: "Diciembre 2024",issued: "05 Dic 2024", due: "05 Dic 2024", paid: "05 Dic 2024", amount: 199, status: "pagada"  },
-  { id: "INV-0119", title: "Noviembre 2024",issued: "05 Nov 2024", due: "05 Nov 2024", paid: null,          amount: 199, status: "pagada" },
-  { id: "INV-0118", title: "Octubre 2024",  issued: "05 Oct 2024", due: "05 Oct 2024", paid: "05 Oct 2024", amount: 199, status: "pagada"  },
-];
+import { getCurrentUser } from "../../services/authService";
+import { db } from "../../config/firebaseConfig";
+import { collection, getDocs, orderBy, query } from "firebase/firestore";
 
 // Etiquetas de estado
 const STATUS_LABELS = {
@@ -50,11 +43,57 @@ export default function InvoiceHistory() {
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [stateFilter, setStateFilter] = useState("all");
   const [refreshing, setRefreshing] = useState(false);
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const formatDate = (date) => {
+    if (!date) return "";
+    const d = date instanceof Date ? date : new Date(date);
+    return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+  };
+
+  const loadInvoices = useCallback(async () => {
+    try {
+      const user = getCurrentUser();
+      if (!user) {
+        Alert.alert("Sesión", "No hay sesión activa.");
+        setInvoices([]);
+        return;
+      }
+
+      const col = collection(db, "companies", user.uid, "invoices");
+      const snap = await getDocs(query(col, orderBy("issuedAt", "desc")));
+      const list = snap.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          title: data.title || data.periodLabel || "Factura",
+          issued: formatDate(data.issuedAt?.toDate ? data.issuedAt.toDate() : data.issuedAt),
+          due: formatDate(data.dueAt?.toDate ? data.dueAt.toDate() : data.dueAt),
+          paid: formatDate(data.paidAt?.toDate ? data.paidAt.toDate() : data.paidAt),
+          amount: data.amount || 0,
+          status: data.status || (data.paidAt ? "pagada" : "proximo"),
+          failNote: data.failNote || null,
+        };
+      });
+      setInvoices(list);
+    } catch (error) {
+      console.error("Error cargando facturas:", error);
+      Alert.alert("Error", "No se pudieron cargar las facturas.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadInvoices();
+  }, [loadInvoices]);
 
   // Refrescar lista
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 900);
+    loadInvoices();
   }, []);
 
   // Cambiar filtro de estado
@@ -81,21 +120,21 @@ export default function InvoiceHistory() {
 
   // Total de facturado, pagado y próximo
   const summary = useMemo(() => {
-    const total = INVOICES.reduce((a, i) => a + (i.amount || 0), 0);
-    const proximo = INVOICES.filter((i) => i.status === "proximo").reduce((a, i) => a + (i.amount || 0), 0);
+    const total = invoices.reduce((a, i) => a + (i.amount || 0), 0);
+    const proximo = invoices.filter((i) => i.status === "proximo").reduce((a, i) => a + (i.amount || 0), 0);
     const pagado = total - proximo;
-    return { total, proximo, pagado, count: INVOICES.length };
-  }, []);
+    return { total, proximo, pagado, count: invoices.length };
+  }, [invoices]);
 
   // Filtrado local por texto, estado y periodo
   const filteredData = useMemo(() => {
-    return INVOICES.filter((inv) => {
+    return invoices.filter((inv) => {
       const hayTexto = `${inv.id} ${inv.title}`.toLowerCase().includes(query.trim().toLowerCase());
       const hayEstado = stateFilter === "all" ? true : inv.status === stateFilter;
       const hayPeriodo = ["12m", "6m", "3m"].includes(period);
       return hayTexto && hayEstado && hayPeriodo;
     });
-  }, [query, stateFilter, period]);
+  }, [query, stateFilter, period, invoices]);
 
   // Renderizado de cada factura
   const renderItem = useCallback(
@@ -264,15 +303,26 @@ export default function InvoiceHistory() {
       </View>
 
       {/* Lista de facturas */}
-      <FlatList
-        data={filteredData}
-        keyExtractor={(i) => i.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={renderItem}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
-        ListHeaderComponent={<Text style={styles.sectionHeader}>Facturas</Text>}
-      />
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 40 }}>
+          <Text style={styles.sectionHeader}>Cargando facturas...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredData}
+          keyExtractor={(i) => i.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={renderItem}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
+          ListHeaderComponent={<Text style={styles.sectionHeader}>Facturas</Text>}
+          ListEmptyComponent={
+            <Text style={{ textAlign: "center", color: COLORS.textGray, marginTop: 20 }}>
+              No hay facturas registradas.
+            </Text>
+          }
+        />
+      )}
 
       <MenuFooterCompany />
     </SafeAreaView>
