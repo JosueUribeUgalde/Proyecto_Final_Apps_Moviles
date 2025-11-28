@@ -1,5 +1,5 @@
 import { db, storage } from '../config/firebaseConfig';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { registerUser } from './authService';
 
@@ -115,5 +115,32 @@ export const registerCompany = async (formData) => {
       success: false,
       message: error.message || 'Error al guardar datos de la empresa',
     };
+  }
+};
+
+/**
+ * Obtiene el perfil de un administrador
+ * @param {string} adminId - ID del administrador
+ * @returns {Promise<Object>} - Datos del administrador
+ */
+export const getAdminProfile = async (adminId) => {
+  try {
+    if (!adminId) {
+      throw new Error("ID del administrador requerido");
+    }
+
+    const adminDoc = await getDoc(doc(db, "admins", adminId));
+
+    if (!adminDoc.exists()) {
+      throw new Error("Administrador no encontrado");
+    }
+
+    return {
+      id: adminDoc.id,
+      ...adminDoc.data()
+    };
+  } catch (error) {
+    console.error("Error al obtener perfil del admin:", error);
+    throw error;
   }
 };
