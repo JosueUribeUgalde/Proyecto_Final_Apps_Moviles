@@ -139,7 +139,7 @@ export const approvePeticion = async (peticionId, groupId, replacementUserId = n
     try {
         // Obtener datos de la petición
         const peticionDoc = await getDoc(doc(db, "peticionesPendientes", peticionId));
-        
+
         if (!peticionDoc.exists()) {
             throw new Error("Petición no encontrada");
         }
@@ -155,7 +155,14 @@ export const approvePeticion = async (peticionId, groupId, replacementUserId = n
             originalPeticionId: peticionId
         };
 
-        await addDoc(collection(db, "historial"), historialData);
+        const historialRef = await addDoc(collection(db, "historial"), historialData);
+
+        // Agregar el ID del historial al array del usuario
+        const userRef = doc(db, "users", peticionData.userId);
+        await updateDoc(userRef, {
+            historialesIds: arrayUnion(historialRef.id),
+            updatedAt: serverTimestamp()
+        });
 
         // Eliminar de peticionesPendientes
         await deleteDoc(doc(db, "peticionesPendientes", peticionId));
@@ -183,7 +190,7 @@ export const rejectPeticion = async (peticionId, groupId) => {
     try {
         // Obtener datos de la petición
         const peticionDoc = await getDoc(doc(db, "peticionesPendientes", peticionId));
-        
+
         if (!peticionDoc.exists()) {
             throw new Error("Petición no encontrada");
         }
@@ -198,7 +205,14 @@ export const rejectPeticion = async (peticionId, groupId) => {
             originalPeticionId: peticionId
         };
 
-        await addDoc(collection(db, "historial"), historialData);
+        const historialRef = await addDoc(collection(db, "historial"), historialData);
+
+        // Agregar el ID del historial al array del usuario
+        const userRef = doc(db, "users", peticionData.userId);
+        await updateDoc(userRef, {
+            historialesIds: arrayUnion(historialRef.id),
+            updatedAt: serverTimestamp()
+        });
 
         // Eliminar de peticionesPendientes
         await deleteDoc(doc(db, "peticionesPendientes", peticionId));
@@ -242,6 +256,43 @@ export const getHistorialByGroupId = async (groupId) => {
         return historial;
     } catch (error) {
         console.error("Error al obtener historial:", error);
+        throw error;
+    }
+};
+
+/**
+ * Obtiene el historial de un usuario específico por sus IDs de historial
+ * @param {Array<string>} historialIds - Array de IDs de historial del usuario
+ * @returns {Promise<Array>} - Array de decisiones históricas del usuario
+ */
+export const getHistorialByIds = async (historialIds) => {
+    try {
+        if (!historialIds || historialIds.length === 0) {
+            return [];
+        }
+
+        const historial = [];
+        for (const historialId of historialIds) {
+            const historialDoc = await getDoc(doc(db, "historial", historialId));
+            if (historialDoc.exists()) {
+                historial.push({
+                    id: historialDoc.id,
+                    ...historialDoc.data()
+                });
+            }
+        }
+
+        // Ordenar por fecha (más reciente primero)
+        historial.sort((a, b) => {
+            const dateA = a.approvedAt || a.rejectedAt || a.createdAt;
+            const dateB = b.approvedAt || b.rejectedAt || b.createdAt;
+            if (!dateA || !dateB) return 0;
+            return dateB.seconds - dateA.seconds;
+        });
+
+        return historial;
+    } catch (error) {
+        console.error("Error al obtener historial por IDs:", error);
         throw error;
     }
 };

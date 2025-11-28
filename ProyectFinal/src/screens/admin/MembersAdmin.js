@@ -1,17 +1,71 @@
-import { useState, useEffect } from 'react';
-import { Text, View, ScrollView, TextInput, Pressable, Modal, FlatList, ActivityIndicator, Image } from "react-native";
+import { useState, useEffect, useMemo } from 'react';
+import { Text, View, ScrollView, TextInput, Pressable, Modal, FlatList, ActivityIndicator, Image, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { HeaderScreen, InfoModal, MenuFooterAdmin } from "../../components";
 import { COLORS } from '../../components/constants/theme';
 import styles from "../../styles/screens/admin/MembersAdminStyles";
 import CalendarAdminStyles from "../../styles/screens/admin/CalendarAdminStyles";
 // Servicios de Firebase
 import { getCurrentUser } from "../../services/authService";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, updateDoc, arrayRemove } from "firebase/firestore";
 import { db } from "../../config/firebaseConfig";
-import { createGroup, getGroupsByIds, updateGroup, deleteGroup } from "../../services/groupService";
+import { createGroup, getGroupsByIds, updateGroup, deleteGroup, removeMemberFromGroup } from "../../services/groupService";
+import { removeUserFromGroup } from "../../services/userService";
+
+// Días de la semana para los chips
+const WEEK_DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+const parseDays = (value) => {
+  if (!value) return [];
+  return value
+    .split('•')
+    .map((d) => d.trim())
+    .filter(Boolean);
+};
+
+const formatDays = (days) => {
+  if (!days || !days.length) return '';
+  return days.join(' • ');
+};
+
+const parseTimeToDate = (value, fallbackHour = 8) => {
+  const date = new Date();
+  let hours = fallbackHour;
+  let minutes = 0;
+
+  if (value) {
+    const base = value.split('-')[0].trim();
+    const [h, m] = base.split(':');
+    const parsedH = parseInt(h, 10);
+    const parsedM = parseInt(m || '0', 10);
+
+    if (!Number.isNaN(parsedH)) hours = parsedH;
+    if (!Number.isNaN(parsedM)) minutes = parsedM;
+  }
+
+  date.setHours(hours, minutes, 0, 0);
+  return date;
+};
+
+const formatTime = (date) => {
+  if (!date) return '';
+  const h = date.getHours().toString().padStart(2, '0');
+  const m = date.getMinutes().toString().padStart(2, '0');
+  return `${h}:${m}`;
+};
+
+const timeToMinutes = (value) => {
+  if (!value) return null;
+  const [h, m = '0'] = value.split(':');
+  const hours = parseInt(h, 10);
+  const minutes = parseInt(m, 10);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  return hours * 60 + minutes;
+};
 
 // Mock data para desarrollo
 const MOCK_GROUPS = [
@@ -119,6 +173,34 @@ export default function MembersAdmin({ navigation }) {
   const [groups, setGroups] = useState([]);
   const [members, setMembers] = useState([]);
 
+  // Estados para edición de miembros
+  const [showEditMemberModal, setShowEditMemberModal] = useState(false);
+  const [editingMember, setEditingMember] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    position: '',
+    experience: '',
+    availableDays: '',
+    startTime: '08:00',
+    endTime: '17:00',
+    mealTime: '',
+    daysOff: '',
+  });
+  const [timePickerIOS, setTimePickerIOS] = useState({
+    field: null,
+    value: new Date(),
+    visible: false,
+  });
+
+  // Días seleccionados (derivados del formulario de edición)
+  const selectedWorkDays = useMemo(
+    () => parseDays(editFormData.availableDays),
+    [editFormData.availableDays],
+  );
+  const selectedOffDays = useMemo(
+    () => parseDays(editFormData.daysOff),
+    [editFormData.daysOff],
+  );
+
   // Cargar datos del admin al montar el componente
   useEffect(() => {
     loadAdminData();
@@ -177,7 +259,7 @@ export default function MembersAdmin({ navigation }) {
     try {
       // Obtener el grupo para acceder a su array de memberIds
       const groupDoc = await getDoc(doc(db, "groups", groupId));
-      
+
       if (!groupDoc.exists()) {
         setMembers([]);
         return;
@@ -198,6 +280,19 @@ export default function MembersAdmin({ navigation }) {
           const userDoc = await getDoc(doc(db, "users", memberId));
           if (userDoc.exists()) {
             const userData = userDoc.data();
+
+            // Compatibilidad con formato antiguo y nuevo
+            // Si los datos están en availability.*, usarlos; si no, usar los del nivel raíz
+            const availableDays = userData.availableDays ||
+              (userData.availability?.availableDays ?
+                userData.availability.availableDays.join(' • ') : '');
+            const startTime = userData.startTime || userData.availability?.startTime || '';
+            const endTime = userData.endTime || userData.availability?.endTime || '';
+            const mealTime = userData.mealTime || userData.availability?.mealTime || '';
+            const daysOff = userData.daysOff ||
+              (userData.availability?.daysOff ?
+                userData.availability.daysOff.join(' • ') : '');
+
             membersData.push({
               id: userDoc.id,
               name: userData.name || 'Sin nombre',
@@ -211,6 +306,12 @@ export default function MembersAdmin({ navigation }) {
               avatar: userData.avatar || userData.photo || null,
               phone: userData.phone || '',
               position: userData.position || '',
+              // Campos adicionales para mostrar en la card
+              availableDays,
+              startTime,
+              endTime,
+              mealTime,
+              daysOff,
             });
           }
         } catch (error) {
@@ -287,7 +388,7 @@ export default function MembersAdmin({ navigation }) {
 
     try {
       // Actualizar grupo en Firebase incluyendo descripción
-      await updateGroup(editingGroup.id, { 
+      await updateGroup(editingGroup.id, {
         name: editingGroup.name,
         description: editingGroup.description || ''
       });
@@ -373,6 +474,183 @@ export default function MembersAdmin({ navigation }) {
     }
   };
 
+  // Verificar si un miembro tiene datos incompletos
+  const hasIncompleteData = (member) => {
+    return !member.position || !member.experience || !member.startTime || !member.endTime || !member.availableDays;
+  };
+
+  // Abrir modal de edición de miembro
+  const handleOpenEditMember = (member) => {
+    setEditingMember(member);
+    setEditFormData({
+      position: member.position || '',
+      experience: member.experience || '',
+      availableDays: member.availableDays || '',
+      startTime: member.startTime || '08:00',
+      endTime: member.endTime || '17:00',
+      mealTime: member.mealTime || '',
+      daysOff: member.daysOff || '',
+    });
+    setShowEditMemberModal(true);
+  };
+
+  // Guardar cambios del miembro
+  const handleSaveEditMember = async () => {
+    const workDays = parseDays(editFormData.availableDays);
+    const offDays = parseDays(editFormData.daysOff);
+
+    if (!editFormData.position.trim()) {
+      setModalTitle('Error');
+      setModalMessage('El puesto es obligatorio');
+      setShowModal(true);
+      return;
+    }
+
+    if (!workDays.length) {
+      setModalTitle('Error');
+      setModalMessage('Selecciona al menos un día de trabajo');
+      setShowModal(true);
+      return;
+    }
+
+    if (offDays.some((d) => workDays.includes(d))) {
+      setModalTitle('Error');
+      setModalMessage('Los días libres no pueden coincidir con los días de trabajo');
+      setShowModal(true);
+      return;
+    }
+
+    if (!editFormData.startTime || !editFormData.endTime) {
+      setModalTitle('Error');
+      setModalMessage('Horarios de inicio y fin son obligatorios');
+      setShowModal(true);
+      return;
+    }
+
+    const startMinutes = timeToMinutes(editFormData.startTime);
+    const endMinutes = timeToMinutes(editFormData.endTime);
+    const mealMinutes = editFormData.mealTime ? timeToMinutes(editFormData.mealTime) : null;
+
+    if (startMinutes === null || endMinutes === null) {
+      setModalTitle('Error');
+      setModalMessage('Formato de horario inválido');
+      setShowModal(true);
+      return;
+    }
+
+    if (editFormData.mealTime && mealMinutes === null) {
+      setModalTitle('Error');
+      setModalMessage('Formato de horario de comida inválido');
+      setShowModal(true);
+      return;
+    }
+
+    if (startMinutes >= endMinutes) {
+      setModalTitle('Error');
+      setModalMessage('El horario de inicio debe ser menor al de fin');
+      setShowModal(true);
+      return;
+    }
+
+    if (mealMinutes !== null && (mealMinutes <= startMinutes || mealMinutes >= endMinutes)) {
+      setModalTitle('Error');
+      setModalMessage('El horario de comida debe estar dentro de la jornada');
+      setShowModal(true);
+      return;
+    }
+
+    try {
+      // Actualizar el documento del usuario en Firebase
+      const userRef = doc(db, 'users', editingMember.id);
+      await updateDoc(userRef, {
+        position: editFormData.position,
+        experience: editFormData.experience,
+        availableDays: editFormData.availableDays,
+        startTime: editFormData.startTime,
+        endTime: editFormData.endTime,
+        mealTime: editFormData.mealTime,
+        daysOff: editFormData.daysOff,
+      });
+
+      // Actualizar el estado local
+      setMembers((prev) =>
+        prev.map((m) => (m.id === editingMember.id ? { ...m, ...editFormData } : m))
+      );
+
+      setModalTitle('Éxito');
+      setModalMessage('Datos del miembro actualizados correctamente');
+      setShowModal(true);
+      setShowEditMemberModal(false);
+      setEditingMember(null);
+    } catch (error) {
+      console.error('Error al actualizar miembro:', error);
+      setModalTitle('Error');
+      setModalMessage('Error al actualizar los datos del miembro');
+      setShowModal(true);
+    }
+  };
+
+  // Remover miembro del grupo
+  const handleRemoveMemberFromGroup = async () => {
+    if (!editingMember || !selectedGroup) return;
+
+    try {
+      // Remover del grupo
+      await removeMemberFromGroup(selectedGroup.id, editingMember.id);
+
+      // Remover del usuario
+      await removeUserFromGroup(editingMember.id, selectedGroup.id);
+
+      // Actualizar el estado local
+      setMembers((prev) => prev.filter((m) => m.id !== editingMember.id));
+
+      setModalTitle('Éxito');
+      setModalMessage(`${editingMember.name} ha sido removido del grupo ${selectedGroup.name}`);
+      setShowModal(true);
+      setShowEditMemberModal(false);
+      setEditingMember(null);
+
+      // Recargar datos del grupo
+      if (selectedGroup) {
+        await loadGroupMembers(selectedGroup.id);
+      }
+    } catch (error) {
+      console.error('Error al remover miembro del grupo:', error);
+      setModalTitle('Error');
+      setModalMessage(`Error al remover el miembro del grupo: ${error.message}`);
+      setShowModal(true);
+    }
+  };
+
+  // Time picker genérico (inicio, fin, comida)
+  const openTimePicker = (field) => {
+    const currentValue = editFormData[field];
+    const initialDate = parseTimeToDate(
+      currentValue,
+      field === 'endTime' ? 17 : 8,
+    );
+
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: initialDate,
+        mode: 'time',
+        is24Hour: true,
+        onChange: (event, selectedDate) => {
+          if (event.type === 'set' && selectedDate) {
+            const newTime = formatTime(selectedDate);
+            setEditFormData((prev) => ({ ...prev, [field]: newTime }));
+          }
+        },
+      });
+    } else {
+      setTimePickerIOS({
+        field,
+        value: initialDate,
+        visible: true,
+      });
+    }
+  };
+
   const getStatusStyle = (status) => {
     if (status === 'Disponible') return styles.statusAvailable;
     if (status === 'Libre hoy') return styles.statusOff;
@@ -403,29 +681,27 @@ export default function MembersAdmin({ navigation }) {
                   <Text style={styles.memberName}>{member.name}</Text>
                   <Text style={styles.memberGroup}> • {member.group}</Text>
                 </View>
-                <Text style={styles.memberShift}>Próximo turno: {member.nextShift}</Text>
+                <Text style={styles.memberShift}>Días: {member.availableDays || 'No especificado'}</Text>
+                <Text style={styles.memberExperience}>Horario: {member.startTime && member.endTime ? `${member.startTime} - ${member.endTime}` : 'No especificado'}</Text>
                 <Text style={styles.memberExperience}>Experiencia: {member.experience}</Text>
               </View>
             </View>
-            <Pressable
-              style={({ pressed }) => [styles.moreButton, pressed && { opacity: 0.7 }]}
-              onPress={() => {
-                setBannerMessage('Opciones de miembro próximamente');
-                setBannerType('success');
-                setShowBanner(true);
-              }}
-            >
-              <Ionicons name="ellipsis-horizontal" size={20} color={COLORS.textBlack} />
-            </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {hasIncompleteData(member) && (
+                <Ionicons name="warning" size={20} color={COLORS.error} />
+              )}
+              <Pressable
+                style={({ pressed }) => [styles.moreButton, pressed && { opacity: 0.7 }]}
+                onPress={() => handleOpenEditMember(member)}
+              >
+                <Ionicons name="ellipsis-horizontal" size={20} color={COLORS.textBlack} />
+              </Pressable>
+            </View>
           </View>
 
           <View style={styles.memberFooter}>
             <View style={[styles.statusBadge, getStatusStyle(member.status)]}>
               <Text style={styles.statusText}>{member.status}</Text>
-            </View>
-            <View style={styles.shiftsInfo}>
-              <Ionicons name="calendar-outline" size={16} color={COLORS.textGray} />
-              <Text style={styles.shiftsText}>Turnos esta semana: {member.shiftsThisWeek}</Text>
             </View>
           </View>
         </View>
@@ -440,8 +716,8 @@ export default function MembersAdmin({ navigation }) {
         <View style={styles.memberHeader}>
           <View style={styles.memberInfo}>
             {member.avatar ? (
-              <Image 
-                source={{ uri: member.avatar }} 
+              <Image
+                source={{ uri: member.avatar }}
                 style={styles.avatarPlaceholder}
               />
             ) : (
@@ -454,29 +730,27 @@ export default function MembersAdmin({ navigation }) {
                 <Text style={styles.memberName}>{member.name}</Text>
                 <Text style={styles.memberGroup}> • {member.group}</Text>
               </View>
-              <Text style={styles.memberShift}>Próximo turno: {member.nextShift}</Text>
+              <Text style={styles.memberShift}>Días: {member.availableDays || 'No especificado'}</Text>
+              <Text style={styles.memberExperience}>Horario: {member.startTime && member.endTime ? `${member.startTime} - ${member.endTime}` : 'No especificado'}</Text>
               <Text style={styles.memberExperience}>Experiencia: {member.experience}</Text>
             </View>
           </View>
-          <Pressable
-            style={({ pressed }) => [styles.moreButton, pressed && { opacity: 0.7 }]}
-            onPress={() => {
-              setModalTitle('Información');
-              setModalMessage('Opciones de miembro próximamente');
-              setShowModal(true);
-            }}
-          >
-            <Ionicons name="ellipsis-horizontal" size={20} color={COLORS.textBlack} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {hasIncompleteData(member) && (
+              <Ionicons name="warning" size={20} color={COLORS.error} />
+            )}
+            <Pressable
+              style={({ pressed }) => [styles.moreButton, pressed && { opacity: 0.7 }]}
+              onPress={() => handleOpenEditMember(member)}
+            >
+              <Ionicons name="ellipsis-horizontal" size={20} color={COLORS.textBlack} />
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.memberFooter}>
           <View style={[styles.statusBadge, getStatusStyle(member.status)]}>
             <Text style={styles.statusText}>{member.status}</Text>
-          </View>
-          <View style={styles.shiftsInfo}>
-            <Ionicons name="calendar-outline" size={16} color={COLORS.textGray} />
-            <Text style={styles.shiftsText}>Turnos esta semana: {member.shiftsThisWeek}</Text>
           </View>
         </View>
       </View>
@@ -1164,8 +1438,8 @@ export default function MembersAdmin({ navigation }) {
             <Text style={styles.modalDescription}>
               Comparte este código con los miembros para que puedan unirse al grupo "{selectedGroup?.name}"
             </Text>
-            
-            <Pressable 
+
+            <Pressable
               style={styles.inviteCodeContainer}
               onPress={handleCopyInviteCode}
             >
@@ -1196,6 +1470,242 @@ export default function MembersAdmin({ navigation }) {
             </Pressable>
           </Pressable>
         </Pressable>
+      </Modal>
+
+      {/* Modal de edición de miembro */}
+      <Modal
+        visible={showEditMemberModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEditMemberModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+            }}
+            onPress={() => setShowEditMemberModal(false)}
+          />
+
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitleLarge}>
+                Editar: {editingMember?.name}
+              </Text>
+              <Pressable onPress={() => setShowEditMemberModal(false)}>
+                <Ionicons name="close" size={22} color={COLORS.textBlack} />
+              </Pressable>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.modalScrollContent}
+            >
+              {/* Información laboral */}
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Información laboral</Text>
+
+                <Text style={styles.fieldLabel}>Puesto</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="Ej. Supervisor de piso"
+                  value={editFormData.position}
+                  onChangeText={(text) =>
+                    setEditFormData((prev) => ({ ...prev, position: text }))
+                  }
+                  placeholderTextColor={COLORS.textGray}
+                />
+
+                <Text style={styles.fieldLabel}>Experiencia</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="Años o breve descripción"
+                  value={editFormData.experience}
+                  onChangeText={(text) =>
+                    setEditFormData((prev) => ({ ...prev, experience: text }))
+                  }
+                  placeholderTextColor={COLORS.textGray}
+                  multiline
+                />
+              </View>
+
+              {/* Disponibilidad y jornada */}
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Disponibilidad y jornada</Text>
+
+                <Text style={styles.fieldLabel}>Días de trabajo</Text>
+                <View style={styles.chipGroup}>
+                  {WEEK_DAYS.map((day) => {
+                    const isSelected = selectedWorkDays.includes(day);
+                    return (
+                      <Pressable
+                        key={day}
+                        style={({ pressed }) => [
+                          styles.areaChip,
+                          isSelected && styles.areaChipActive,
+                          pressed && { opacity: 0.85 },
+                        ]}
+                        onPress={() => {
+                          setEditFormData((prev) => {
+                            const current = parseDays(prev.availableDays);
+                            const updated = isSelected
+                              ? current.filter((d) => d !== day)
+                              : [...current, day];
+                            return { ...prev, availableDays: formatDays(updated) };
+                          });
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.areaChipText,
+                            isSelected && styles.areaChipTextActive,
+                          ]}
+                        >
+                          {day}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <View style={styles.fieldRow}>
+                  <View style={styles.fieldColumn}>
+                    <Text style={styles.fieldLabel}>Horario inicio</Text>
+                    <Pressable onPress={() => openTimePicker('startTime')}>
+                      <View pointerEvents="none">
+                        <TextInput
+                          style={styles.fieldInput}
+                          placeholder="08:00"
+                          value={editFormData.startTime}
+                          editable={false}
+                          placeholderTextColor={COLORS.textGray}
+                        />
+                      </View>
+                    </Pressable>
+                  </View>
+                  <View style={styles.fieldColumn}>
+                    <Text style={styles.fieldLabel}>Horario fin</Text>
+                    <Pressable onPress={() => openTimePicker('endTime')}>
+                      <View pointerEvents="none">
+                        <TextInput
+                          style={styles.fieldInput}
+                          placeholder="17:00"
+                          value={editFormData.endTime}
+                          editable={false}
+                          placeholderTextColor={COLORS.textGray}
+                        />
+                      </View>
+                    </Pressable>
+                  </View>
+                </View>
+
+                <Text style={styles.fieldLabel}>Horario de comida</Text>
+                <Pressable onPress={() => openTimePicker('mealTime')}>
+                  <View pointerEvents="none">
+                    <TextInput
+                      style={styles.fieldInput}
+                      placeholder="Ej. 14:00"
+                      value={editFormData.mealTime}
+                      editable={false}
+                      placeholderTextColor={COLORS.textGray}
+                    />
+                  </View>
+                </Pressable>
+
+                <Text style={styles.fieldLabel}>Días libres</Text>
+                <View style={styles.chipGroup}>
+                  {WEEK_DAYS.map((day) => {
+                    const isSelected = selectedOffDays.includes(day);
+                    return (
+                      <Pressable
+                        key={day}
+                        style={({ pressed }) => [
+                          styles.areaChip,
+                          isSelected && styles.areaChipActive,
+                          pressed && { opacity: 0.85 },
+                        ]}
+                        onPress={() => {
+                          setEditFormData((prev) => {
+                            const current = parseDays(prev.daysOff);
+                            const updated = isSelected
+                              ? current.filter((d) => d !== day)
+                              : [...current, day];
+                            return { ...prev, daysOff: formatDays(updated) };
+                          });
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.areaChipText,
+                            isSelected && styles.areaChipTextActive,
+                          ]}
+                        >
+                          {day}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Picker de hora para iOS */}
+              {timePickerIOS.visible && Platform.OS === 'ios' && (
+                <View style={{ marginTop: 8 }}>
+                  <DateTimePicker
+                    value={timePickerIOS.value}
+                    mode="time"
+                    is24Hour
+                    display="spinner"
+                    onChange={(event, selectedDate) => {
+                      if (selectedDate && timePickerIOS.field) {
+                        const newTime = formatTime(selectedDate);
+                        const field = timePickerIOS.field;
+                        setEditFormData((prev) => ({
+                          ...prev,
+                          [field]: newTime,
+                        }));
+                      }
+                      setTimePickerIOS((prev) => ({
+                        ...prev,
+                        visible: false,
+                      }));
+                    }}
+                  />
+                </View>
+              )}
+            </ScrollView>
+
+            {/* Botones del modal */}
+            <View style={styles.modalButtonsColumn}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  pressed && { opacity: 0.9 },
+                ]}
+                onPress={handleSaveEditMember}
+              >
+                <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.textWhite} />
+                <Text style={styles.primaryButtonText}>Guardar cambios</Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.removeButton,
+                  pressed && { opacity: 0.9 },
+                ]}
+                onPress={handleRemoveMemberFromGroup}
+              >
+                <Ionicons name="person-remove-outline" size={20} color={COLORS.textWhite} />
+                <Text style={styles.removeButtonText}>Remover del grupo</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Info Modal */}
