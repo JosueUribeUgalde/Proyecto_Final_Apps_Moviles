@@ -660,4 +660,67 @@ export default StyleSheet.create({
     color: COLORS.error,
     fontWeight: '600',
   },
+
+  // ========== MODAL DE CÓDIGO DE INVITACIÓN ==========
+  // Contenedor del icono del modal
+  inviteModalIconContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+
+  // Contenedor del código de invitación
+  inviteCodeContainer: {
+    backgroundColor: COLORS.backgroundGray,
+    padding: 20,
+    borderRadius: RADIUS.md,
+    marginVertical: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+    borderStyle: 'solid',
+  },
+
+  // Texto del código de invitación
+  inviteCodeText: {
+    fontSize: FONTS.big,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+    letterSpacing: 4,
+    fontFamily: 'monospace',
+  },
+
+  // Contenedor de información/ayuda
+  inviteInfoContainer: {
+    backgroundColor: COLORS.backgroundLightBlue,
+    padding: 12,
+    borderRadius: RADIUS.sm,
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  // Texto de información
+  inviteInfoText: {
+    fontSize: FONTS.small,
+    color: COLORS.textGray,
+    flex: 1,
+  },
+
+  // Botón de cerrar del modal de invitación
+  inviteCloseButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: RADIUS.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Texto del botón de cerrar
+  inviteCloseButtonText: {
+    color: COLORS.textWhite,
+    fontSize: FONTS.regular,
+    fontWeight: '600',
+  },
 });
