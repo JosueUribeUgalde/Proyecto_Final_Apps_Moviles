@@ -1,6 +1,6 @@
 // 1. Paquetes core de React/React Native
-import { useState } from 'react';
-import { Text, View, ScrollView, TextInput, Pressable, Modal, FlatList, StatusBar } from "react-native";
+import { useState, useEffect } from 'react';
+import { Text, View, ScrollView, TextInput, Pressable, Modal, FlatList, StatusBar, ActivityIndicator } from "react-native";
 
 // 2. Bibliotecas de terceros
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -12,10 +12,17 @@ import { HeaderScreen, Banner, MenuFooterAdmin, ButtonRequest } from "../../comp
 // 4. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
 
-// 5. Estilos
+// 5. Servicios de Firebase
+import { getCurrentUser } from "../../services/authService";
+import { getAdminProfile } from "../../services/companyService";
+import { getGroupsByIds } from "../../services/groupService";
+import { getPeticionesByIds, approvePeticion, rejectPeticion, getHistorialByGroupId } from "../../services/peticionService";
+
+// 6. Estilos
 import styles from "../../styles/screens/admin/RequestStyles";
 
 export default function RequestScreen({ navigation }) {
+  // Estados de UI
   const [showBanner, setShowBanner] = useState(false);
   const [bannerMessage, setBannerMessage] = useState('');
   const [bannerType, setBannerType] = useState('success');
@@ -24,142 +31,187 @@ export default function RequestScreen({ navigation }) {
   const [showThisWeek, setShowThisWeek] = useState(false);
   const [showDecisionsModal, setShowDecisionsModal] = useState(false);
 
-  // Mock data - Solicitudes de Ausencia Pendientes
-  const pendingRequests = [
-    {
-      id: 1,
-      name: 'Alex Johnson',
-      position: 'Recepción',
-      date: 'Lun, 9:00 AM - 1:00 PM',
-      reason: 'Motivo: Enfermedad',
-    },
-    {
-      id: 2,
-      name: 'Priya Patel',
-      position: 'Mesero',
-      date: 'Mié, 12:00 PM - 8:00 PM',
-      reason: 'Motivo: Personal',
-    },
-    {
-      id: 3,
-      name: 'Diego Ramos',
-      position: 'Anfitrión',
-      date: 'Vie, 10:00 AM - 6:00 PM',
-      reason: 'Motivo: Vacaciones',
-    },
-  ];
-
-  // Mock data - Decisiones Recientes
-  const recentDecisions = [
-    {
-      id: 1,
-      status: 'Aprobada',
-      name: 'Alex Johnson',
-      role: 'Barr Lee',
-      date: 'Hoy 8:10 AM',
-      reason: 'Permiso médico',
-    },
-    {
-      id: 2,
-      status: 'Rechazada',
-      name: 'Maria Garcia',
-      role: 'Chef',
-      date: 'Hoy 7:45 AM',
-      reason: 'Solicitud de vacaciones',
-    },
-    {
-      id: 3,
-      status: 'Auto-reasignada',
-      name: 'John Smith',
-      role: 'Recepción',
-      date: 'Ayer',
-      reason: 'Asunto personal',
-    },
-  ];
-
-  // Mock data - Todas las Decisiones (para modal)
-  const allDecisions = [
-    ...recentDecisions,
-    {
-      id: 4,
-      status: 'Aprobada',
-      name: 'Priya Patel',
-      role: 'Mesero',
-      date: 'Ayer 6:30 PM',
-      reason: 'Cita médica',
-    },
-    {
-      id: 5,
-      status: 'Rechazada',
-      name: 'Carlos Martinez',
-      role: 'Anfitrión',
-      date: 'Ayer 2:15 PM',
-      reason: 'Aviso insuficiente',
-    },
-    {
-      id: 6,
-      status: 'Aprobada',
-      name: 'Sarah Williams',
-      role: 'Bartender',
-      date: 'Hace 2 días',
-      reason: 'Emergencia familiar',
-    },
-    {
-      id: 7,
-      status: 'Auto-reasignada',
-      name: 'Michael Brown',
-      role: 'Mesero',
-      date: 'Hace 2 días',
-      reason: 'Cobertura disponible',
-    },
-    {
-      id: 8,
-      status: 'Aprobada',
-      name: 'Lisa Anderson',
-      role: 'Personal de Cocina',
-      date: 'Hace 3 días',
-      reason: 'Vacaciones pre-aprobadas',
-    },
-  ];
+  // Estados de datos Firebase
+  const [loading, setLoading] = useState(true);
+  const [adminData, setAdminData] = useState(null);
+  const [groups, setGroups] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [recentDecisions, setRecentDecisions] = useState([]);
+  const [allDecisions, setAllDecisions] = useState([]);
+  const [processingRequest, setProcessingRequest] = useState(null);
 
   const filters = ['Pendientes', 'Aprobadas', 'Rechazadas', 'Todas'];
 
+  // Cargar datos del admin y sus grupos
+  useEffect(() => {
+    loadAdminData();
+  }, []);
+
+  const loadAdminData = async () => {
+    try {
+      setLoading(true);
+      const user = getCurrentUser();
+      if (!user) {
+        console.error("No hay sesión activa");
+        setLoading(false);
+        return;
+      }
+
+      // Obtener datos del admin
+      const adminProfile = await getAdminProfile(user.uid);
+      if (!adminProfile) {
+        console.error("No se encontraron datos del admin");
+        setLoading(false);
+        return;
+      }
+
+      setAdminData(adminProfile);
+
+      // Cargar grupos del admin
+      if (adminProfile.groupIds && adminProfile.groupIds.length > 0) {
+        const groupsData = await getGroupsByIds(adminProfile.groupIds);
+        setGroups(groupsData);
+
+        // Cargar peticiones de todos los grupos
+        await loadAllPeticiones(groupsData);
+      }
+    } catch (error) {
+      console.error("Error al cargar datos del admin:", error);
+      setBannerMessage('Error al cargar datos');
+      setBannerType('error');
+      setShowBanner(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAllPeticiones = async (groupsData) => {
+    try {
+      let allPeticiones = [];
+      let allHistorial = [];
+
+      // Obtener peticiones pendientes y historial de cada grupo
+      for (const group of groupsData) {
+        // Peticiones pendientes
+        if (group.peticionesPendientesIds && group.peticionesPendientesIds.length > 0) {
+          const peticiones = await getPeticionesByIds(group.peticionesPendientesIds);
+          allPeticiones = [...allPeticiones, ...peticiones];
+        }
+
+        // Historial
+        const historial = await getHistorialByGroupId(group.id);
+        allHistorial = [...allHistorial, ...historial];
+      }
+
+      setPendingRequests(allPeticiones);
+      
+      // Ordenar historial por fecha (más reciente primero)
+      const sortedHistorial = allHistorial.sort((a, b) => {
+        const dateA = a.approvedAt || a.rejectedAt || a.createdAt;
+        const dateB = b.approvedAt || b.rejectedAt || b.createdAt;
+        return dateB?.seconds - dateA?.seconds;
+      });
+
+      setAllDecisions(sortedHistorial);
+      // Mostrar solo las 3 más recientes en la sección principal
+      setRecentDecisions(sortedHistorial.slice(0, 3));
+
+    } catch (error) {
+      console.error("Error al cargar peticiones:", error);
+    }
+  };
+
+  // Formatear fecha de Firebase Timestamp
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'Fecha no disponible';
+    
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return `Hoy ${date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+    } else if (diffDays === 1) {
+      return 'Ayer';
+    } else if (diffDays < 7) {
+      return `Hace ${diffDays} días`;
+    } else {
+      return date.toLocaleDateString('es-ES');
+    }
+  };
+
   // Filter requests based on search query and selected filter
   const getFilteredRequests = () => {
-    let filtered = pendingRequests;
+    let filtered = [...pendingRequests];
 
     // Filter by search query (search by name)
     if (searchQuery.trim() !== '') {
       filtered = filtered.filter((request) =>
-        request.name.toLowerCase().includes(searchQuery.toLowerCase())
+        request.userName.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
-    // TODO: When connected to Firebase, also filter by selectedFilter status
-    // For now, we're showing all pending requests
+    // Filter by status
+    if (selectedFilter === 'Pendientes') {
+      filtered = filtered.filter(req => req.status === 'Pendiente');
+    } else if (selectedFilter === 'Aprobadas') {
+      filtered = allDecisions.filter(req => req.status === 'Aprobada');
+    } else if (selectedFilter === 'Rechazadas') {
+      filtered = allDecisions.filter(req => req.status === 'Rechazada');
+    } else if (selectedFilter === 'Todas') {
+      filtered = [...pendingRequests, ...allDecisions];
+    }
 
     return filtered;
   };
 
   const filteredRequests = getFilteredRequests();
 
-  const handleApprove = (requestId) => {
-    setBannerMessage('Solicitud aprobada exitosamente');
-    setBannerType('success');
-    setShowBanner(true);
-    // TODO: Implementar lógica de aprobación con Firebase
+  const handleApprove = async (request) => {
+    if (processingRequest) return;
+    
+    try {
+      setProcessingRequest(request.id);
+      await approvePeticion(request.id, request.groupId);
+      
+      setBannerMessage('Solicitud aprobada exitosamente');
+      setBannerType('success');
+      setShowBanner(true);
+      
+      // Recargar datos
+      await loadAdminData();
+    } catch (error) {
+      console.error("Error al aprobar:", error);
+      setBannerMessage('Error al aprobar la solicitud');
+      setBannerType('error');
+      setShowBanner(true);
+    } finally {
+      setProcessingRequest(null);
+    }
   };
 
-  const handleReject = (requestId) => {
-    setBannerMessage('Solicitud rechazada');
-    setBannerType('error');
-    setShowBanner(true);
-    // TODO: Implementar lógica de rechazo con Firebase
-  };
-
-  const handleMessage = (requestId) => {
-    // TODO: Navigate to messaging screen or open message modal
-    console.log('Message user for request:', requestId);
+  const handleReject = async (request) => {
+    if (processingRequest) return;
+    
+    try {
+      setProcessingRequest(request.id);
+      await rejectPeticion(request.id, request.groupId);
+      
+      setBannerMessage('Solicitud rechazada');
+      setBannerType('error');
+      setShowBanner(true);
+      
+      // Recargar datos
+      await loadAdminData();
+    } catch (error) {
+      console.error("Error al rechazar:", error);
+      setBannerMessage('Error al rechazar la solicitud');
+      setBannerType('error');
+      setShowBanner(true);
+    } finally {
+      setProcessingRequest(null);
+    }
   };
 
   return (
@@ -172,11 +224,11 @@ export default function RequestScreen({ navigation }) {
       <HeaderScreen
         title="Solicitudes"
         leftIcon={<Ionicons name="arrow-back" size={24} color={COLORS.textBlack} />}
-            rightIcon={<Ionicons name="notifications-outline" size={24} color="black" />}
+        rightIcon={<Ionicons name="notifications-outline" size={24} color="black" />}
         onLeftPress={() => navigation.goBack()}
-         onRightPress={() => {
-        //   AQUI SE VA A REDIRECCIONAR A NOTIFICACIONES (proxima de crear)
-         }}
+        onRightPress={() => {
+          //   AQUI SE VA A REDIRECCIONAR A NOTIFICACIONES (proxima de crear)
+        }}
       />
 
       {showBanner && (
@@ -190,7 +242,15 @@ export default function RequestScreen({ navigation }) {
         </View>
       )}
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={{ marginTop: 16, color: COLORS.textGray }}>
+            Cargando solicitudes...
+          </Text>
+        </View>
+      ) : (
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Filters Section */}
         <View style={styles.filtersContainer}>
           <View style={styles.filtersHeader}>
@@ -248,18 +308,22 @@ export default function RequestScreen({ navigation }) {
             <View key={request.id} style={styles.requestCard}>
               <View style={styles.requestHeader}>
                 <View>
-                  <Text style={styles.requestName}>{request.name}</Text>
+                  <Text style={styles.requestName}>{request.userName}</Text>
                   <Text style={styles.requestPosition}>{request.position}</Text>
                 </View>
                 <View style={styles.statusBadge}>
-                  <Text style={styles.statusText}>Pendiente</Text>
+                  <Text style={styles.statusText}>{request.status}</Text>
                 </View>
               </View>
               
               <View style={styles.requestDetails}>
                 <View style={styles.detailRow}>
-                  <Ionicons name="time-outline" size={16} color={COLORS.textGray} />
+                  <Ionicons name="calendar-outline" size={16} color={COLORS.textGray} />
                   <Text style={styles.detailText}>{request.date}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Ionicons name="time-outline" size={16} color={COLORS.textGray} />
+                  <Text style={styles.detailText}>{request.startTime}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Ionicons name="information-circle-outline" size={16} color={COLORS.textGray} />
@@ -267,29 +331,33 @@ export default function RequestScreen({ navigation }) {
                 </View>
               </View>
 
-              <View style={styles.actionButtons}>
-                <ButtonRequest
-                  title="Aprobar"
-                  icon="checkmark-circle-outline"
-                  iconColor={COLORS.textGreen}
-                  textColor={COLORS.textGreen}
-                  backgroundColor={COLORS.backgroundBS}
-                  borderColor={COLORS.borderSecondary}
-                  onPress={() => handleApprove(request.id)}
-                  style={{ flex: 1 }}
-                />
+              {request.status === 'Pendiente' && (
+                <View style={styles.actionButtons}>
+                  <ButtonRequest
+                    title={processingRequest === request.id ? "Procesando..." : "Aprobar"}
+                    icon="checkmark-circle-outline"
+                    iconColor={COLORS.textGreen}
+                    textColor={COLORS.textGreen}
+                    backgroundColor={COLORS.backgroundBS}
+                    borderColor={COLORS.borderSecondary}
+                    onPress={() => handleApprove(request)}
+                    style={{ flex: 1 }}
+                    disabled={processingRequest !== null}
+                  />
 
-                <ButtonRequest
-                  title="Rechazar"
-                  icon="close-circle-outline"
-                  iconColor={COLORS.textRed}
-                  textColor={COLORS.textRed}
-                  backgroundColor={COLORS.backgroundWhite}
-                  borderColor={COLORS.borderSecondary}
-                  onPress={() => handleReject(request.id)}
-                  style={{ flex: 1 }}
-                />
-              </View>
+                  <ButtonRequest
+                    title={processingRequest === request.id ? "Procesando..." : "Rechazar"}
+                    icon="close-circle-outline"
+                    iconColor={COLORS.textRed}
+                    textColor={COLORS.textRed}
+                    backgroundColor={COLORS.backgroundWhite}
+                    borderColor={COLORS.borderSecondary}
+                    onPress={() => handleReject(request)}
+                    style={{ flex: 1 }}
+                    disabled={processingRequest !== null}
+                  />
+                </View>
+              )}
             </View>
           ))
         ) : (
@@ -320,17 +388,25 @@ export default function RequestScreen({ navigation }) {
           <View key={decision.id} style={styles.decisionCard}>
             <View style={styles.decisionHeader}>
               <Text style={styles.decisionStatus}>{decision.status}</Text>
-              <Text style={styles.decisionRole}>{decision.role}</Text>
+              <Text style={styles.decisionRole}>{decision.position}</Text>
             </View>
-            {decision.date && (
-              <Text style={styles.decisionDate}>{decision.date}</Text>
-            )}
+            <Text style={styles.decisionDate}>
+              {formatDate(decision.approvedAt || decision.rejectedAt || decision.createdAt)}
+            </Text>
           </View>
         ))}
+
+        {recentDecisions.length === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons name="document-text-outline" size={48} color={COLORS.textGray} />
+            <Text style={styles.emptyStateText}>No hay decisiones recientes</Text>
+          </View>
+        )}
 
         {/* Bottom spacing */}
         <View style={{ height: 30 }} />
       </ScrollView>
+      )}
 
       {/* Decisions Modal */}
       <Modal
@@ -367,8 +443,8 @@ export default function RequestScreen({ navigation }) {
                 <View style={styles.modalDecisionCard}>
                   <View style={styles.modalDecisionHeader}>
                     <View style={styles.modalDecisionInfo}>
-                      <Text style={styles.modalDecisionName}>{item.name}</Text>
-                      <Text style={styles.modalDecisionRole}>{item.role}</Text>
+                      <Text style={styles.modalDecisionName}>{item.userName}</Text>
+                      <Text style={styles.modalDecisionRole}>{item.position}</Text>
                     </View>
                     <View style={[
                       styles.modalStatusBadge,
@@ -389,14 +465,26 @@ export default function RequestScreen({ navigation }) {
                   
                   <View style={styles.modalDecisionDetails}>
                     <View style={styles.modalDetailRow}>
-                      <Ionicons name="time-outline" size={14} color={COLORS.textGray} />
+                      <Ionicons name="calendar-outline" size={14} color={COLORS.textGray} />
                       <Text style={styles.modalDetailText}>{item.date}</Text>
+                    </View>
+                    <View style={styles.modalDetailRow}>
+                      <Ionicons name="time-outline" size={14} color={COLORS.textGray} />
+                      <Text style={styles.modalDetailText}>
+                        {formatDate(item.approvedAt || item.rejectedAt || item.createdAt)}
+                      </Text>
                     </View>
                     <View style={styles.modalDetailRow}>
                       <Ionicons name="information-circle-outline" size={14} color={COLORS.textGray} />
                       <Text style={styles.modalDetailText}>{item.reason}</Text>
                     </View>
                   </View>
+                </View>
+              )}
+              ListEmptyComponent={() => (
+                <View style={styles.emptyState}>
+                  <Ionicons name="document-text-outline" size={48} color={COLORS.textGray} />
+                  <Text style={styles.emptyStateText}>No hay decisiones</Text>
                 </View>
               )}
             />
