@@ -71,9 +71,10 @@ export const generateUniqueInviteCode = async () => {
  * Crea un nuevo grupo en Firestore
  * @param {string} name - Nombre del grupo
  * @param {string} adminId - ID del administrador que crea el grupo
+ * @param {string} description - Descripción del grupo (opcional)
  * @returns {Promise<string>} - ID del grupo creado
  */
-export const createGroup = async (name, adminId) => {
+export const createGroup = async (name, adminId, description = "") => {
     try {
         if (!name || !name.trim()) {
             throw new Error("El nombre del grupo es requerido");
@@ -90,14 +91,13 @@ export const createGroup = async (name, adminId) => {
         const groupData = {
             name: name.trim(),
             adminId: adminId,
-            inviteCode: inviteCode, // ← Código de invitación
-            color: "#4A90E2", // Color por defecto (azul)
-            description: "", // Descripción vacía por defecto
-            memberCount: 0, // Sin miembros inicialmente
-            memberIds: [], // Array vacío de miembros
+            inviteCode: inviteCode,
+            description: description.trim(),
+            memberCount: 0,
+            memberIds: [],
+            peticionesPendientesIds: [],
             stats: {
-                totalShifts: 0,
-                averageRating: 0
+                totalShifts: 0
             },
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()

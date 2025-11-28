@@ -59,6 +59,28 @@ export default StyleSheet.create({
     color: COLORS.textGray,
   },
 
+  // Contenedor de descripción del grupo
+  descriptionContainer: {
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+    padding: 16,
+    marginTop: 16,
+    ...SHADOWS.medium,
+  },
+  descriptionLabel: {
+    fontSize: FONTS.small,
+    fontWeight: '600',
+    color: COLORS.textBlack,
+    marginBottom: 8,
+  },
+  descriptionText: {
+    fontSize: FONTS.regular,
+    color: COLORS.textGray,
+    lineHeight: 20,
+  },
+
   // Sección de solicitudes
   requestsSection: {
     marginTop: 24,
@@ -157,5 +179,30 @@ export default StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginTop: 8,
+  },
+
+  // Estado vacío de solicitudes
+  emptyRequestsContainer: {
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  emptyRequestsText: {
+    fontSize: FONTS.large,
+    fontWeight: '600',
+    color: COLORS.textGray,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyRequestsSubtext: {
+    fontSize: FONTS.small,
+    color: COLORS.textGray,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

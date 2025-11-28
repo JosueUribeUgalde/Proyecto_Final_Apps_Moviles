@@ -28,30 +28,8 @@ export default function DashboardAdmin({ navigation }) {
   // Estado para grupos del administrador (cargados desde Firebase)
   const [groups, setGroups] = useState([]);
 
-  // Estado para las solicitudes de ausencia (mockup data)
-  const [requests, setRequests] = useState([
-    {
-      id: 1,
-      name: 'Alex Murphy',
-      date: 'Sep 22, 9:00-17:00',
-      reason: 'Vacaciones - Doctor',
-      status: 'Pendiente'
-    },
-    {
-      id: 2,
-      name: 'Priya Singh',
-      date: 'Sep 23, 13:00-18:00',
-      reason: 'Doctor - Familia',
-      status: 'Aprobado'
-    },
-    {
-      id: 3,
-      name: 'Marco Chen',
-      date: 'Sep 24, 8:00-12:00',
-      reason: 'Personal',
-      status: 'Rechazado'
-    }
-  ]);
+  // Estado para las solicitudes de ausencia (mockup data - cambiar a [] para ver estado vacío)
+  const [requests, setRequests] = useState([]);
 
   // Cargar datos del admin al montar el componente
   useEffect(() => {
@@ -218,30 +196,36 @@ export default function DashboardAdmin({ navigation }) {
             <View style={styles.metricsContainer}>
               <View style={styles.metricCard}>
                 <Text style={styles.metricLabel}>Total de Miembros</Text>
-                <Text style={styles.metricValue}>128</Text>
-                <Text style={styles.metricSub}>+6 esta semana</Text>
+                <Text style={styles.metricValue}>{selectedGroup.memberCount || 0}</Text>
+                <Text style={styles.metricSub}>
+                  {selectedGroup.memberIds?.length > 0 ? 'Miembros activos' : 'Sin miembros'}
+                </Text>
               </View>
 
               <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>Turnos Activos</Text>
-                <Text style={styles.metricValue}>23</Text>
-                <Text style={styles.metricSub}>En 5 equipos</Text>
+                <Text style={styles.metricLabel}>Turnos Totales</Text>
+                <Text style={styles.metricValue}>{selectedGroup.stats?.totalShifts || 0}</Text>
+                <Text style={styles.metricSub}>Acumulados</Text>
               </View>
             </View>
 
             <View style={styles.metricsContainer}>
               <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>Solicitudes de Ausencia Pendientes</Text>
-                <Text style={styles.metricValue}>23</Text>
+                <Text style={styles.metricLabel}>Solicitudes Pendientes</Text>
+                <Text style={styles.metricValue}>
+                  {selectedGroup.peticionesPendientesIds?.length || 0}
+                </Text>
                 <Text style={styles.metricSub}>Esperando revisión</Text>
               </View>
-
-              <View style={styles.metricCard}>
-                <Text style={styles.metricLabel}>Reemplazos Abiertos</Text>
-                <Text style={styles.metricValue}>4</Text>
-                <Text style={styles.metricSub}>Todos en progreso</Text>
-              </View>
             </View>
+
+            {/* Descripción del grupo */}
+            {selectedGroup.description && selectedGroup.description.trim() !== '' && (
+              <View style={styles.descriptionContainer}>
+                <Text style={styles.descriptionLabel}>Descripción del Grupo</Text>
+                <Text style={styles.descriptionText}>{selectedGroup.description}</Text>
+              </View>
+            )}
 
             {/* Sección de solicitudes */}
             <View style={styles.requestsSection}>
@@ -250,60 +234,70 @@ export default function DashboardAdmin({ navigation }) {
               </View>
 
               {/* Lista de solicitudes */}
-              {requests.map((request) => (
-                <View key={request.id} style={styles.requestCard}>
-                  <View style={styles.requestHeader}>
-                    <Text style={styles.requestName}>{request.name}</Text>
-                    <View style={getStatusStyle(request.status)}>
-                      <Text style={[
-                        styles.statusText,
-                        request.status === 'Pendiente' && styles.statusPendingText,
-                        request.status === 'Aprobado' && styles.statusApprovedText,
-                        request.status === 'Rechazado' && styles.statusRejectedText,
-                      ]}>
-                        {request.status}
-                      </Text>
+              {requests.length > 0 ? (
+                requests.map((request) => (
+                  <View key={request.id} style={styles.requestCard}>
+                    <View style={styles.requestHeader}>
+                      <Text style={styles.requestName}>{request.name}</Text>
+                      <View style={getStatusStyle(request.status)}>
+                        <Text style={[
+                          styles.statusText,
+                          request.status === 'Pendiente' && styles.statusPendingText,
+                          request.status === 'Aprobado' && styles.statusApprovedText,
+                          request.status === 'Rechazado' && styles.statusRejectedText,
+                        ]}>
+                          {request.status}
+                        </Text>
+                      </View>
                     </View>
+
+                    <View style={styles.requestDetails}>
+                      <View style={styles.detailRow}>
+                        <Ionicons name="time-outline" size={16} color={COLORS.textGray} />
+                        <Text style={styles.detailText}>{request.date}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Ionicons name="information-circle-outline" size={16} color={COLORS.textGray} />
+                        <Text style={styles.detailText}>Motivo: {request.reason}</Text>
+                      </View>
+                    </View>
+
+                    {request.status === 'Pendiente' && (
+                      <View style={styles.actionButtons}>
+                        <ButtonRequest
+                          title="Aprobar"
+                          icon="checkmark-circle-outline"
+                          iconColor={COLORS.textGreen}
+                          textColor={COLORS.textGreen}
+                          backgroundColor={COLORS.backgroundBS}
+                          borderColor={COLORS.borderSecondary}
+                          onPress={() => handleApprove(request.id)}
+                          style={{ flex: 1 }}
+                        />
+
+                        <ButtonRequest
+                          title="Rechazar"
+                          icon="close-circle-outline"
+                          iconColor={COLORS.textRed}
+                          textColor={COLORS.textRed}
+                          backgroundColor={COLORS.backgroundWhite}
+                          borderColor={COLORS.borderSecondary}
+                          onPress={() => handleReject(request.id)}
+                          style={{ flex: 1 }}
+                        />
+                      </View>
+                    )}
                   </View>
-
-                  <View style={styles.requestDetails}>
-                    <View style={styles.detailRow}>
-                      <Ionicons name="time-outline" size={16} color={COLORS.textGray} />
-                      <Text style={styles.detailText}>{request.date}</Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Ionicons name="information-circle-outline" size={16} color={COLORS.textGray} />
-                      <Text style={styles.detailText}>Motivo: {request.reason}</Text>
-                    </View>
-                  </View>
-
-                  {request.status === 'Pendiente' && (
-                    <View style={styles.actionButtons}>
-                      <ButtonRequest
-                        title="Aprobar"
-                        icon="checkmark-circle-outline"
-                        iconColor={COLORS.textGreen}
-                        textColor={COLORS.textGreen}
-                        backgroundColor={COLORS.backgroundBS}
-                        borderColor={COLORS.borderSecondary}
-                        onPress={() => handleApprove(request.id)}
-                        style={{ flex: 1 }}
-                      />
-
-                      <ButtonRequest
-                        title="Rechazar"
-                        icon="close-circle-outline"
-                        iconColor={COLORS.textRed}
-                        textColor={COLORS.textRed}
-                        backgroundColor={COLORS.backgroundWhite}
-                        borderColor={COLORS.borderSecondary}
-                        onPress={() => handleReject(request.id)}
-                        style={{ flex: 1 }}
-                      />
-                    </View>
-                  )}
+                ))
+              ) : (
+                <View style={styles.emptyRequestsContainer}>
+                  <Ionicons name="calendar-outline" size={64} color={COLORS.textGray} />
+                  <Text style={styles.emptyRequestsText}>No hay solicitudes</Text>
+                  <Text style={styles.emptyRequestsSubtext}>
+                    Las solicitudes de ausencia y permisos aparecerán aquí
+                  </Text>
                 </View>
-              ))}
+              )}
             </View>
           </>
         ) : (

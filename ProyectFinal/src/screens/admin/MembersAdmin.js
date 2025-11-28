@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Text, View, ScrollView, TextInput, Pressable, Modal, FlatList, ActivityIndicator } from "react-native";
+import { Text, View, ScrollView, TextInput, Pressable, Modal, FlatList, ActivityIndicator, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { HeaderScreen, InfoModal, MenuFooterAdmin } from "../../components";
 import { COLORS } from '../../components/constants/theme';
 import styles from "../../styles/screens/admin/MembersAdminStyles";
 import CalendarAdminStyles from "../../styles/screens/admin/CalendarAdminStyles";
 // Servicios de Firebase
 import { getCurrentUser } from "../../services/authService";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../config/firebaseConfig";
 import { createGroup, getGroupsByIds, updateGroup, deleteGroup } from "../../services/groupService";
 
@@ -101,9 +102,11 @@ export default function MembersAdmin({ navigation }) {
   const [showEditGroupModal, setShowEditGroupModal] = useState(false);
   const [showDeleteGroupModal, setShowDeleteGroupModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showInviteCodeModal, setShowInviteCodeModal] = useState(false);
 
   // Estado para formularios
   const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupDescription, setNewGroupDescription] = useState('');
   const [editingGroup, setEditingGroup] = useState(null);
   const [deletingGroup, setDeletingGroup] = useState(null);
 
@@ -114,12 +117,19 @@ export default function MembersAdmin({ navigation }) {
 
   // Estado para datos (cargados desde Firebase)
   const [groups, setGroups] = useState([]);
-  const [members, setMembers] = useState(MOCK_MEMBERS);
+  const [members, setMembers] = useState([]);
 
   // Cargar datos del admin al montar el componente
   useEffect(() => {
     loadAdminData();
   }, []);
+
+  // Recargar miembros cuando cambia el grupo seleccionado
+  useEffect(() => {
+    if (selectedGroup) {
+      loadGroupMembers(selectedGroup.id);
+    }
+  }, [selectedGroup]);
 
   // Función para cargar datos del administrador y sus grupos
   const loadAdminData = async () => {
@@ -162,19 +172,72 @@ export default function MembersAdmin({ navigation }) {
     }
   };
 
+  // Función para cargar miembros de un grupo específico
+  const loadGroupMembers = async (groupId) => {
+    try {
+      // Obtener el grupo para acceder a su array de memberIds
+      const groupDoc = await getDoc(doc(db, "groups", groupId));
+      
+      if (!groupDoc.exists()) {
+        setMembers([]);
+        return;
+      }
+
+      const groupData = groupDoc.data();
+      const memberIds = groupData.memberIds || [];
+
+      if (memberIds.length === 0) {
+        setMembers([]);
+        return;
+      }
+
+      // Cargar datos de cada miembro
+      const membersData = [];
+      for (const memberId of memberIds) {
+        try {
+          const userDoc = await getDoc(doc(db, "users", memberId));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            membersData.push({
+              id: userDoc.id,
+              name: userData.name || 'Sin nombre',
+              group: selectedGroup?.name || 'Sin grupo',
+              groupId: groupId,
+              nextShift: 'Sin turno asignado',
+              experience: userData.experience || 'N/A',
+              status: userData.status || 'Disponible',
+              shiftsThisWeek: userData.stats?.shiftsThisWeek || 0,
+              lastActive: 'Reciente',
+              avatar: userData.avatar || userData.photo || null,
+              phone: userData.phone || '',
+              position: userData.position || '',
+            });
+          }
+        } catch (error) {
+          console.error(`Error al cargar usuario ${memberId}:`, error);
+        }
+      }
+
+      setMembers(membersData);
+    } catch (error) {
+      console.error("Error al cargar miembros del grupo:", error);
+      setMembers([]);
+    }
+  };
+
   // Funciones de filtrado
   const filteredMembers = members.filter(member => {
     const matchesSearch = member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.group.toLowerCase().includes(searchQuery.toLowerCase());
+      (member.group && member.group.toLowerCase().includes(searchQuery.toLowerCase()));
 
     // Si hay búsqueda activa, solo filtrar por búsqueda
     if (searchQuery) {
       return matchesSearch;
     }
 
-    // Si no hay búsqueda, filtrar por grupo seleccionado
-    const matchesSelectedGroup = selectedGroup ? member.groupId === selectedGroup.id : true;
-    return matchesSelectedGroup;
+    // Si no hay búsqueda, mostrar todos los miembros del grupo seleccionado
+    // (ya están filtrados por grupo en loadGroupMembers)
+    return true;
   });
 
   // CRUD de grupos
@@ -195,13 +258,14 @@ export default function MembersAdmin({ navigation }) {
         return;
       }
 
-      // Crear grupo en Firebase
-      const groupId = await createGroup(newGroupName, user.uid);
+      // Crear grupo en Firebase con descripción
+      const groupId = await createGroup(newGroupName, user.uid, newGroupDescription);
 
       // Recargar grupos para reflejar el cambio
       await loadAdminData();
 
       setNewGroupName('');
+      setNewGroupDescription('');
       setShowCreateGroupModal(false);
       setModalTitle('Éxito');
       setModalMessage('Grupo creado exitosamente');
@@ -222,8 +286,11 @@ export default function MembersAdmin({ navigation }) {
     }
 
     try {
-      // Actualizar grupo en Firebase
-      await updateGroup(editingGroup.id, { name: editingGroup.name });
+      // Actualizar grupo en Firebase incluyendo descripción
+      await updateGroup(editingGroup.id, { 
+        name: editingGroup.name,
+        description: editingGroup.description || ''
+      });
 
       // Recargar grupos para reflejar el cambio
       await loadAdminData();
@@ -297,6 +364,15 @@ export default function MembersAdmin({ navigation }) {
     setShowModal(true);
   };
 
+  const handleCopyInviteCode = async () => {
+    if (selectedGroup?.inviteCode) {
+      await Clipboard.setStringAsync(selectedGroup.inviteCode);
+      setModalTitle('Éxito');
+      setModalMessage('Código copiado al portapapeles');
+      setShowModal(true);
+    }
+  };
+
   const getStatusStyle = (status) => {
     if (status === 'Disponible') return styles.statusAvailable;
     if (status === 'Libre hoy') return styles.statusOff;
@@ -307,7 +383,8 @@ export default function MembersAdmin({ navigation }) {
   const handleGroupSelect = (group) => {
     setSelectedGroup(group);
     setShowGroupSelectModal(false);
-    // Aquí se cargarán los datos específicos del grupo desde Firebase
+    // Cargar miembros del grupo seleccionado
+    loadGroupMembers(group.id);
   };
 
   // Render functions for FlatList
@@ -362,9 +439,16 @@ export default function MembersAdmin({ navigation }) {
       <View style={styles.memberCard}>
         <View style={styles.memberHeader}>
           <View style={styles.memberInfo}>
-            <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person" size={24} color={COLORS.primary} />
-            </View>
+            {member.avatar ? (
+              <Image 
+                source={{ uri: member.avatar }} 
+                style={styles.avatarPlaceholder}
+              />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Ionicons name="person" size={24} color={COLORS.primary} />
+              </View>
+            )}
             <View style={styles.memberDetails}>
               <View style={styles.nameRow}>
                 <Text style={styles.memberName}>{member.name}</Text>
@@ -495,10 +579,13 @@ export default function MembersAdmin({ navigation }) {
                 <Pressable
                   style={({ pressed }) => [styles.groupActionButton, styles.shareGroupButton, pressed && { opacity: 0.7 }]}
                   onPress={() => {
-                    // TODO: Navigate to add member screen
-                    setModalTitle('Información');
-                    setModalMessage('Agregar miembro próximamente');
-                    setShowModal(true);
+                    if (selectedGroup && selectedGroup.inviteCode) {
+                      setShowInviteCodeModal(true);
+                    } else {
+                      setModalTitle('Error');
+                      setModalMessage('No se pudo obtener el código de invitación del grupo');
+                      setShowModal(true);
+                    }
                   }}
                 >
                   <Ionicons name="person-add-outline" size={20} color={COLORS.textGreen} />
@@ -558,7 +645,7 @@ export default function MembersAdmin({ navigation }) {
               <View key={group.id} style={styles.distributionRow}>
                 <Text style={styles.groupName}>{group.name}</Text>
                 <Text style={styles.groupCount}>
-                  {members.filter(m => m.groupId === group.id).length} miembros
+                  {group.memberCount || 0} miembros
                 </Text>
               </View>
             ))
@@ -581,15 +668,21 @@ export default function MembersAdmin({ navigation }) {
       );
     }
 
-    // Si no hay grupo seleccionado
-    if (!selectedGroup) return null;
+    // Si hay grupo seleccionado pero no tiene miembros
+    if (selectedGroup) {
+      return (
+        <View style={styles.emptyState}>
+          <Ionicons name="people-outline" size={48} color={COLORS.textGray} />
+          <Text style={styles.emptyStateText}>Este grupo aún no tiene miembros</Text>
+          <Text style={[styles.emptyStateText, { fontSize: 14, marginTop: 8 }]}>
+            Comparte el código de invitación para agregar miembros
+          </Text>
+        </View>
+      );
+    }
 
-    return (
-      <View style={styles.emptyState}>
-        <Ionicons name="people-outline" size={48} color={COLORS.textGray} />
-        <Text style={styles.emptyStateText}>No se encontraron miembros</Text>
-      </View>
-    );
+    // Si no hay grupo seleccionado, no mostrar nada (ya se muestra el mensaje en renderListFooter)
+    return null;
   };
 
   // Pantalla de carga mientras se obtienen los datos
@@ -711,10 +804,13 @@ export default function MembersAdmin({ navigation }) {
                 style={({ pressed }) => [styles.manageGroupButton, styles.shareButton, pressed && { opacity: 0.7 }]}
                 onPress={() => {
                   setShowManageGroupsModal(false);
-                  // TODO: Navigate to add member screen
-                  setModalTitle('Información');
-                  setModalMessage('Agregar miembro próximamente');
-                  setShowModal(true);
+                  if (selectedGroup && selectedGroup.inviteCode) {
+                    setShowInviteCodeModal(true);
+                  } else {
+                    setModalTitle('Error');
+                    setModalMessage('No se pudo obtener el código de invitación del grupo');
+                    setShowModal(true);
+                  }
                 }}
               >
                 <Ionicons name="person-add-outline" size={24} color={COLORS.textWhite} />
@@ -754,6 +850,16 @@ export default function MembersAdmin({ navigation }) {
                 onChangeText={setNewGroupName}
                 placeholderTextColor={COLORS.textGray}
               />
+              <Text style={[styles.modalLabel, { marginTop: 16 }]}>Descripción (Opcional)</Text>
+              <TextInput
+                style={[styles.modalInput, { minHeight: 80, textAlignVertical: 'top' }]}
+                placeholder="Describe el propósito del grupo"
+                value={newGroupDescription}
+                onChangeText={setNewGroupDescription}
+                placeholderTextColor={COLORS.textGray}
+                multiline
+                numberOfLines={3}
+              />
             </View>
             <View style={styles.modalButtons}>
               <Pressable
@@ -761,6 +867,7 @@ export default function MembersAdmin({ navigation }) {
                 onPress={() => {
                   setShowCreateGroupModal(false);
                   setNewGroupName('');
+                  setNewGroupDescription('');
                 }}
               >
                 <Ionicons name="close-circle-outline" size={20} color={COLORS.error} />
@@ -823,6 +930,16 @@ export default function MembersAdmin({ navigation }) {
                     onChangeText={(text) => setEditingGroup({ ...editingGroup, name: text })}
                     placeholderTextColor={COLORS.textGray}
                   />
+                  <Text style={[styles.modalLabel, { marginTop: 16 }]}>Descripción (Opcional)</Text>
+                  <TextInput
+                    style={[styles.modalInput, { minHeight: 80, textAlignVertical: 'top' }]}
+                    placeholder="Describe el propósito del grupo"
+                    value={editingGroup.description || ''}
+                    onChangeText={(text) => setEditingGroup({ ...editingGroup, description: text })}
+                    placeholderTextColor={COLORS.textGray}
+                    multiline
+                    numberOfLines={3}
+                  />
                 </>
               )}
             </View>
@@ -881,7 +998,7 @@ export default function MembersAdmin({ navigation }) {
                       deletingGroup?.id === group.id && styles.groupSelectTextActive
                     ]}>{group.name}</Text>
                     <Text style={styles.groupSelectCount}>
-                      {members.filter(m => m.groupId === group.id).length} miembros
+                      {group.memberCount || 0} miembros
                     </Text>
                   </Pressable>
                 ))}
@@ -1024,6 +1141,59 @@ export default function MembersAdmin({ navigation }) {
               ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
               showsVerticalScrollIndicator={false}
             />
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Modal de Código de Invitación */}
+      <Modal
+        visible={showInviteCodeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowInviteCodeModal(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setShowInviteCodeModal(false)}
+        >
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.inviteModalIconContainer}>
+              <Ionicons name="key-outline" size={48} color={COLORS.primary} />
+            </View>
+            <Text style={styles.modalTitle}>Código de Invitación</Text>
+            <Text style={styles.modalDescription}>
+              Comparte este código con los miembros para que puedan unirse al grupo "{selectedGroup?.name}"
+            </Text>
+            
+            <Pressable 
+              style={styles.inviteCodeContainer}
+              onPress={handleCopyInviteCode}
+            >
+              <Text style={styles.inviteCodeText}>
+                {selectedGroup?.inviteCode || 'N/A'}
+              </Text>
+              <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="copy-outline" size={16} color={COLORS.textBlack} style={{ marginRight: 4 }} />
+                <Text style={{ fontSize: 12, color: COLORS.textBlack, fontWeight: '600' }}>
+                  Toca para copiar
+                </Text>
+              </View>
+            </Pressable>
+
+            <View style={styles.inviteInfoContainer}>
+              <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
+              <Text style={styles.inviteInfoText}>
+                Los miembros pueden usar este código en la opción "Unirme a un grupo" desde su pantalla de inicio
+              </Text>
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [styles.inviteCloseButton, pressed && { opacity: 0.7 }]}
+              onPress={() => setShowInviteCodeModal(false)}
+            >
+              <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.textWhite} style={{ marginRight: 8 }} />
+              <Text style={styles.inviteCloseButtonText}>Cerrar</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
