@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
-  Alert,
   Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,8 +17,9 @@ import { Ionicons } from "@expo/vector-icons";
 import styles from "../../styles/screens/company/PlanStyles";
 import { MenuFooterCompany } from "../../components";
 import PaymentMethod from "./PaymentMethod";
+import InfoModal from "../../components/InfoModal";
 
-// 🔥 Firebase
+// Firebase
 import { db } from "../../config/firebaseConfig";
 import { collection, onSnapshot, query, orderBy, updateDoc, doc, serverTimestamp, getDoc, arrayUnion } from "firebase/firestore";
 import { getCurrentUser } from "../../services/authService";
@@ -141,13 +141,18 @@ export default function Plan({ navigation }) {
   const [successMessage, setSuccessMessage] = useState("");
   const [savedPayment, setSavedPayment] = useState(null);
   const [useSavedCard, setUseSavedCard] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
+  const [showModal, setShowModal] = useState(false);
 
   const onChoosePlan = (p) => {
     if (p.id === "business") {
       const phone = "5646672817";
-      Linking.openURL(`https://wa.me/${phone}`).catch(() =>
-        Alert.alert("WhatsApp", "No se pudo abrir WhatsApp")
-      );
+      Linking.openURL(`https://wa.me/${phone}`).catch(() => {
+        setModalTitle("WhatsApp");
+        setModalMessage("No se pudo abrir WhatsApp.");
+        setShowModal(true);
+      });
       return;
     }
     setSelectedPlan(p);
@@ -416,23 +421,33 @@ export default function Plan({ navigation }) {
                 const digits = cardNumber.replace(/\D/g, "");
                 if (!useSavedCard) {
                   if (!cardName || cardName.trim().length < 3) {
-                    Alert.alert("Tarjeta invalida", "Ingresa el nombre en la tarjeta.");
+                    setModalTitle("Tarjeta inválida");
+                    setModalMessage("Ingresa el nombre en la tarjeta.");
+                    setShowModal(true);
                     return;
                   }
                   if (!digits || digits.length !== 18) {
-                    Alert.alert("Tarjeta invalida", "La tarjeta debe tener 18 dígitos.");
+                    setModalTitle("Tarjeta inválida");
+                    setModalMessage("La tarjeta debe tener 18 dígitos.");
+                    setShowModal(true);
                     return;
                   }
                   if (!exp || !/^(0[1-9]|1[0-2])\/\d{2}$/.test(exp)) {
-                    Alert.alert("Fecha invalida", "Usa formato MM/AA.");
+                    setModalTitle("Fecha inválida");
+                    setModalMessage("Usa formato MM/AA.");
+                    setShowModal(true);
                     return;
                   }
                   if (!cvc || cvc.replace(/\D/g, "").length !== 3) {
-                    Alert.alert("CVC invalido", "El CVC debe tener 3 dígitos.");
+                    setModalTitle("CVC inválido");
+                    setModalMessage("El CVC debe tener 3 dígitos.");
+                    setShowModal(true);
                     return;
                   }
                 } else if (!savedPayment) {
-                  Alert.alert("Sin tarjeta", "No hay tarjeta guardada, agrega una nueva.");
+                  setModalTitle("Sin tarjeta");
+                  setModalMessage("No hay tarjeta guardada, agrega una nueva.");
+                  setShowModal(true);
                   return;
                 }
                 if (!selectedPlan) return;
@@ -440,7 +455,9 @@ export default function Plan({ navigation }) {
                 try {
                   const user = getCurrentUser();
                   if (!user) {
-                    Alert.alert("Sesion", "No hay sesion activa");
+                    setModalTitle("Sesión");
+                    setModalMessage("No hay sesión activa.");
+                    setShowModal(true);
                     return;
                   }
                   const companyRef = doc(db, "companies", user.uid);
@@ -514,7 +531,9 @@ export default function Plan({ navigation }) {
                   }, 1600);
                 } catch (error) {
                   console.error("Error al procesar pago:", error);
-                  Alert.alert("Error", "No se pudo completar el pago.");
+                  setModalTitle("Error");
+                  setModalMessage("No se pudo completar el pago.");
+                  setShowModal(true);
                 } finally {
                   setPaying(false);
                 }
@@ -529,6 +548,12 @@ export default function Plan({ navigation }) {
           </View>
         </View>
       </Modal>
+      <InfoModal
+        visible={showModal}
+        onClose={() => setShowModal(false)}
+        title={modalTitle}
+        message={modalMessage}
+      />
     </SafeAreaView>
   );
 }

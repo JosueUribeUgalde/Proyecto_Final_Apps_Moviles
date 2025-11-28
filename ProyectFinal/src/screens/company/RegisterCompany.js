@@ -124,7 +124,19 @@ export default function RegisterCompany({ navigation }) {
         return () => clearTimeout(handler);
     }, [formData.address, suppressPlaces]);
 
+    const ensureLibraryPermission = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+            Alert.alert("Permiso requerido", "Habilita acceso a tus fotos para elegir una imagen.");
+            return false;
+        }
+        return true;
+    };
+
     const handleImagePick = async (field) => {
+        const hasPermission = await ensureLibraryPermission();
+        if (!hasPermission) return;
+
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
@@ -140,7 +152,19 @@ export default function RegisterCompany({ navigation }) {
         }
     };
 
+    const ensureCameraPermission = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+            Alert.alert("Permiso requerido", "Habilita la cámara para tomar la foto.");
+            return false;
+        }
+        return true;
+    };
+
     const handleCameraCapture = async (field, side) => {
+        const hasPermission = await ensureCameraPermission();
+        if (!hasPermission) return;
+
         const result = await ImagePicker.launchCameraAsync({
             allowsEditing: false,
             aspect: [4, 3],
@@ -160,6 +184,9 @@ export default function RegisterCompany({ navigation }) {
     };
 
     const handleSingleCameraCapture = async (field) => {
+        const hasPermission = await ensureCameraPermission();
+        if (!hasPermission) return;
+
         const result = await ImagePicker.launchCameraAsync({
             allowsEditing: false,
             aspect: [4, 3],

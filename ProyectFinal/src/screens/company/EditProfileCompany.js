@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, TextInput, ScrollView, Pressable, Image, ActivityIndicator, Alert } from "react-native";
+import { View, Text, TextInput, ScrollView, Pressable, Image, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import profileStyles from "../../styles/screens/company/ProfileCompanyStyles";
@@ -158,7 +158,9 @@ export default function EditProfileCompany() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permiso requerido", "Habilita acceso a fotos para cambiar el logo.");
+        setModalTitle("Permiso requerido");
+        setModalMessage("Habilita acceso a fotos para cambiar el logo.");
+        setShowModal(true);
         return;
       }
 
@@ -173,7 +175,9 @@ export default function EditProfileCompany() {
 
       const user = getCurrentUser();
       if (!user) {
-        Alert.alert("Sesion", "No hay sesion activa");
+        setModalTitle("Sesión");
+        setModalMessage("No hay sesión activa");
+        setShowModal(true);
         return;
       }
 
@@ -186,7 +190,9 @@ export default function EditProfileCompany() {
       setShowModal(true);
     } catch (error) {
       console.error("Error al cambiar logo:", error);
-      Alert.alert("Error", "No se pudo actualizar el logo.");
+      setModalTitle("Error");
+      setModalMessage("No se pudo actualizar el logo.");
+      setShowModal(true);
     } finally {
       setSaving(false);
     }

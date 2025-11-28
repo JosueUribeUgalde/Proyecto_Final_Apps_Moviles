@@ -7,13 +7,13 @@ import {
   Pressable,
   TextInput,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import styles from "../../styles/screens/company/PlanStyles";
 import { getCurrentUser } from "../../services/authService";
 import { db } from "../../config/firebaseConfig";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
+import InfoModal from "../../components/InfoModal";
 
 // Tarjeta de método de pago
 const MethodCard = ({ item, onRemove }) => {
@@ -83,6 +83,9 @@ export default function PaymentMethod() {
   const [billingStreet, setBillingStreet] = useState("");
   const [city, setCity] = useState("");
   const [zip, setZip] = useState("");
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     const loadPayment = async () => {
@@ -145,7 +148,9 @@ export default function PaymentMethod() {
       setMethods([]);
     } catch (error) {
       console.error("Error al eliminar metodo:", error);
-      Alert.alert("Error", "No se pudo eliminar el método.");
+      setModalTitle("Error");
+      setModalMessage("No se pudo eliminar el método.");
+      setShowModal(true);
     } finally {
       setRemoving(false);
     }
@@ -154,23 +159,33 @@ export default function PaymentMethod() {
   const onSaveMethod = async () => {
     const digits = cardNumber.replace(/\D/g, "");
     if (!cardName || cardName.trim().length < 3) {
-      Alert.alert("Dato faltante", "Ingresa el nombre en la tarjeta.");
+      setModalTitle("Dato faltante");
+      setModalMessage("Ingresa el nombre en la tarjeta.");
+      setShowModal(true);
       return;
     }
     if (!digits || digits.length !== 18) {
-      Alert.alert("Tarjeta invalida", "La tarjeta debe tener 18 dígitos.");
+      setModalTitle("Tarjeta inválida");
+      setModalMessage("La tarjeta debe tener 18 dígitos.");
+      setShowModal(true);
       return;
     }
     if (!exp || !/^(0[1-9]|1[0-2])\/\d{2}$/.test(exp)) {
-      Alert.alert("Fecha invalida", "Usa formato MM/AA.");
+      setModalTitle("Fecha inválida");
+      setModalMessage("Usa formato MM/AA.");
+      setShowModal(true);
       return;
     }
     if (!cvc || cvc.replace(/\D/g, "").length !== 3) {
-      Alert.alert("CVC invalido", "El CVC debe tener 3 dígitos.");
+      setModalTitle("CVC inválido");
+      setModalMessage("El CVC debe tener 3 dígitos.");
+      setShowModal(true);
       return;
     }
     if (zip && zip.replace(/\D/g, "").length > 0 && zip.replace(/\D/g, "").length < 5) {
-      Alert.alert("Codigo postal invalido", "Completa los 5 digitos.");
+      setModalTitle("Código postal inválido");
+      setModalMessage("Completa los 5 dígitos.");
+      setShowModal(true);
       return;
     }
 
@@ -178,7 +193,9 @@ export default function PaymentMethod() {
     try {
       const user = getCurrentUser();
       if (!user) {
-        Alert.alert("Sesion", "No hay sesion activa");
+        setModalTitle("Sesión");
+        setModalMessage("No hay sesión activa.");
+        setShowModal(true);
         return;
       }
 
@@ -211,10 +228,14 @@ export default function PaymentMethod() {
       setCity("");
       setZip("");
       setEditId(null);
-      Alert.alert("Guardado", "Metodo de pago guardado en tu cuenta.");
+      setModalTitle("Método guardado");
+      setModalMessage("Método de pago guardado en tu cuenta.");
+      setShowModal(true);
     } catch (error) {
       console.error("Error al guardar metodo:", error);
-      Alert.alert("Error", "No se pudo guardar el metodo de pago.");
+      setModalTitle("Error");
+      setModalMessage("No se pudo guardar el método de pago.");
+      setShowModal(true);
     } finally {
       setSaving(false);
     }
@@ -230,119 +251,128 @@ export default function PaymentMethod() {
   }
 
   return (
-    <ScrollView ref={payScrollRef} contentContainerStyle={styles.scrollPad}>
-      {/* Resumen / relevancia de pago */}
-      <View style={styles.payHero}>
-        <Text style={styles.payHeroTitle}>Método predeterminado</Text>
-        <Text style={styles.payHeroSubtitle}>
-          Se utilizará para renovaciones y cargos automáticos. 
-          Puedes cambiarlo en cualquier momento.
-        </Text>
-        {methods.slice(0, 1).map((m) => (
-          <View key={m.id} style={styles.methodTitleRow}>
-            <Ionicons name={m.icon} size={20} />
-            <Text style={styles.methodTitle}>{m.label}</Text>
-            <View style={styles.defaultChip}>
-              <Text style={styles.defaultChipText}>Activo</Text>
+    <>
+      <ScrollView ref={payScrollRef} contentContainerStyle={styles.scrollPad}>
+        {/* Resumen / relevancia de pago */}
+        <View style={styles.payHero}>
+          <Text style={styles.payHeroTitle}>Método predeterminado</Text>
+          <Text style={styles.payHeroSubtitle}>
+            Se utilizará para renovaciones y cargos automáticos. 
+            Puedes cambiarlo en cualquier momento.
+          </Text>
+          {methods.slice(0, 1).map((m) => (
+            <View key={m.id} style={styles.methodTitleRow}>
+              <Ionicons name={m.icon} size={20} />
+              <Text style={styles.methodTitle}>{m.label}</Text>
+              <View style={styles.defaultChip}>
+                <Text style={styles.defaultChipText}>Activo</Text>
+              </View>
             </View>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
 
-      {/* Lista de todos los métodos de pago */}
-      <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Tus métodos</Text>
-      <View style={styles.methodsList}>
-        {methods.map((m) => (
-          <MethodCard
-            key={m.id}
-            item={m}
-            onRemove={onRemove}
-            onUpdateWireAccount={(val) => updateWireAccount(val)}
+        {/* Lista de todos los métodos de pago */}
+        <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Tus métodos</Text>
+        <View style={styles.methodsList}>
+          {methods.map((m) => (
+            <MethodCard
+              key={m.id}
+              item={m}
+              onRemove={onRemove}
+              onUpdateWireAccount={(val) => updateWireAccount(val)}
+            />
+          ))}
+        </View>
+
+        {/* Formulario para agregar o editar método (tarjetas) */}
+        <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Añadir nuevo método</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Nombre en la tarjeta"
+          value={cardName}
+          onChangeText={setCardName}
+          onFocus={scrollToForm}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Número de tarjeta (18 dígitos)"
+          value={cardNumber}
+          onChangeText={(text) => setCardNumber(text.replace(/\D/g, "").slice(0, 18))}
+          keyboardType="number-pad"
+          onFocus={scrollToForm}
+          maxLength={18}
+        />
+
+        {/* Campos de fecha y CVC */}
+        <View style={styles.row2}>
+          <TextInput
+            style={[styles.input, styles.rowItem]}
+            placeholder="MM/AA"
+            value={exp}
+            onChangeText={(text) => {
+              const digits = text.replace(/\D/g, "").slice(0, 4);
+              const formatted = digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+              setExp(formatted);
+            }}
+            keyboardType="number-pad"
+            onFocus={scrollToForm}
+            maxLength={5}
           />
-        ))}
-      </View>
+          <TextInput
+            style={[styles.input, styles.rowItem]}
+            placeholder="CVC"
+            value={cvc}
+            onChangeText={(text) => setCvc(text.replace(/\D/g, "").slice(0, 3))}
+            secureTextEntry
+            keyboardType="number-pad"
+            onFocus={scrollToForm}
+            maxLength={3}
+          />
+        </View>
+        <Text style={styles.metaText}>Formato fecha MM/AA · CVC de 3 dígitos</Text>
 
-      {/* Formulario para agregar o editar método (tarjetas) */}
-      <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Añadir nuevo método</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Nombre en la tarjeta"
-        value={cardName}
-        onChangeText={setCardName}
-        onFocus={scrollToForm}
+        {/* Campos de dirección */}
+        <TextInput
+          style={styles.input}
+          placeholder="Calle y número (opcional)"
+          value={billingStreet}
+          onChangeText={setBillingStreet}
+          onFocus={scrollToForm}
+        />
+        <View style={styles.row2}>
+          <TextInput
+            style={[styles.input, styles.rowItem]}
+            placeholder="Ciudad (opcional)"
+            value={city}
+            onChangeText={setCity}
+            onFocus={scrollToForm}
+          />
+          <TextInput
+            style={[styles.input, styles.rowItem]}
+            placeholder="Código postal (opcional)"
+            value={zip}
+            onChangeText={setZip}
+            keyboardType="number-pad"
+            onFocus={scrollToForm}
+          />
+        </View>
+
+        {/* Botón guardar (afecta tarjetas; transferencia no lo necesita) */}
+        <Pressable onPress={onSaveMethod} style={styles.saveBtn} disabled={saving}>
+          {saving ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.saveBtnText}>Guardar método</Text>
+          )}
+        </Pressable>
+      </ScrollView>
+
+      <InfoModal
+        visible={showModal}
+        onClose={() => setShowModal(false)}
+        title={modalTitle}
+        message={modalMessage}
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Número de tarjeta (18 dígitos)"
-        value={cardNumber}
-        onChangeText={(text) => setCardNumber(text.replace(/\D/g, "").slice(0, 18))}
-        keyboardType="number-pad"
-        onFocus={scrollToForm}
-        maxLength={18}
-      />
-
-      {/* Campos de fecha y CVC */}
-      <View style={styles.row2}>
-        <TextInput
-          style={[styles.input, styles.rowItem]}
-          placeholder="MM/AA"
-          value={exp}
-          onChangeText={(text) => {
-            const digits = text.replace(/\D/g, "").slice(0, 4);
-            const formatted = digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
-            setExp(formatted);
-          }}
-          keyboardType="number-pad"
-          onFocus={scrollToForm}
-          maxLength={5}
-        />
-        <TextInput
-          style={[styles.input, styles.rowItem]}
-          placeholder="CVC"
-          value={cvc}
-          onChangeText={(text) => setCvc(text.replace(/\D/g, "").slice(0, 3))}
-          secureTextEntry
-          keyboardType="number-pad"
-          onFocus={scrollToForm}
-          maxLength={3}
-        />
-      </View>
-      <Text style={styles.metaText}>Formato fecha MM/AA · CVC de 3 dígitos</Text>
-
-      {/* Campos de dirección */}
-      <TextInput
-        style={styles.input}
-        placeholder="Calle y número (opcional)"
-        value={billingStreet}
-        onChangeText={setBillingStreet}
-        onFocus={scrollToForm}
-      />
-      <View style={styles.row2}>
-        <TextInput
-          style={[styles.input, styles.rowItem]}
-          placeholder="Ciudad (opcional)"
-          value={city}
-          onChangeText={setCity}
-          onFocus={scrollToForm}
-        />
-        <TextInput
-          style={[styles.input, styles.rowItem]}
-          placeholder="Código postal (opcional)"
-          value={zip}
-          onChangeText={setZip}
-          keyboardType="number-pad"
-          onFocus={scrollToForm}
-        />
-      </View>
-
-      {/* Botón guardar (afecta tarjetas; transferencia no lo necesita) */}
-      <Pressable onPress={onSaveMethod} style={styles.saveBtn} disabled={saving}>
-        {saving ? (
-          <ActivityIndicator color="white" />
-        ) : (
-          <Text style={styles.saveBtnText}>Guardar método</Text>
-        )}
-      </Pressable>
-    </ScrollView>
+    </>
   );
 }
