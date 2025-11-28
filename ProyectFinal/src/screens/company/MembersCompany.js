@@ -1,113 +1,16 @@
 import { useMemo, useState, useEffect } from 'react';
-import {Text, View, TextInput, Pressable, FlatList, Modal, ScrollView, Switch, Platform, ActivityIndicator} from 'react-native';
+import {Text, View, TextInput, Pressable, FlatList, Modal, ScrollView, Switch, Platform, ActivityIndicator, Linking} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, {DateTimePickerAndroid} from '@react-native-community/datetimepicker';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { HeaderScreen, Banner, MenuFooterCompany } from '../../components';
+import { signOut } from 'firebase/auth';
+import { HeaderScreen, MenuFooterCompany } from '../../components';
+import InfoModal from '../../components/InfoModal';
 import { COLORS } from '../../components/constants/theme';
 import styles from '../../styles/screens/company/MembersCompanyStyles';
 import { getCurrentUser, registerUser, loginCompany } from '../../services/authService';
 import { db, auth } from '../../config/firebaseConfig';
-
-// Datos simulados
-const MOCK_MEMBERS = [
-  {
-    id: '1',
-    name: 'María González',
-    email: 'maria.g@acme.com',
-    phone: '+56 9 5555 5555',
-    role: 'Admin',
-    position: 'Supervisora de caja',
-    experience: '5 años en retail y manejo de equipos',
-    availableDays: 'Lun • Mar • Jue • Sáb',
-    startTime: '08:00',
-    endTime: '17:00',
-    maxHoursPerWeek: '40',
-    mealTime: '14:00',
-    daysOff: 'Mié • Dom',
-    replacementAvailable: true,
-    preferredAreas: 'Caja, Atención al cliente',
-  },
-  {
-    id: '2',
-    name: 'Luis Pérez',
-    email: 'l.perez@acme.com',
-    phone: '+56 9 4444 4444',
-    role: 'Usuario',
-    position: 'Encargado de bodega',
-    experience: '3 años en inventarios y logística ligera',
-    availableDays: 'Lun • Mié • Vie',
-    startTime: '09:00',
-    endTime: '18:00',
-    maxHoursPerWeek: '36',
-    mealTime: '13:30',
-    daysOff: 'Jue • Sáb • Dom',
-    replacementAvailable: false,
-    preferredAreas: 'Bodega',
-  },
-  {
-    id: '3',
-    name: 'Damian Elias Nieto',
-    email: 'mamian@gmail.com',
-    phone: '+56 12345698744',
-    role: 'Usuario',
-    position: 'Carnicero',
-    experience: '3 años filiando carne y atención al cliente',
-    availableDays: 'Lun • Mar • Mié • Vie • Sáb • Dom',
-    startTime: '09:00',
-    endTime: '18:00',
-    maxHoursPerWeek: '36',
-    mealTime: '13:30',
-    daysOff: 'Jue',
-    replacementAvailable: false,
-    preferredAreas: 'Bodega',
-  },
-  {
-    id: '4',
-    name: 'Diego López',
-    email: 'd.lopez@acme.com',
-    phone: '+56 9 2222 2222',
-    role: 'Usuario',
-    position: 'Responsable de piso de venta',
-    experience: 'Más de 7 años gestionando equipos de piso',
-    availableDays: 'Lun • Mar • Mié • Jue • Vie',
-    startTime: '07:00',
-    endTime: '15:00',
-    maxHoursPerWeek: '40',
-    mealTime: '12:00',
-    daysOff: 'Sáb • Dom',
-    replacementAvailable: true,
-    preferredAreas: 'Bodega, Atención al cliente',
-  },
-  {
-    id: '5',
-    name: 'Ana Torres',
-    email: 'ana.t@acme.com',
-    phone: '+56 9 1111 1111',
-    role: 'Admin',
-    position: 'Gerente de tienda',
-    experience: '10 años en liderazgo de tiendas y operaciones',
-    availableDays: 'Lun • Mar • Mié • Jue • Vie',
-    startTime: '09:00',
-    endTime: '18:00',
-    maxHoursPerWeek: '40',
-    mealTime: '14:00',
-    daysOff: 'Sáb • Dom',
-    replacementAvailable: false,
-    preferredAreas: 'Supervisión',
-  },
-];
-
-// Áreas disponibles para selección seguin los grupos creados por el admibnistrador
-const AREA_GROUPS = [
-  'Caja',
-  'Atención al cliente',
-  'Bodega',
-  'Supervisión',
-  'Mostrador',
-  'Ventas en línea',
-];
 
 // Días de la semana para los chips
 const WEEK_DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -151,6 +54,15 @@ const formatTime = (date) => {
   return `${h}:${m}`;
 };
 
+const timeToMinutes = (value) => {
+  if (!value) return null;
+  const [h, m = '0'] = value.split(':');
+  const hours = parseInt(h, 10);
+  const minutes = parseInt(m, 10);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  return hours * 60 + minutes;
+};
+
 // Formulario vacío
 const createEmptyForm = () => ({
   name: '',
@@ -185,6 +97,10 @@ export default function MembersCompany({ navigation }) {
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [formData, setFormData] = useState(createEmptyForm());
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [shareTarget, setShareTarget] = useState(null);
+  const [sharePassword, setSharePassword] = useState('');
 
   // Time picker para iOS
   const [timePickerIOS, setTimePickerIOS] = useState({
@@ -306,9 +222,147 @@ export default function MembersCompany({ navigation }) {
     }
   };
 
+  const sendCredentialsEmail = async (email, password) => {
+    const subject = encodeURIComponent('Tus credenciales de acceso');
+    const body = encodeURIComponent(
+      `Hola,\n\nTu cuenta ha sido creada.\n\nCorreo: ${email}\nContraseña: ${password}\n\nPor favor cambia tu contraseña al iniciar sesión.`
+    );
+    const mailtoUrl = `mailto:${email}?subject=${subject}&body=${body}`;
+
+    try {
+      const supported = await Linking.canOpenURL(mailtoUrl);
+      if (supported) {
+        await Linking.openURL(mailtoUrl);
+      } else {
+        setBannerMessage('No se pudo abrir el cliente de correo para enviar las credenciales');
+        setBannerType('error');
+        setShowBanner(true);
+      }
+    } catch (err) {
+      console.error('Error al enviar correo con credenciales:', err);
+      setBannerMessage('Error al preparar el correo de credenciales');
+      setBannerType('error');
+      setShowBanner(true);
+    }
+  };
+
+  const handleShareMember = (member) => {
+    setShareTarget(member);
+    setSharePassword('');
+    setShareModalVisible(true);
+  };
+
+  const submitShare = async () => {
+    if (!shareTarget) return;
+    if (!sharePassword.trim()) {
+      setBannerMessage('Ingresa la contrase�a que quieres compartir');
+      setBannerType('error');
+      setShowBanner(true);
+      return;
+    }
+
+    const subject = encodeURIComponent('Credenciales de acceso');
+    const body = encodeURIComponent(
+      `Correo: ${shareTarget.email}\nContrase�a: ${sharePassword.trim()}\n\nEste mensaje es solo para el correo registrado.`
+    );
+    const mailtoUrl = `mailto:${shareTarget.email}?subject=${subject}&body=${body}`;
+
+    try {
+      const supported = await Linking.canOpenURL(mailtoUrl);
+      if (supported) {
+        await Linking.openURL(mailtoUrl);
+      } else {
+        setBannerMessage('No se pudo abrir el cliente de correo');
+        setBannerType('error');
+        setShowBanner(true);
+      }
+    } catch (err) {
+      console.error('Error al compartir credenciales:', err);
+      setBannerMessage('Error al compartir credenciales');
+      setBannerType('error');
+      setShowBanner(true);
+    } finally {
+      setShareModalVisible(false);
+      setShareTarget(null);
+      setSharePassword('');
+    }
+  };
+
   const handleSaveMember = async () => {
-    if (!formData.name.trim() || !formData.email.trim()) {
-      setBannerMessage('Nombre y correo son obligatorios');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneDigits = formData.phone.replace(/\\D/g, '');
+    const workDays = parseDays(formData.availableDays);
+    const offDays = parseDays(formData.daysOff);
+
+    if (!formData.name.trim()) {
+      setBannerMessage('El nombre es obligatorio');
+      setBannerType('error');
+      setShowBanner(true);
+      return;
+    }
+
+    if (!formData.email.trim() || !emailRegex.test(formData.email.trim().toLowerCase())) {
+      setBannerMessage('Ingresa un correo válido');
+      setBannerType('error');
+      setShowBanner(true);
+      return;
+    }
+
+    if (!formData.phone.trim() || phoneDigits.length < 8) {
+      setBannerMessage('Ingresa un teléfono válido (mínimo 8 dígitos)');
+      setBannerType('error');
+      setShowBanner(true);
+      return;
+    }
+
+    if (!workDays.length) {
+      setBannerMessage('Selecciona al menos un día de trabajo');
+      setBannerType('error');
+      setShowBanner(true);
+      return;
+    }
+
+    if (offDays.some((d) => workDays.includes(d))) {
+      setBannerMessage('Los días libres no pueden coincidir con los días de trabajo');
+      setBannerType('error');
+      setShowBanner(true);
+      return;
+    }
+
+    if (!formData.startTime || !formData.endTime) {
+      setBannerMessage('Horarios de inicio y fin son obligatorios');
+      setBannerType('error');
+      setShowBanner(true);
+      return;
+    }
+
+    const startMinutes = timeToMinutes(formData.startTime);
+    const endMinutes = timeToMinutes(formData.endTime);
+    const mealMinutes = formData.mealTime ? timeToMinutes(formData.mealTime) : null;
+
+    if (startMinutes === null || endMinutes === null) {
+      setBannerMessage('Formato de horario inválido');
+      setBannerType('error');
+      setShowBanner(true);
+      return;
+    }
+
+    if (formData.mealTime && mealMinutes === null) {
+      setBannerMessage('Formato de horario de comida inv�lido');
+      setBannerType('error');
+      setShowBanner(true);
+      return;
+    }
+
+    if (startMinutes >= endMinutes) {
+      setBannerMessage('El horario de inicio debe ser menor al de fin');
+      setBannerType('error');
+      setShowBanner(true);
+      return;
+    }
+
+    if (mealMinutes !== null && (mealMinutes <= startMinutes || mealMinutes >= endMinutes)) {
+      setBannerMessage('El horario de comida debe estar dentro de la jornada');
       setBannerType('error');
       setShowBanner(true);
       return;
@@ -392,10 +446,14 @@ export default function MembersCompany({ navigation }) {
         setBannerMessage('Miembro agregado exitosamente');
         setBannerType('success');
         setShowBanner(true);
+        await sendCredentialsEmail(formData.email, formData.password);
         
         // Cerrar el modal
         setShowFormModal(false);
         setEditingMember(null);
+
+        // Mostrar aviso de cierre de sesi�n por seguridad
+        setShowSecurityModal(true);
       }
 
       setBannerType('success');
@@ -516,25 +574,11 @@ export default function MembersCompany({ navigation }) {
           <Ionicons name="arrow-back" size={24} color={COLORS.textBlack} />
         }
         onLeftPress={() => navigation.goBack?.()}
-        rightIcon={
-          <Ionicons name="settings-outline" size={24} color={COLORS.textBlack}/>
-        }
         onRightPress={() => {
           setBannerMessage('Configuración de miembros próximamente');
           setBannerType('success');
           setShowBanner(true);
         }}/>
-
-      {showBanner && (
-        <View style={styles.bannerContainer}>
-          <Banner
-            message={bannerMessage}
-            type={bannerType}
-            visible={showBanner}
-            onHide={() => setShowBanner(false)}
-          />
-        </View>
-      )}
 
       {/* Buscador + encabezado de lista */}
       <FlatList
@@ -861,6 +905,34 @@ export default function MembersCompany({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      <InfoModal
+        visible={showSecurityModal}
+        title="Se cerrara la sesión"
+        message={
+          'Por medidas de seguridad cerraremos tu sesión para proteger la cuenta.\n\n' +
+          'Presiona "Entendido" para salir y vuelve a iniciar sesión con tus credenciales.'
+        }
+        onClose={async () => {
+          setShowSecurityModal(false);
+          try {
+            await signOut(auth);
+          } catch (err) {
+            console.error('Error al cerrar sesión:', err);
+          }
+          navigation.reset?.({
+            index: 0,
+            routes: [{ name: 'LoginCompany' }],
+          });
+        }}
+      />
+
+      <InfoModal
+        visible={showBanner}
+        title={bannerType === 'error' ? 'Error' : bannerType === 'success' ? 'Listo' : 'Aviso'}
+        message={bannerMessage}
+        onClose={() => setShowBanner(false)}
+      />
 
     </SafeAreaView>
   );

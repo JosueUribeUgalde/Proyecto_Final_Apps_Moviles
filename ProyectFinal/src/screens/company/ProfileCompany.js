@@ -383,7 +383,7 @@ export default function ProfileCompany() {
             <View style={styles.preferenceLeft}>
               <Ionicons name="key-outline" size={24} color={COLORS.primary} />
               <View style={styles.preferenceTextContainer}>
-                <Text style={styles.preferenceTitle}>Cambiar contrasena</Text>
+                <Text style={styles.preferenceTitle}>Cambiar contraseña</Text>
                 <Text style={styles.preferenceSubtitle}>Actualizar credenciales</Text>
               </View>
             </View>
