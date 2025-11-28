@@ -1,7 +1,6 @@
 // Estilos específicos para la edición de perfil de empresa
 import { StyleSheet } from "react-native";
-import { COLORS, FONTS, RADIUS, SPACINGS } from "../../components/constants/theme"; 
-// ^ Ajusta la ruta a tu theme si es diferente
+import { COLORS, FONTS, RADIUS } from "../../../components/constants/theme";
 
 export default StyleSheet.create({
   /* ==================== INPUTS GENERALES ==================== */
@@ -32,7 +31,7 @@ export default StyleSheet.create({
   input: {
     flex: 1,
     fontSize: FONTS.regular,
-    color: COLORS.textPrimary,
+    color: COLORS.textBlack,
     paddingVertical: 2,
   },
 
@@ -44,7 +43,7 @@ export default StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.backgroundMuted,
+    backgroundColor: COLORS.background,
     borderWidth: 1,
     borderColor: COLORS.borderSecondary,
     opacity: 0.7,
@@ -70,7 +69,7 @@ export default StyleSheet.create({
     borderRadius: RADIUS.lg,
     backgroundColor: COLORS.backgroundWhite,
     borderWidth: 1,
-    borderColor: COLORS.borderPrimary,
+    borderColor: COLORS.borderSecondary,
   },
 
   changeImageBtnText: {
@@ -85,20 +84,21 @@ export default StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     marginTop: 16,
-    marginBottom: SPACINGS.xl ?? 24,
+    marginBottom: 24,
+    justifyContent: "center",
   },
 
   saveBtn: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+    paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: RADIUS.lg,
     backgroundColor: COLORS.backgroundWhite,
     borderWidth: 1,
-    borderColor: COLORS.success,
+    borderColor: COLORS.primary,
   },
 
   saveBtnText: {
@@ -108,11 +108,11 @@ export default StyleSheet.create({
   },
 
   removeBtn: {
-    width: 130,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
+    paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: RADIUS.lg,
     backgroundColor: COLORS.backgroundWhite,
@@ -124,5 +124,49 @@ export default StyleSheet.create({
     fontSize: FONTS.regular,
     color: COLORS.error,
     fontWeight: "600",
+  },
+
+  /* ==================== DOCUMENTOS (SOLO LECTURA) ==================== */
+
+  docStatusBox: {
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+
+  docStatusText: {
+    flex: 1,
+    fontSize: FONTS.regular,
+    color: COLORS.textGray,
+  },
+
+  statusPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+
+  statusPillActive: {
+    backgroundColor: COLORS.secondary,
+    borderColor: COLORS.secondary,
+  },
+
+  statusPillPending: {
+    backgroundColor: COLORS.backgroundWhite,
+    borderColor: COLORS.borderSecondary,
+  },
+
+  statusPillText: {
+    fontSize: FONTS.small,
+    fontWeight: "600",
+  },
+
+  statusPillTextActive: {
+    color: COLORS.textBlack,
+  },
+
+  statusPillTextPending: {
+    color: COLORS.textGray,
   },
 });
