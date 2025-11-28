@@ -11,9 +11,61 @@ import {
     where,
     serverTimestamp,
     arrayUnion,
-    arrayRemove
+    arrayRemove,
+    increment
 } from "firebase/firestore";
 import { db } from "../config/firebaseConfig";
+
+/**
+ * Genera un código de invitación único de 6 caracteres
+ * @returns {string} - Código de invitación (ej: "ABC123")
+ */
+export const generateInviteCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+};
+
+/**
+ * Verifica si un código de invitación ya existe
+ * @param {string} code - Código a verificar
+ * @returns {Promise<boolean>} - true si existe, false si no
+ */
+const inviteCodeExists = async (code) => {
+    try {
+        const groupsRef = collection(db, "groups");
+        const q = query(groupsRef, where("inviteCode", "==", code));
+        const querySnapshot = await getDocs(q);
+        return !querySnapshot.empty;
+    } catch (error) {
+        console.error("Error al verificar código:", error);
+        return false;
+    }
+};
+
+/**
+ * Genera un código de invitación único (verifica que no exista)
+ * @returns {Promise<string>} - Código único
+ */
+export const generateUniqueInviteCode = async () => {
+    let code = generateInviteCode();
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (await inviteCodeExists(code) && attempts < maxAttempts) {
+        code = generateInviteCode();
+        attempts++;
+    }
+
+    if (attempts >= maxAttempts) {
+        throw new Error("No se pudo generar un código único");
+    }
+
+    return code;
+};
 
 /**
  * Crea un nuevo grupo en Firestore
@@ -31,18 +83,21 @@ export const createGroup = async (name, adminId) => {
             throw new Error("El ID del administrador es requerido");
         }
 
+        // Generar código de invitación único
+        const inviteCode = await generateUniqueInviteCode();
+
         // Estructura del grupo según especificaciones
         const groupData = {
             name: name.trim(),
             adminId: adminId,
+            inviteCode: inviteCode, // ← Código de invitación
             color: "#4A90E2", // Color por defecto (azul)
             description: "", // Descripción vacía por defecto
             memberCount: 0, // Sin miembros inicialmente
             memberIds: [], // Array vacío de miembros
             stats: {
-                coveragePercentage: 0, // 0% de cobertura inicial
-                activeMembers: 0, // Sin miembros activos
-                absences: 0 // Sin ausencias
+                totalShifts: 0,
+                averageRating: 0
             },
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
@@ -57,7 +112,6 @@ export const createGroup = async (name, adminId) => {
             groupIds: arrayUnion(docRef.id)
         });
 
-        console.log("Grupo creado exitosamente con ID:", docRef.id);
         return docRef.id;
     } catch (error) {
         console.error("Error al crear grupo:", error);
@@ -131,8 +185,6 @@ export const updateGroup = async (groupId, updates) => {
             ...updates,
             updatedAt: serverTimestamp()
         });
-
-        console.log("Grupo actualizado exitosamente");
     } catch (error) {
         console.error("Error al actualizar grupo:", error);
         throw error;
@@ -168,8 +220,6 @@ export const deleteGroup = async (groupId, adminId) => {
         await updateDoc(adminRef, {
             groupIds: arrayRemove(groupId)
         });
-
-        console.log("Grupo eliminado exitosamente");
     } catch (error) {
         console.error("Error al eliminar grupo:", error);
         throw error;
@@ -204,8 +254,6 @@ export const addMemberToGroup = async (groupId, memberId) => {
             memberCount: currentMemberIds.length + 1,
             updatedAt: serverTimestamp()
         });
-
-        console.log("Miembro agregado al grupo exitosamente");
     } catch (error) {
         console.error("Error al agregar miembro al grupo:", error);
         throw error;
@@ -235,8 +283,6 @@ export const removeMemberFromGroup = async (groupId, memberId) => {
             memberCount: Math.max(0, currentMemberIds.length - 1),
             updatedAt: serverTimestamp()
         });
-
-        console.log("Miembro removido del grupo exitosamente");
     } catch (error) {
         console.error("Error al remover miembro del grupo:", error);
         throw error;
@@ -257,10 +303,69 @@ export const updateGroupStats = async (groupId, stats) => {
             stats: stats,
             updatedAt: serverTimestamp()
         });
-
-        console.log("Estadísticas del grupo actualizadas exitosamente");
     } catch (error) {
         console.error("Error al actualizar estadísticas del grupo:", error);
+        throw error;
+    }
+};
+
+/**
+ * Permite a un usuario unirse a un grupo usando un código de invitación
+ * @param {string} userId - ID del usuario
+ * @param {string} inviteCode - Código de invitación
+ * @returns {Promise<Object>} - Información del grupo al que se unió
+ */
+export const joinGroupWithCode = async (userId, inviteCode) => {
+    try {
+        if (!userId) {
+            throw new Error("ID de usuario requerido");
+        }
+
+        if (!inviteCode || inviteCode.trim().length !== 6) {
+            throw new Error("Código de invitación inválido");
+        }
+
+        const codeUpper = inviteCode.trim().toUpperCase();
+
+        // Buscar grupo por código de invitación
+        const groupsRef = collection(db, "groups");
+        const q = query(groupsRef, where("inviteCode", "==", codeUpper));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            throw new Error("Código de invitación no encontrado");
+        }
+
+        const groupDoc = querySnapshot.docs[0];
+        const groupData = groupDoc.data();
+        const groupId = groupDoc.id;
+
+        // Verificar si el usuario ya es miembro
+        if (groupData.memberIds?.includes(userId)) {
+            throw new Error("Ya eres miembro de este grupo");
+        }
+
+        // Agregar usuario al grupo
+        await updateDoc(doc(db, "groups", groupId), {
+            memberIds: arrayUnion(userId),
+            memberCount: increment(1),
+            updatedAt: serverTimestamp()
+        });
+
+        // Agregar grupo al usuario
+        await updateDoc(doc(db, "users", userId), {
+            groupIds: arrayUnion(groupId),
+            updatedAt: serverTimestamp()
+        });
+
+        return {
+            success: true,
+            groupName: groupData.name,
+            groupId: groupId,
+            message: `Te has unido exitosamente a "${groupData.name}"`
+        };
+    } catch (error) {
+        console.error("Error al unirse al grupo:", error);
         throw error;
     }
 };
