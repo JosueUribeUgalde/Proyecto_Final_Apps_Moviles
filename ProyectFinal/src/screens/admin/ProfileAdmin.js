@@ -8,6 +8,7 @@ import { View, Text, Image, ScrollView, Pressable, Switch, Modal, ActivityIndica
 import HeaderScreen from "../../components/HeaderScreen";
 import MenuFooterAdmin from "../../components/MenuFooterAdmin";
 import InfoModal from "../../components/InfoModal";
+import NotificationsModal from "../../components/NotificationsModal";
 // Importacion de estilos y uso de google fonts
 import styles, { TOGGLE_COLORS } from "../../styles/screens/admin/ProfileAdminStyles";
 // Importacion de libreria de iconos
@@ -21,6 +22,9 @@ import { logoutUser, getCurrentUser } from '../../services/authService';
 // Importacion de Firestore
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebaseConfig';
+// Importacion de servicios de notificaciones
+import { getAdminNotifications } from '../../services/notificationService';
+import { setBadgeCount } from '../../services/pushNotificationService';
 
 export default function ProfileAdmin() {
   const navigation = useNavigation();
@@ -41,12 +45,32 @@ export default function ProfileAdmin() {
     code: "MX"
   });
 
+  // Estados para notificaciones
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   // Cargar datos del admin al montar el componente y cada vez que la pantalla recibe foco
   useFocusEffect(
     React.useCallback(() => {
       loadAdminData();
+      loadNotifications();
     }, [])
   );
+
+  // Función para cargar notificaciones
+  const loadNotifications = async () => {
+    try {
+      const user = getCurrentUser();
+      if (user) {
+        const notifications = await getAdminNotifications(user.uid);
+        const unread = notifications.filter(n => !n.read).length;
+        setUnreadCount(unread);
+        await setBadgeCount(unread);
+      }
+    } catch (error) {
+      console.error('Error al cargar notificaciones:', error);
+    }
+  };
 
   const loadAdminData = async () => {
     try {
@@ -178,6 +202,9 @@ export default function ProfileAdmin() {
           title="Perfil Administrador"
           leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
           onLeftPress={() => navigation.goBack()}
+          rightIcon={<Ionicons name="notifications-outline" size={24} color="black" />}
+          onRightPress={() => setShowNotifications(true)}
+          badgeCount={unreadCount}
         />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={COLORS.primary} />
@@ -195,6 +222,8 @@ export default function ProfileAdmin() {
         rightIcon={<Ionicons name="notifications-outline" size={24} color="black" />}
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
         onLeftPress={() => navigation.goBack()}
+        onRightPress={() => setShowNotifications(true)}
+        badgeCount={unreadCount}
       />
       
       <ScrollView>
@@ -391,6 +420,16 @@ export default function ProfileAdmin() {
         onClose={() => setShowErrorModal(false)}
         title="Error"
         message={errorMessage}
+      />
+
+      {/* Modal de Notificaciones */}
+      <NotificationsModal
+        visible={showNotifications}
+        onClose={() => {
+          setShowNotifications(false);
+          loadNotifications();
+        }}
+        userRole="admin"
       />
 
       <MenuFooterAdmin />

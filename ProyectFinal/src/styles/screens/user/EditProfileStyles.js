@@ -1,78 +1,57 @@
-// src/components/styles/EditProfileStyles.js
 import { StyleSheet } from "react-native";
 import { COLORS, FONTS, RADIUS } from "../../../components/constants/theme";
 
 export default StyleSheet.create({
+  // ============================================
+  // GRUPOS DE INPUT
+  // ============================================
+  
+  // Contenedor de cada grupo de input (label + campo)
   inputGroup: {
     marginBottom: 12,
   },
+  
+  // Etiqueta del campo de entrada
   label: {
     fontSize: FONTS.small,
     color: COLORS.textBlack,
     marginBottom: 6,
   },
+  
+  // Contenedor del input editable (con icono)
   inputBox: {
     flexDirection: "row",
     alignItems: "center",
     columnGap: 10,
   },
+  
+  // Contenedor del input deshabilitado (solo lectura)
   inputBoxDisabled: {
     flexDirection: "row",
     alignItems: "center",
     columnGap: 10,
     opacity: 0.7,
   },
+  
+  // Estilo del TextInput editable
   input: {
     flex: 1,
     fontSize: FONTS.regular,
     color: COLORS.textBlack,
   },
+  
+  // Estilo del TextInput deshabilitado
   inputDisabled: {
     flex: 1,
     fontSize: FONTS.regular,
     color: COLORS.textGray,
   },
-  rowNav: {
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  rowLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    columnGap: 10,
-  },
-  rowTextWrap: {
-    flexDirection: "column",
-  },
-  rowTitle: {
-    fontSize: FONTS.regular,
-    color: COLORS.textBlack,
-  },
-  rowSubtitle: {
-    fontSize: FONTS.small,
-    color: COLORS.textGray,
-    marginTop: 2,
-  },
-  chipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    columnGap: 8,
-    rowGap: 8,
-  },
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    columnGap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.secondary,
-  },
-  chipText: {
-    fontSize: FONTS.small,
-    color: COLORS.textBlack,
-    fontWeight: "600",
-  },
+
+  // ============================================
+  // BOTONES DE ACCIÓN
+  // ============================================
+  
+  // Fila que contiene los botones de guardar y cancelar
   actionsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -81,6 +60,8 @@ export default StyleSheet.create({
     marginBottom: 24,
     marginTop: 8,
   },
+  
+  // Botón de guardar cambios
   saveBtn: {
     flex: 1,
     flexDirection: "row",
@@ -93,11 +74,15 @@ export default StyleSheet.create({
     borderWidth: 1,
     paddingVertical: 14,
   },
+  
+  // Texto del botón de guardar
   saveBtnText: {
     color: COLORS.textGreen,
     fontSize: FONTS.regular,
     fontWeight: "600",
   },
+  
+  // Botón de cancelar
   removeBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -110,50 +95,15 @@ export default StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 12,
   },
+  
+  // Texto del botón de cancelar
   removeBtnText: {
     color: COLORS.error,
     fontSize: FONTS.regular,
     fontWeight: "600",
   },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  modalSheet: {
-    width: "100%",
-    borderRadius: RADIUS.lg,
-    backgroundColor: COLORS.backgroundWhite,
-    padding: 14,
-  },
-  modalTitle: {
-    fontSize: FONTS.large,
-    fontWeight: "bold",
-    color: COLORS.textBlack,
-    marginBottom: 8,
-  },
-  modalOption: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderSecondary,
-  },
-  modalOptionText: {
-    fontSize: FONTS.regular,
-    color: COLORS.textBlack,
-  },
-  modalClose: {
-    alignSelf: "flex-end",
-    marginTop: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-  },
-  modalCloseText: {
-    fontSize: FONTS.regular,
-    color: COLORS.textGreen,
-    fontWeight: "600",
-  },
+  
+  // Botón para cambiar imagen de perfil
   changeImageBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -167,6 +117,8 @@ export default StyleSheet.create({
     borderColor: COLORS.borderSecondary,
     marginTop: 8,
   },
+  
+  // Texto del botón de cambiar imagen
   changeImageBtnText: {
     fontSize: FONTS.regular,
     color: COLORS.textGreen,

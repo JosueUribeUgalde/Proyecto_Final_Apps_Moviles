@@ -1,51 +1,54 @@
 import { StyleSheet } from 'react-native';
-import { COLORS,RADIUS,FONTS } from '../../../components/constants/theme';
+import { COLORS, RADIUS, FONTS,SHADOWS } from '../../../components/constants/theme';
 
 export default StyleSheet.create({
+  // ============================================
+  // CONTENEDORES PRINCIPALES
+  // ============================================
+  
+  // Contenedor principal de la pantalla
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
     width: '100%',
   },
+  
+  // Contenedor del contenido scrolleable (85% del ancho)
   content: {
     flex: 1,
     width: '85%',
     alignSelf: 'center',
-
   },
-//   bannerContainer: {
-//     width: '100%',
-//     height: 20,
-//     alignItems: 'center',
-//   },
+  
+  // Contenedor del footer (MenuFooter)
   footerContainer: {
     backgroundColor: COLORS.backgroundWhite,
     width: '100%',
   },
+
+  // ============================================
+  // SECCIÓN DE FECHA Y HORA
+  // ============================================
+  
+  // Contenedor principal de la sección de fecha y hora
   containerFecha: {
     backgroundColor: COLORS.backgroundWhite,
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.borderSecondary,
     padding: 10,
+    marginTop: 20, 
+    ...SHADOWS.medium
   },
-  containerRazones: {
-    backgroundColor: COLORS.backgroundWhite,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.borderSecondary,
-    padding: 10,
-    marginVertical: 15,
-  },
+  
+  // Label "Fecha seleccionada:" y "Hora seleccionada:"
   textoFecha: {
     fontSize: FONTS.large,
     fontWeight: '500',
     color: COLORS.textPrimary,
   },
-  tituloSeccion: {
-    fontSize: FONTS.large,
-    fontWeight: '600',
-  },
+  
+  // Botón selector de fecha/hora (muestra la fecha u hora actual)
   containerSelectorFecha: {
     backgroundColor: COLORS.backgroundWhite,
     borderRadius: RADIUS.md,
@@ -54,6 +57,33 @@ export default StyleSheet.create({
     padding: 10,
     marginVertical: 15,
   },
+
+  // ============================================
+  // SECCIÓN DE RAZONES
+  // ============================================
+  
+  // Contenedor de la lista de razones (Enfermedad, Transporte, etc.)
+  containerRazones: {
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+    padding: 10,
+    marginVertical: 15,
+    ...SHADOWS.medium
+  },
+  
+  // Título de sección ("Reason", "Detalles")
+  tituloSeccion: {
+    fontSize: FONTS.large,
+    fontWeight: '600',
+  },
+
+  // ============================================
+  // SECCIÓN DE DETALLES
+  // ============================================
+  
+  // Contenedor de la sección de detalles
   containerDetalles: {
     backgroundColor: COLORS.backgroundWhite,
     borderRadius: RADIUS.md,
@@ -61,7 +91,10 @@ export default StyleSheet.create({
     borderColor: COLORS.borderSecondary,
     padding: 16,
     marginVertical: 15,
+    ...SHADOWS.medium
   },
+  
+  // TextInput multilinea para descripción del incidente
   textAreaDetalles: {
     backgroundColor: COLORS.background,
     borderRadius: RADIUS.sm,
@@ -70,73 +103,18 @@ export default StyleSheet.create({
     padding: 12,
     fontSize: FONTS.regular,
     color: COLORS.textBlack,
-    minHeight: 120,
+    minHeight: 120, // Altura mínima para mostrar varias líneas
+    maxHeight: 150, // Altura máxima para permitir scroll en el ScrollView principal
     marginBottom: 12,
   },
-  opcionesContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  botonAdjuntar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-    flex: 1,
-    minWidth: '40%',
-  },
-  textoBotonAdjuntar: {
-    fontSize: FONTS.regular,
-    color: COLORS.textBlack,
-    marginLeft: 8,
-    fontWeight: '500',
-  },
-  textoOpcional: {
-    fontSize: FONTS.small,
-    color: COLORS.textGray,
-    marginLeft: 4,
-  },
-  botonVisibilidad: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: RADIUS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderGray,
-    flexShrink: 0,
-  },
-  botonVisibilidadActivo: {
-    backgroundColor: COLORS.backgroundSuccess,
-    borderColor: COLORS.primary,
-  },
-  textoVisibilidad: {
-    fontSize: FONTS.small,
-    color: COLORS.textGray,
-    marginLeft: 6,
-  },
-  textoVisibilidadActivo: {
-    color: COLORS.primary,
-    fontWeight: '500',
-  },
-  documentoAdjuntoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    padding: 12,
-    borderRadius: RADIUS.sm,
-    marginTop: 12,
-    gap: 8,
-  },
-  nombreDocumento: {
-    flex: 1,
-    fontSize: FONTS.regular,
-    color: COLORS.textBlack,
-  },
+
+  
+
+  // ============================================
+  // BOTÓN DE ENVÍO
+  // ============================================
+  
+  // Contenedor del botón "Enviar Reporte"
   botonEnviarContainer: {
     marginVertical: 20,
     width: '100%',
