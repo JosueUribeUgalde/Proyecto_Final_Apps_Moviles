@@ -9,6 +9,7 @@ import { Calendar, LocaleConfig } from 'react-native-calendars';
 
 // 3. Componentes propios
 import { HeaderScreen, Banner, MenuFooter } from "../../components";
+import NotificationsModal from "../../components/NotificationsModal";
 
 // 4. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
@@ -38,6 +39,7 @@ export default function CalendarScreen({ navigation }) {
   const [showBanner, setShowBanner] = useState(false);
   const today = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(today);
+  const [notificationsVisible, setNotificationsVisible] = useState(false);
 
   // Datos de turnos de ejemplo con fechas actuales
   const getAppointmentsForCurrentMonth = () => {
@@ -163,7 +165,7 @@ export default function CalendarScreen({ navigation }) {
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
         rightIcon={<Ionicons name="notifications-outline" size={24} color="black" />}
         onLeftPress={() => navigation.goBack()}
-        onRightPress={() => { }}
+        onRightPress={() => setNotificationsVisible(true)}
       />
 
       {/* Banner para mensajes */}
@@ -239,6 +241,12 @@ export default function CalendarScreen({ navigation }) {
           )}
         </View>
       </ScrollView>
+
+      {/* Modal de notificaciones */}
+      <NotificationsModal
+        visible={notificationsVisible}
+        onClose={() => setNotificationsVisible(false)}
+      />
 
       {/* Footer */}
       <View style={styles.footerContainer}>

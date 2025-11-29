@@ -1,35 +1,55 @@
 import { StyleSheet } from 'react-native';
 import { COLORS, FONTS, RADIUS, SHADOWS } from '../../../components/constants/theme';
 
+/**
+ * ============================================
+ * ESTILOS DE LA PANTALLA MEMBERSADMIN
+ * ============================================
+ * 
+ * Gestión de miembros del administrador con:
+ * - Búsqueda y filtrado de miembros
+ * - CRUD de grupos (crear, editar, eliminar)
+ * - Edición de información de miembros
+ * - Sistema de invitaciones
+ * - Visualización de horarios y disponibilidad
+ */
+
 export default StyleSheet.create({
-  // Contenedor principal de la pantalla
+  // ============================================
+  // CONTENEDORES PRINCIPALES
+  // ============================================
+
+  // Contenedor principal de toda la pantalla
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.background, // Fondo gris claro
   },
 
-  // Contenedor del banner de notificaciones
+  // Contenedor del banner de notificaciones en la parte superior
   bannerContainer: {
     width: '100%',
     height: 60,
     alignItems: 'center',
   },
 
-  // Contenedor del FlatList
+  // Contenedor del FlatList con padding lateral
   flatListContent: {
     width: '90%',
     alignSelf: 'center',
-    paddingBottom: 16,
+    paddingBottom: 16, // Espacio inferior para evitar que el footer tape contenido
   },
 
-  // Contenedor del footer con menú
+  // Contenedor del footer con el menú de navegación del administrador
   footerContainer: {
     backgroundColor: COLORS.backgroundWhite,
     width: '100%',
   },
 
-  // ========== TARJETA DE DIRECTORIO ==========
-  // Contenedor principal de la tarjeta de directorio
+  // ============================================
+  // SECCIÓN DE BÚSQUEDA
+  // ============================================
+
+  // Tarjeta contenedora del directorio de búsqueda (no utilizada actualmente, pero definida)
   directoryCard: {
     backgroundColor: COLORS.backgroundWhite,
     borderRadius: RADIUS.md,
@@ -40,7 +60,7 @@ export default StyleSheet.create({
     ...SHADOWS.medium,
   },
 
-  // Título "Buscar a miembro"
+  // Título principal "Buscar un miembro" centrado
   directoryTitle: {
     fontSize: FONTS.large,
     fontWeight: '700',
@@ -50,7 +70,7 @@ export default StyleSheet.create({
     marginTop: 8,
   },
 
-  // Contenedor del input de búsqueda
+  // Contenedor de la barra de búsqueda con ícono
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -58,29 +78,32 @@ export default StyleSheet.create({
     borderRadius: RADIUS.sm,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    gap: 8,
+    gap: 8, // Espacio entre ícono y texto
     borderWidth: 1,
     borderColor: COLORS.borderSecondary,
     marginBottom: 24,
     ...SHADOWS.medium,
   },
 
-  // Input de búsqueda
+  // Campo de texto para buscar miembros por nombre
   searchInput: {
     flex: 1,
     fontSize: FONTS.regular,
     color: COLORS.textBlack,
   },
 
-  // ========== ENCABEZADO DE SECCIÓN ==========
-  // Encabezado de sección centrado
+  // ============================================
+  // ENCABEZADOS DE SECCIÓN
+  // ============================================
+
+  // Contenedor de encabezado centrado (usado para "Miembros Activos" y resultados de búsqueda)
   sectionHeaderCentered: {
     alignItems: 'center',
     marginTop: 20,
     marginBottom: 12,
   },
 
-  // Título de sección centrado
+  // Título de sección en negrita y centrado
   sectionTitleCentered: {
     fontSize: FONTS.large,
     fontWeight: '700',
@@ -88,102 +111,111 @@ export default StyleSheet.create({
     textAlign: 'center',
   },
 
-  // ========== ACCIONES DE GRUPOS ==========
-  // Contenedor de botones de acciones de grupos
+  // ============================================
+  // BOTONES DE ACCIONES DE GRUPOS
+  // ============================================
+
+  // Contenedor de botones que se distribuyen en filas (Crear, Editar, Eliminar, Agregar Miembro)
   groupActionsContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'wrap', // Permite que los botones se envuelvan en múltiples líneas
     gap: 8,
     marginBottom: 16,
   },
 
-  // Botón base de acción de grupo
+  // Estilo base para todos los botones de acciones de grupo
   groupActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 6, // Espacio entre ícono y texto
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: RADIUS.sm,
     flex: 1,
-    minWidth: '48%',
+    minWidth: '48%', // Asegura que haya máximo 2 botones por fila
     ...SHADOWS.medium,
   },
 
-  // Botón "Create Group"
+  // Botón "Crear Grupo" - Fondo blanco con borde
   createGroupButton: {
     backgroundColor: COLORS.backgroundWhite,
     borderColor: COLORS.borderSecondary,
     borderWidth: 1,
   },
 
-  // Texto del botón "Create Group"
+  // Texto verde del botón "Crear Grupo"
   createGroupButtonText: {
     color: COLORS.textGreen,
     fontSize: FONTS.regular,
     fontWeight: '600',
   },
 
-  // Botón "Edit Group"
+  // Botón "Editar Grupo" - Aparece solo cuando hay grupo seleccionado
   editGroupButton: {
     backgroundColor: COLORS.backgroundWhite,
     borderColor: COLORS.borderSecondary,
     borderWidth: 1,
   },
 
-  // Texto del botón "Edit Group"
+  // Texto verde del botón "Editar Grupo"
   editGroupButtonText: {
     color: COLORS.textGreen,
     fontSize: FONTS.regular,
     fontWeight: '600',
   },
 
-  // Botón "Delete Group"
+  // Botón "Eliminar Grupo" - Aparece solo cuando hay grupo seleccionado
   deleteGroupButton: {
     backgroundColor: COLORS.backgroundWhite,
     borderColor: COLORS.borderSecondary,
     borderWidth: 1,
   },
 
-  // Texto del botón "Delete Group"
+  // Texto rojo del botón "Eliminar Grupo"
   deleteGroupButtonText: {
     color: COLORS.error,
     fontSize: FONTS.regular,
     fontWeight: '600',
   },
 
-  // Botón "Share Directory"
+  // Botón "Agregar Miembro" - Abre modal para compartir código de invitación
   shareGroupButton: {
     backgroundColor: COLORS.backgroundWhite,
     borderColor: COLORS.borderSecondary,
     borderWidth: 1,
   },
 
-  // Texto del botón "Share Directory"
+  // Texto verde del botón "Agregar Miembro"
   shareGroupButtonText: {
     color: COLORS.textGreen,
     fontSize: FONTS.regular,
     fontWeight: '600',
   },
 
-  // ========== ESTADO VACÍO ==========
-  // Contenedor de estado vacío
+  // ============================================
+  // ESTADO VACÍO
+  // ============================================
+
+  // Contenedor centrado cuando no hay miembros en el grupo seleccionado
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 48,
   },
 
-  // Texto de estado vacío
+  // Mensaje de texto cuando no hay miembros para mostrar
   emptyStateText: {
     fontSize: FONTS.regular,
     color: COLORS.textGray,
     marginTop: 12,
   },
 
-  // ========== TARJETA DE MIEMBRO ==========
-  // Contenedor principal de la tarjeta de miembro
+  // ============================================
+  // TARJETA DE MIEMBRO INDIVIDUAL
+  // ============================================
+
+  // Contenedor principal de cada tarjeta de miembro en la lista
   memberCard: {
     backgroundColor: COLORS.backgroundWhite,
     borderRadius: RADIUS.md,
@@ -194,7 +226,7 @@ export default StyleSheet.create({
     ...SHADOWS.medium,
   },
 
-  // Encabezado de la tarjeta de miembro
+  // Sección superior de la tarjeta con avatar, nombre y botón de opciones
   memberHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -202,7 +234,7 @@ export default StyleSheet.create({
     marginBottom: 12,
   },
 
-  // Contenedor de información del miembro (avatar + detalles)
+  // Contenedor que agrupa avatar circular y detalles del miembro
   memberInfo: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -210,7 +242,7 @@ export default StyleSheet.create({
     gap: 12,
   },
 
-  // Avatar placeholder circular
+  // Avatar circular con iniciales del miembro (fondo verde claro)
   avatarPlaceholder: {
     width: 48,
     height: 48,
@@ -220,53 +252,56 @@ export default StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Contenedor de detalles del miembro
+  // Contenedor de información textual (nombre, grupo, días, horario, experiencia)
   memberDetails: {
     flex: 1,
   },
 
-  // Fila con nombre y grupo
+  // Fila que contiene nombre y grupo del miembro en línea
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
   },
 
-  // Nombre del miembro
+  // Nombre del miembro en negrita
   memberName: {
     fontSize: FONTS.regular,
     fontWeight: '700',
     color: COLORS.textBlack,
   },
 
-  // Grupo del miembro
+  // Nombre del grupo al que pertenece (texto gris con separador "•")
   memberGroup: {
     fontSize: FONTS.regular,
     fontWeight: '400',
     color: COLORS.textGray,
   },
 
-  // Próximo turno del miembro
+  // Días de disponibilidad del miembro (usado para mostrar "Días: ...")
   memberShift: {
     fontSize: FONTS.small,
     color: COLORS.textGray,
     marginTop: 4,
   },
 
-  // Experiencia del miembro
+  // Horario de trabajo y años de experiencia del miembro
   memberExperience: {
     fontSize: FONTS.small,
     color: COLORS.textGray,
     marginTop: 2,
   },
 
-  // Botón de más opciones
+  // Botón de tres puntos (...) para abrir opciones de edición
   moreButton: {
     padding: 4,
   },
 
-  // ========== PIE DE TARJETA DE MIEMBRO ==========
-  // Footer de la tarjeta de miembro
+  // ============================================
+  // PIE DE TARJETA DE MIEMBRO (BADGES DE ESTADO)
+  // ============================================
+
+  // Sección inferior de la tarjeta que muestra badge de estado
   memberFooter: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -274,7 +309,7 @@ export default StyleSheet.create({
     gap: 12,
   },
 
-  // Badge de estado
+  // Estilo base del badge de estado con bordes redondeados
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -282,48 +317,51 @@ export default StyleSheet.create({
     ...SHADOWS.medium,
   },
 
-  // Estado "Available"
+  // Estado "Disponible" - Fondo verde claro
   statusAvailable: {
     backgroundColor: '#E8F5E9',
   },
 
-  // Estado "Off today"
+  // Estado "Libre hoy" - Fondo gris
   statusOff: {
     backgroundColor: '#F5F5F5',
   },
 
-  // Estado "On leave request"
+  // Estado "Permiso solicitado" - Fondo amarillo claro
   statusLeave: {
     backgroundColor: '#FFF4E5',
   },
 
-  // Estado por defecto
+  // Estado por defecto cuando no coincide con ninguno anterior
   statusDefault: {
     backgroundColor: COLORS.secondary,
   },
 
-  // Texto del badge de estado
+  // Texto del estado dentro del badge
   statusText: {
     fontSize: FONTS.small,
     fontWeight: '600',
     color: COLORS.textBlack,
   },
 
-  // Contenedor de información de turnos
+  // Contenedor para mostrar información de turnos (no utilizado actualmente)
   shiftsInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
 
-  // Texto de turnos
+  // Texto de turnos (no utilizado actualmente)
   shiftsText: {
     fontSize: FONTS.small,
     color: COLORS.textGray,
   },
 
-  // ========== TARJETA DE DISTRIBUCIÓN ==========
-  // Contenedor de distribución de roles
+  // ============================================
+  // TARJETA DE DISTRIBUCIÓN DE ROLES
+  // ============================================
+
+  // Tarjeta que muestra resumen de grupos y cantidad de miembros
   distributionCard: {
     backgroundColor: COLORS.backgroundWhite,
     borderRadius: RADIUS.md,
@@ -335,7 +373,7 @@ export default StyleSheet.create({
     ...SHADOWS.medium,
   },
 
-  // Encabezado de distribución
+  // Header de la tarjeta con título "Distribución de Roles"
   distributionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -343,21 +381,21 @@ export default StyleSheet.create({
     marginBottom: 16,
   },
 
-  // Título de distribución
+  // Título "Distribución de Roles" en negrita
   distributionTitle: {
     fontSize: FONTS.large,
     fontWeight: '700',
     color: COLORS.textBlack,
   },
 
-  // Texto "Reportes" en distribución
+  // Texto adicional "Reportes" (no utilizado actualmente)
   viewAllText: {
     fontSize: FONTS.small,
     color: COLORS.textGray,
     fontWeight: '500',
   },
 
-  // Fila de distribución de grupo
+  // Fila individual de cada grupo con separador inferior
   distributionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -367,29 +405,32 @@ export default StyleSheet.create({
     borderBottomColor: COLORS.borderGray,
   },
 
-  // Nombre del grupo en distribución
+  // Nombre del grupo (ej: "Recepción", "Cocina")
   groupName: {
     fontSize: FONTS.regular,
     color: COLORS.textBlack,
     fontWeight: '500',
   },
 
-  // Contador de miembros del grupo
+  // Cantidad de miembros en el grupo (ej: "12 miembros")
   groupCount: {
     fontSize: FONTS.small,
     color: COLORS.textGray,
   },
 
-  // ========== ESTILOS DE MODALES ==========
-  // Fondo oscuro semitransparente del modal
+  // ============================================
+  // MODALES BÁSICOS (Crear, Editar, Eliminar Grupo)
+  // ============================================
+
+  // Fondo oscuro semitransparente que cubre toda la pantalla detrás del modal
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Negro con 50% de opacidad
     justifyContent: 'center',
     alignItems: 'center',
   },
 
-  // Contenedor principal del modal
+  // Contenedor blanco del modal con bordes redondeados
   modalContent: {
     backgroundColor: COLORS.background,
     borderRadius: RADIUS.md,
@@ -399,7 +440,7 @@ export default StyleSheet.create({
     ...SHADOWS.dark,
   },
 
-  // Título del modal
+  // Título del modal (ej: "Crear Nuevo Grupo", "Editar Grupo")
   modalTitle: {
     fontSize: FONTS.large,
     fontWeight: '700',
@@ -408,7 +449,7 @@ export default StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Descripción del modal
+  // Texto descriptivo debajo del título (usado en algunos modales)
   modalDescription: {
     fontSize: FONTS.regular,
     color: COLORS.textGray,
@@ -417,12 +458,12 @@ export default StyleSheet.create({
     lineHeight: 22,
   },
 
-  // Contenedor de inputs del modal
+  // Contenedor que agrupa etiqueta e input en modales de formulario
   modalInputContainer: {
     marginBottom: 20,
   },
 
-  // Etiqueta de input del modal
+  // Etiqueta de campo (ej: "Nombre del Grupo", "Descripción")
   modalLabel: {
     fontSize: FONTS.small,
     fontWeight: '600',
@@ -430,7 +471,7 @@ export default StyleSheet.create({
     marginBottom: 8,
   },
 
-  // Input del modal
+  // Campo de texto del modal para ingresar información
   modalInput: {
     backgroundColor: COLORS.backgroundWhite,
     borderRadius: RADIUS.sm,
@@ -441,13 +482,13 @@ export default StyleSheet.create({
     borderColor: COLORS.borderSecondary,
   },
 
-  // Contenedor de botones del modal
+  // Contenedor de botones inferior (generalmente Cancelar y Confirmar)
   modalButtons: {
     flexDirection: 'row',
     gap: 12,
   },
 
-  // Botón base del modal
+  // Estilo base para todos los botones del modal
   modalButton: {
     flex: 1,
     flexDirection: 'row',
@@ -458,61 +499,64 @@ export default StyleSheet.create({
     borderRadius: RADIUS.sm,
   },
 
-  // Botón "Cancel" del modal
+  // Botón "Cancelar" con fondo blanco y borde
   modalButtonCancel: {
     backgroundColor: COLORS.backgroundWhite,
     borderWidth: 1,
     borderColor: COLORS.borderSecondary,
   },
 
-  // Texto del botón "Cancel"
+  // Texto rojo del botón "Cancelar"
   modalButtonTextCancel: {
     color: COLORS.error,
     fontSize: FONTS.regular,
     fontWeight: '600',
   },
 
-  // Botón "Confirm" del modal
+  // Botón "Confirmar" con fondo blanco y borde
   modalButtonConfirm: {
     backgroundColor: COLORS.backgroundWhite,
     borderWidth: 1,
     borderColor: COLORS.borderSecondary,
   },
 
-  // Texto del botón "Confirm"
+  // Texto verde del botón "Confirmar"
   modalButtonTextConfirm: {
     color: COLORS.textGreen,
     fontSize: FONTS.regular,
     fontWeight: '600',
   },
 
-  // Botón "Delete" del modal
+  // Botón "Eliminar" con fondo rojo (usado en modal de confirmación de eliminación)
   modalButtonDelete: {
     backgroundColor: COLORS.error,
   },
 
-  // Texto del botón "Delete"
+  // Texto blanco del botón "Eliminar"
   modalButtonTextDelete: {
     color: COLORS.textWhite,
     fontSize: FONTS.regular,
     fontWeight: '600',
   },
 
-  // ========== LISTA DE SELECCIÓN DE GRUPOS (MODALES) ==========
-  // ScrollView de lista de grupos
+  // ============================================
+  // LISTA DE SELECCIÓN DE GRUPOS (Modales Editar/Eliminar)
+  // ============================================
+
+  // ScrollView scrollable que contiene la lista de grupos disponibles
   groupSelectList: {
-    maxHeight: 200,
+    maxHeight: 200, // Limita altura para permitir scroll si hay muchos grupos
     marginTop: 8,
   },
 
-  // Separador de lista de grupos
+  // Línea separadora entre sección de título y lista de grupos
   groupSelectListSeparator: {
     height: 1,
     backgroundColor: COLORS.borderSecondary,
     marginVertical: 8,
   },
 
-  // Item de grupo seleccionable
+  // Tarjeta individual de cada grupo en la lista de selección
   groupSelectItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -526,43 +570,46 @@ export default StyleSheet.create({
     ...SHADOWS.medium,
   },
 
-  // Item de grupo activo/seleccionado
+  // Estado activo del grupo seleccionado (fondo azul)
   groupSelectItemActive: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
 
-  // Texto del item de grupo
+  // Nombre del grupo en la lista
   groupSelectText: {
     fontSize: FONTS.regular,
     color: COLORS.textBlack,
     fontWeight: '500',
   },
 
-  // Texto del item de grupo activo
+  // Texto del grupo seleccionado (color blanco)
   groupSelectTextActive: {
     color: COLORS.textWhite,
   },
 
-  // Contador de miembros en selector de grupo
+  // Contador de miembros (no visible cuando está activo)
   groupSelectCount: {
     fontSize: FONTS.small,
     color: COLORS.textGray,
   },
 
-  // ========== CAJA DE ADVERTENCIA ==========
-  // Contenedor de advertencia
+  // ============================================
+  // CAJAS DE ADVERTENCIA
+  // ============================================
+
+  // Caja de advertencia genérica con fondo rojo claro (usada en modales)
   warningBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#FFE5E5',
+    backgroundColor: '#FFE5E5', // Rojo muy claro
     padding: 12,
     borderRadius: RADIUS.sm,
     marginTop: 12,
   },
 
-  // Texto de advertencia
+  // Texto de advertencia en rojo
   warningText: {
     flex: 1,
     fontSize: FONTS.small,
@@ -570,95 +617,105 @@ export default StyleSheet.create({
     lineHeight: 18,
   },
 
-  // ========== BANNER DE ADVERTENCIA (INFORMACIÓN INCOMPLETA) ==========
+  // Banner prominente de advertencia (información incompleta de miembros)
   warningBannerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#faecd8ff',
+    backgroundColor: '#faecd8ff', // Amarillo claro
     padding: 12,
     borderRadius: RADIUS.sm,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e63434a1',
+    borderColor: '#e63434a1', // Borde rojo semi-transparente
   },
 
+  // Ícono de advertencia a la izquierda del banner
   warningIcon: {
     marginRight: 12,
   },
 
+  // Contenedor del texto del banner (título + descripción)
   warningTextContainer: {
     flex: 1,
   },
 
+  // Título del banner en rojo y negrita
   warningTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#fc0000ff',
+    color: '#fc0000ff', // Rojo brillante
     marginBottom: 2,
   },
 
+  // Descripción explicativa del banner
   warningDescription: {
     fontSize: FONTS.small,
     color: COLORS.textBlack,
     lineHeight: 16,
   },
 
-  // ========== MODAL DE GESTIÓN DE GRUPOS ==========
-  // Contenedor de botones del modal "Manage Groups"
+  // ============================================
+  // MODAL DE GESTIÓN DE GRUPOS
+  // ============================================
+
+  // Contenedor vertical de botones en modal "Gestionar Grupos"
   manageGroupsButtons: {
     gap: 12,
     marginTop: 12,
   },
 
-  // Botón base de gestión de grupos
+  // Estilo base para botones del modal de gestión (con ícono + texto)
   manageGroupButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 12, // Espacio entre ícono y texto
     padding: 16,
     borderRadius: RADIUS.sm,
     ...SHADOWS.medium,
   },
 
-  // Botón "Create" del modal de gestión
+  // Botón "Crear Grupo" con fondo azul primario
   createButton: {
     backgroundColor: COLORS.primary,
   },
 
-  // Botón "Edit" del modal de gestión
+  // Botón "Editar Grupo" con fondo azul claro
   editButton: {
     backgroundColor: '#4A90E2',
   },
 
-  // Botón "Delete" del modal de gestión
+  // Botón "Eliminar Grupo" con fondo rojo
   deleteButton: {
     backgroundColor: COLORS.error,
   },
 
-  // Botón "Share" del modal de gestión
+  // Botón "Agregar Miembro" con fondo morado
   shareButton: {
     backgroundColor: '#7B68EE',
   },
 
-  // Texto de botones del modal de gestión
+  // Texto blanco de todos los botones de gestión
   manageGroupButtonText: {
     color: COLORS.textWhite,
     fontSize: FONTS.regular,
     fontWeight: '600',
   },
 
-  // ========== MODAL DE COMPARTIR ==========
-  // Contenedor de opciones de compartir
+  // ============================================
+  // MODAL DE COMPARTIR (Agregar Miembro)
+  // ============================================
+
+  // Contenedor de opciones en el modal de compartir
   shareOptions: {
     gap: 12,
   },
 
-  // Opción individual de compartir
+  // Tarjeta individual de cada opción (Compartir Código, Ver Código)
   shareOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 12, // Espacio entre ícono y texto
     padding: 16,
     borderRadius: RADIUS.sm,
     backgroundColor: COLORS.backgroundWhite,
@@ -667,14 +724,14 @@ export default StyleSheet.create({
     ...SHADOWS.medium,
   },
 
-  // Texto de opción de compartir
+  // Texto de la opción de compartir
   shareOptionText: {
     fontSize: FONTS.regular,
     color: COLORS.textBlack,
     fontWeight: '500',
   },
 
-  // Botón de cerrar del modal de compartir
+  // Botón "Cerrar" en la parte inferior del modal de compartir
   shareCloseButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -690,21 +747,24 @@ export default StyleSheet.create({
     ...SHADOWS.medium,
   },
 
-  // Texto del botón de cerrar del modal de compartir
+  // Texto rojo del botón "Cerrar"
   shareCloseButtonText: {
     fontSize: FONTS.regular,
     color: COLORS.error,
     fontWeight: '600',
   },
 
-  // ========== MODAL DE CÓDIGO DE INVITACIÓN ==========
-  // Contenedor del icono del modal
+  // ============================================
+  // MODAL DE CÓDIGO DE INVITACIÓN
+  // ============================================
+
+  // Contenedor centrado del ícono superior del modal de invitación
   inviteModalIconContainer: {
     alignItems: 'center',
     marginBottom: 20,
   },
 
-  // Contenedor del código de invitación
+  // Caja destacada que contiene el código de invitación alfanumérico
   inviteCodeContainer: {
     backgroundColor: COLORS.backgroundGray,
     padding: 20,
@@ -716,16 +776,16 @@ export default StyleSheet.create({
     borderStyle: 'solid',
   },
 
-  // Texto del código de invitación
+  // Código de invitación en fuente monoespaciada grande y azul
   inviteCodeText: {
     fontSize: FONTS.big,
     fontWeight: 'bold',
     color: COLORS.primary,
-    letterSpacing: 4,
+    letterSpacing: 4, // Espaciado entre letras para mayor legibilidad
     fontFamily: 'monospace',
   },
 
-  // Contenedor de información/ayuda
+  // Contenedor de información con fondo azul claro (instrucciones de uso)
   inviteInfoContainer: {
     backgroundColor: COLORS.backgroundLightBlue,
     padding: 12,
@@ -735,14 +795,14 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Texto de información
+  // Texto de instrucciones para compartir el código
   inviteInfoText: {
     fontSize: FONTS.small,
     color: COLORS.textGray,
     flex: 1,
   },
 
-  // Botón de cerrar del modal de invitación
+  // Botón azul para cerrar el modal de invitación
   inviteCloseButton: {
     backgroundColor: COLORS.primary,
     paddingVertical: 14,
@@ -753,15 +813,18 @@ export default StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Texto del botón de cerrar
+  // Texto blanco del botón de cerrar
   inviteCloseButtonText: {
     color: COLORS.textWhite,
     fontSize: FONTS.regular,
     fontWeight: '600',
   },
 
-  // ========== MODAL DE EDICIÓN DE MIEMBRO ==========
-  // Overlay del modal
+  // ============================================
+  // MODAL DE EDICIÓN DE MIEMBRO (Full Screen)
+  // ============================================
+
+  // Fondo oscuro semitransparente del modal de edición
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -769,17 +832,17 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Contenedor del modal
+  // Contenedor principal del modal de edición (ocupa 90% de la pantalla)
   modalContainer: {
     backgroundColor: COLORS.background,
     borderRadius: RADIUS.md,
     padding: 20,
     width: '90%',
-    maxHeight: '85%',
+    maxHeight: '85%', // Permite scroll si el contenido es muy largo
     ...SHADOWS.dark,
   },
 
-  // Header del modal
+  // Header con título y botón de cerrar (X)
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -787,7 +850,7 @@ export default StyleSheet.create({
     marginBottom: 16,
   },
 
-  // Título grande del modal
+  // Título del modal (ej: "Editar Información de Juan Pérez")
   modalTitleLarge: {
     fontSize: FONTS.large,
     fontWeight: '700',
@@ -795,12 +858,12 @@ export default StyleSheet.create({
     flex: 1,
   },
 
-  // Contenido scrolleable del modal
+  // Contenido scrolleable del modal con formularios
   modalScrollContent: {
     paddingBottom: 16,
   },
 
-  // Tarjeta de sección dentro del modal
+  // Tarjeta blanca que agrupa cada sección (Información Laboral, Horarios, etc.)
   sectionCard: {
     backgroundColor: COLORS.backgroundWhite,
     borderRadius: RADIUS.md,
@@ -811,7 +874,7 @@ export default StyleSheet.create({
     ...SHADOWS.medium,
   },
 
-  // Título de sección
+  // Título de cada sección (ej: "Información laboral", "Horarios de trabajo")
   sectionTitle: {
     fontSize: FONTS.large,
     fontWeight: '700',
@@ -819,7 +882,7 @@ export default StyleSheet.create({
     marginBottom: 16,
   },
 
-  // Etiqueta de campo
+  // Etiqueta de cada campo de formulario (ej: "Puesto", "Experiencia")
   fieldLabel: {
     fontSize: FONTS.small,
     fontWeight: '600',
@@ -828,7 +891,7 @@ export default StyleSheet.create({
     marginBottom: 8,
   },
 
-  // Input de campo
+  // Campo de texto editable para ingresar información
   fieldInput: {
     backgroundColor: COLORS.background,
     borderRadius: RADIUS.sm,
@@ -839,59 +902,59 @@ export default StyleSheet.create({
     borderColor: COLORS.borderSecondary,
   },
 
-  // Fila de campos
+  // Fila que contiene múltiples campos uno al lado del otro
   fieldRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 12, // Espacio entre columnas
   },
 
-  // Columna de campo
+  // Columna individual dentro de una fila (flex: 1 para distribución equitativa)
   fieldColumn: {
     flex: 1,
   },
 
-  // Grupo de chips
+  // Contenedor de chips seleccionables (días de la semana)
   chipGroup: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'wrap', // Permite que los chips se envuelvan en múltiples líneas
     gap: 8,
   },
 
-  // Chip de área
+  // Chip individual (ej: "Lun", "Mar", "Mié")
   areaChip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: 999, // Bordes completamente redondeados
     borderWidth: 1,
     borderColor: COLORS.borderSecondary,
     backgroundColor: COLORS.backgroundWhite,
   },
 
-  // Chip activo
+  // Chip seleccionado con fondo azul
   areaChipActive: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
 
-  // Texto del chip
+  // Texto del chip no seleccionado
   areaChipText: {
     fontSize: FONTS.small,
     color: COLORS.textBlack,
     fontWeight: '500',
   },
 
-  // Texto del chip activo
+  // Texto del chip seleccionado (color blanco)
   areaChipTextActive: {
     color: COLORS.textWhite,
   },
 
-  // Contenedor de botones en columna
+  // Contenedor de botones apilados verticalmente al final del modal
   modalButtonsColumn: {
     gap: 12,
     marginTop: 16,
   },
 
-  // Botón primario
+  // Botón primario azul ("Guardar Cambios")
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -904,14 +967,14 @@ export default StyleSheet.create({
     ...SHADOWS.medium,
   },
 
-  // Texto del botón primario
+  // Texto blanco del botón primario
   primaryButtonText: {
     color: COLORS.textWhite,
     fontSize: FONTS.regular,
     fontWeight: '600',
   },
 
-  // Botón de remover
+  // Botón rojo para remover miembro del grupo
   removeButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -924,7 +987,7 @@ export default StyleSheet.create({
     ...SHADOWS.medium,
   },
 
-  // Texto del botón de remover
+  // Texto blanco del botón de remover
   removeButtonText: {
     color: COLORS.textWhite,
     fontSize: FONTS.regular,

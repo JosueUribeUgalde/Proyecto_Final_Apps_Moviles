@@ -6,6 +6,7 @@ import * as Clipboard from 'expo-clipboard';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { HeaderScreen, InfoModal, MenuFooterAdmin } from "../../components";
+import NotificationsModal from "../../components/NotificationsModal";
 import { COLORS } from '../../components/constants/theme';
 import styles from "../../styles/screens/admin/MembersAdminStyles";
 import CalendarAdminStyles from "../../styles/screens/admin/CalendarAdminStyles";
@@ -15,6 +16,8 @@ import { doc, getDoc, collection, query, where, getDocs, updateDoc, arrayRemove 
 import { db } from "../../config/firebaseConfig";
 import { createGroup, getGroupsByIds, updateGroup, deleteGroup, removeMemberFromGroup } from "../../services/groupService";
 import { removeUserFromGroup } from "../../services/userService";
+import { getAdminNotifications } from "../../services/notificationService";
+import { setBadgeCount } from "../../services/pushNotificationService";
 
 // Días de la semana para los chips
 const WEEK_DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -191,6 +194,10 @@ export default function MembersAdmin({ navigation }) {
     visible: false,
   });
 
+  // Estados para notificaciones
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   // Días seleccionados (derivados del formulario de edición)
   const selectedWorkDays = useMemo(
     () => parseDays(editFormData.availableDays),
@@ -204,7 +211,23 @@ export default function MembersAdmin({ navigation }) {
   // Cargar datos del admin al montar el componente
   useEffect(() => {
     loadAdminData();
+    loadNotifications();
   }, []);
+
+  // Función para cargar notificaciones
+  const loadNotifications = async () => {
+    try {
+      const user = getCurrentUser();
+      if (user) {
+        const notifications = await getAdminNotifications(user.uid);
+        const unread = notifications.filter(n => !n.read).length;
+        setUnreadCount(unread);
+        await setBadgeCount(unread);
+      }
+    } catch (error) {
+      console.error('Error al cargar notificaciones:', error);
+    }
+  };
 
   // Recargar miembros cuando cambia el grupo seleccionado
   useEffect(() => {
@@ -1006,12 +1029,8 @@ export default function MembersAdmin({ navigation }) {
         leftIcon={<Ionicons name="arrow-back" size={24} color={COLORS.textBlack} />}
         onLeftPress={() => navigation.goBack()}
         rightIcon={<Ionicons name="notifications-outline" size={24} color={COLORS.textBlack} />}
-        onRightPress={() => {
-          // TODO: Navigate to notifications screen
-          setModalTitle('Información');
-          setModalMessage('Notificaciones próximamente');
-          setShowModal(true);
-        }}
+        onRightPress={() => setShowNotifications(true)}
+        badgeCount={unreadCount}
       />
 
 
@@ -1732,6 +1751,16 @@ export default function MembersAdmin({ navigation }) {
         onClose={() => setShowModal(false)}
         title={modalTitle}
         message={modalMessage}
+      />
+
+      {/* Modal de Notificaciones */}
+      <NotificationsModal
+        visible={showNotifications}
+        onClose={() => {
+          setShowNotifications(false);
+          loadNotifications();
+        }}
+        userRole="admin"
       />
     </SafeAreaView>
   );

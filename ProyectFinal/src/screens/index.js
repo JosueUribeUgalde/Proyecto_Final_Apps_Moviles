@@ -10,7 +10,6 @@ export { default as EditProfile } from './user/EditProfile';
 export { default as History } from './user/History';
 export { default as PasswordReset } from './user/PasswordReset';
 export { default as Logout } from './user/Logout';
-export { default as ConfirmationReplace } from './user/ConfirmationReplace';
 export { default as Calendar } from './user/Calendar';
 export { default as AddReport } from './user/AddReport';
 export { default as Help } from './user/Help';

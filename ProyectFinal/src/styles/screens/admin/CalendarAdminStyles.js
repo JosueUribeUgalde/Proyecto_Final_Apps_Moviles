@@ -515,4 +515,29 @@ export default StyleSheet.create({
   topMetricsHeader: {
     marginBottom: 8,
   },
+  
+  // Estilos para Estado de Peticiones
+  statusCard: {
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    padding: 16,
+    ...SHADOWS.medium,
+  },
+  statusLabel: {
+    fontSize: FONTS.small,
+    color: COLORS.textGray,
+    marginBottom: 6,
+  },
+  statusValue: {
+    fontSize: FONTS.large,
+    fontWeight: '700',
+  },
+  statusPercent: {
+    fontSize: FONTS.small,
+    color: COLORS.textGray,
+    marginTop: 4,
+  },
+  primaryLight: {
+    backgroundColor: COLORS.secondary,
+  },
 });
