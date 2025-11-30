@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 // 3. Componentes propios
 import { HeaderScreen, MenuFooter } from "../../components";
 import InfoModal from "../../components/InfoModal";
+import NotificationsModal from "../../components/NotificationsModal";
 
 // 4. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
@@ -19,41 +20,101 @@ import { getUserProfile } from "../../services/userService";
 import { joinGroupWithCode } from "../../services/groupService";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../config/firebaseConfig";
+import { registerForPushNotifications, setBadgeCount } from "../../services/pushNotificationService";
+import { getUserNotifications } from "../../services/notificationService";
 
 // 6. Estilos
 import styles from "../../styles/screens/user/HomeStyles";
 import CalendarAdminStyles from "../../styles/screens/admin/CalendarAdminStyles";
 
 export default function Home({ navigation }) {
-  // Estados para carga de datos
+  // ============================================
+  // ESTADOS
+  // ============================================
+  
+  // Control de carga inicial de datos
   const [loading, setLoading] = useState(true);
+  
+  // Datos del usuario logueado (perfil completo desde Firebase)
   const [userData, setUserData] = useState(null);
 
-  // Estado para el selector de grupos
+  // Grupo actualmente seleccionado por el usuario
   const [selectedGroup, setSelectedGroup] = useState(null);
+  
+  // Control de visibilidad del modal de selección de grupos
   const [showGroupSelectModal, setShowGroupSelectModal] = useState(false);
 
-  // Estado para grupos del usuario (cargados desde Firebase)
+  // Lista de todos los grupos a los que pertenece el usuario
   const [groups, setGroups] = useState([]);
 
-  // Estados para modal de unirse a grupo
+  // Control de visibilidad del modal para unirse a un grupo
   const [showJoinModal, setShowJoinModal] = useState(false);
+  
+  // Código de invitación ingresado por el usuario
   const [inviteCode, setInviteCode] = useState('');
+  
+  // Estado de carga mientras se procesa la unión al grupo
   const [joiningGroup, setJoiningGroup] = useState(false);
 
-  // Estados para InfoModal
+  // Control del modal de información general
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [infoModalTitle, setInfoModalTitle] = useState('');
   const [infoModalMessage, setInfoModalMessage] = useState('');
+  
+  // Control de visibilidad del modal de notificaciones
+  const [notificationsVisible, setNotificationsVisible] = useState(false);
 
-  // Cargar datos del usuario al montar el componente
+  // Últimos 3 registros del historial del usuario
+  const [recentHistory, setRecentHistory] = useState([]);
+
+  // Cargar todos los datos del usuario al montar el componente
   useEffect(() => {
     loadUserData();
   }, []);
 
-  // Función para cargar datos del usuario y sus grupos
+  // Registrar notificaciones push y actualizar badge
+  useEffect(() => {
+    const setupPushNotifications = async () => {
+      const user = getCurrentUser();
+      if (user) {
+        // Registrar para notificaciones push
+        await registerForPushNotifications(user.uid);
+        
+        // Actualizar badge con notificaciones no leídas
+        await updateNotificationBadge(user.uid);
+      }
+    };
+
+    setupPushNotifications();
+  }, []);
+
+  // ============================================
+  // FUNCIONES DE CARGA DE DATOS
+  // ============================================
+
+  /**
+   * Actualiza el badge del ícono con el número de notificaciones no leídas
+   */
+  const updateNotificationBadge = async (userId) => {
+    try {
+      const { getUserNotifications } = await import('../../services/notificationService');
+      const notifications = await getUserNotifications(userId);
+      const unreadCount = notifications.filter(n => !n.read).length;
+      await setBadgeCount(unreadCount);
+    } catch (error) {
+      console.error('Error al actualizar badge:', error);
+    }
+  };
+  
+  /**
+   * Carga los datos principales del usuario:
+   * 1. Perfil del usuario desde Firebase
+   * 2. Grupos a los que pertenece
+   * 3. Historial reciente de peticiones
+   */
   const loadUserData = async () => {
     try {
+      // Obtener usuario actualmente autenticado
       const user = getCurrentUser();
       if (!user) {
         console.error("No hay sesión activa");
@@ -61,30 +122,37 @@ export default function Home({ navigation }) {
         return;
       }
 
-      // Obtener datos del usuario
+      // Obtener perfil completo del usuario desde Firestore
       const userProfile = await getUserProfile(user.uid);
 
       if (userProfile) {
         setUserData(userProfile);
 
-        // Cargar grupos del usuario
+        // Cargar grupos del usuario si tiene groupIds en su perfil
         if (userProfile.groupIds && userProfile.groupIds.length > 0) {
           await loadUserGroups(userProfile.groupIds);
         } else {
-          // Si no tiene grupos asignados, dejar el array vacío
+          // Si no tiene grupos, inicializar array vacío
           setGroups([]);
         }
+
+        // Cargar los últimos 3 registros del historial
+        await loadRecentHistory(userProfile);
       } else {
         console.error("No se encontraron datos del usuario");
       }
     } catch (error) {
       console.error("Error al cargar datos:", error);
     } finally {
+      // Finalizar estado de carga
       setLoading(false);
     }
   };
 
-  // Función para cargar los grupos del usuario desde Firestore
+  /**
+   * Carga la información completa de los grupos del usuario
+   * Recibe array de IDs y consulta Firestore para obtener los datos completos
+   */
   const loadUserGroups = async (groupIds) => {
     try {
       if (!groupIds || groupIds.length === 0) {
@@ -92,11 +160,12 @@ export default function Home({ navigation }) {
         return;
       }
 
-      // Obtener los documentos de los grupos
+      // Obtener documentos completos de cada grupo desde Firestore
       const groupsData = [];
       for (const groupId of groupIds) {
         const groupDoc = await getDoc(doc(db, "groups", groupId));
         if (groupDoc.exists()) {
+          // Agregar ID y datos del grupo al array
           groupsData.push({
             id: groupDoc.id,
             ...groupDoc.data()
@@ -111,13 +180,100 @@ export default function Home({ navigation }) {
     }
   };
 
+  /**
+   * Carga los últimos 3 registros del historial del usuario
+   * Usa import dinámico para evitar dependencias circulares
+   */
+  const loadRecentHistory = async (userProfile) => {
+    try {
+      const historialesIds = userProfile.historialesIds || [];
+
+      if (historialesIds.length > 0) {
+        // Importar dinámicamente la función de obtener historial
+        const { getHistorialByIds } = await import("../../services/peticionService");
+        
+        // Obtener todos los historiales del usuario
+        const historialData = await getHistorialByIds(historialesIds);
+
+        // Tomar solo los primeros 3 registros (más recientes)
+        const recentRecords = historialData.slice(0, 3);
+        setRecentHistory(recentRecords);
+      } else {
+        setRecentHistory([]);
+      }
+    } catch (error) {
+      console.error("Error al cargar historial reciente:", error);
+      setRecentHistory([]);
+    }
+  };
+
+  // ============================================
+  // FUNCIONES DE UTILIDAD
+  // ============================================
+  
+  /**
+   * Formatea un timestamp de Firebase a formato de fecha legible en español
+   * Ejemplo: "28 de noviembre de 2025"
+   */
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'Fecha no disponible';
+    // Convertir timestamp de Firebase a objeto Date
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('es-MX', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  /**
+   * Retorna el color apropiado según el status de la petición
+   */
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Aprobada':
+        return COLORS.textGreen;
+      case 'Rechazada':
+        return COLORS.textRed;
+      default:
+        return COLORS.textGray;
+    }
+  };
+
+  /**
+   * Retorna el nombre del ícono apropiado según el status de la petición
+   */
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'Aprobada':
+        return 'checkmark-circle';
+      case 'Rechazada':
+        return 'close-circle';
+      default:
+        return 'time';
+    }
+  };
+
+  // ============================================
+  // HANDLERS DE EVENTOS
+  // ============================================
+
+  
+  /**
+   * Maneja la selección de un grupo del modal
+   * Establece el grupo seleccionado y cierra el modal
+   */
   const handleGroupSelect = (group) => {
     setSelectedGroup(group);
     setShowGroupSelectModal(false);
   };
 
-  // Función para unirse a un grupo con código
+  /**
+   * Procesa la unión del usuario a un grupo mediante código de invitación
+   * Valida el código, llama al servicio y actualiza los datos
+   */
   const handleJoinGroup = async () => {
+    // Validar que el código no esté vacío
     if (!inviteCode.trim()) {
       setInfoModalTitle('Error');
       setInfoModalMessage('Por favor ingresa un código de invitación');
@@ -133,19 +289,24 @@ export default function Home({ navigation }) {
         throw new Error('No hay sesión activa');
       }
 
+      // Intentar unirse al grupo con el código proporcionado
       const result = await joinGroupWithCode(user.uid, inviteCode);
 
       if (result.success) {
+        // Mostrar mensaje de éxito
         setInfoModalTitle('¡Éxito!');
         setInfoModalMessage(result.message);
         setShowInfoModal(true);
+        
+        // Cerrar modal y limpiar código
         setShowJoinModal(false);
         setInviteCode('');
 
-        // Recargar datos del usuario para actualizar la lista de grupos
+        // Recargar datos para mostrar el nuevo grupo
         await loadUserData();
       }
     } catch (error) {
+      // Mostrar mensaje de error
       setInfoModalTitle('Error');
       setInfoModalMessage(error.message || 'Error al unirse al grupo');
       setShowInfoModal(true);
@@ -154,15 +315,21 @@ export default function Home({ navigation }) {
     }
   };
 
-  // Pantalla de carga mientras se obtienen los datos
+  // ============================================
+  // RENDERIZADO
+  // ============================================
+
+  
+  // Pantalla de carga mostrada mientras se obtienen los datos iniciales
   if (loading) {
     return (
       <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
         <HeaderScreen
           title="Home"
           rightIcon={<Ionicons name="notifications-outline" size={24} color={COLORS.textBlack} />}
-          onRightPress={() => { }}
+          onRightPress={() => setNotificationsVisible(true)}
         />
+        {/* Indicador de carga centrado */}
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
           <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={{ marginTop: 16, color: COLORS.textGray }}>
@@ -176,19 +343,22 @@ export default function Home({ navigation }) {
     );
   }
 
+  // Pantalla principal con todos los datos cargados
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
+      {/* Header con título y botón de notificaciones */}
       <HeaderScreen
         title="Home"
         rightIcon={<Ionicons name="notifications-outline" size={24} color={COLORS.textBlack} />}
-        onRightPress={() => { }}
+        onRightPress={() => setNotificationsVisible(true)}
       />
 
+      {/* Contenido scrolleable de la pantalla */}
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Botón "Unirme a un grupo" */}
+        {/* Botón para abrir modal de unión a grupo */}
         <Pressable
           style={({ pressed }) => [
             styles.joinGroupButton,
@@ -200,7 +370,7 @@ export default function Home({ navigation }) {
           <Text style={styles.joinGroupButtonText}>Unirme a un grupo</Text>
         </Pressable>
 
-        {/* Selector de Grupos */}
+        {/* Selector de grupos - muestra el grupo actual o mensaje por defecto */}
         <View style={CalendarAdminStyles.groupSelectorContainer}>
           <Text style={CalendarAdminStyles.groupSelectorTitle}>Selecciona un grupo</Text>
           <Pressable
@@ -221,63 +391,126 @@ export default function Home({ navigation }) {
           </Pressable>
         </View>
 
+        {/* Contenido condicional: se muestra solo si hay un grupo seleccionado */}
         {selectedGroup ? (
           <>
-            {/* Información del grupo seleccionado */}
+            {/* Card con información general del grupo seleccionado */}
             <View style={styles.groupInfoCard}>
+              {/* Header: nombre, descripción e ícono */}
               <View style={styles.groupInfoHeader}>
-                <Ionicons name="people" size={32} color={COLORS.primary} />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.groupInfoName}>{selectedGroup.name}</Text>
-                  <Text style={styles.groupInfoDescription}>
-                    {selectedGroup.description || 'Sin descripción'}
-                  </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.groupInfoTitle}>{selectedGroup.name}</Text>
+                  <Text style={styles.groupInfoDescription}>{selectedGroup.description}</Text>
+                </View>
+                {/* Ícono del grupo */}
+                <View style={styles.groupInfoIcon}>
+                  <Ionicons name="people" size={32} color={COLORS.primary} />
                 </View>
               </View>
-
+              
+              {/* Estadísticas: Miembros y Mis Turnos */}
               <View style={styles.groupInfoStats}>
+                {/* Contador de miembros del grupo */}
                 <View style={styles.groupInfoStatItem}>
                   <Ionicons name="people-outline" size={20} color={COLORS.textGray} />
                   <Text style={styles.groupInfoStatLabel}>Miembros</Text>
                   <Text style={styles.groupInfoStatValue}>{selectedGroup.memberCount || 0}</Text>
                 </View>
+                
+                {/* Contador de turnos del usuario (calculado desde availableDays) */}
                 <View style={styles.groupInfoStatItem}>
                   <Ionicons name="calendar-outline" size={20} color={COLORS.textGray} />
-                  <Text style={styles.groupInfoStatLabel}>Turnos</Text>
-                  <Text style={styles.groupInfoStatValue}>{selectedGroup.stats?.totalShifts || 0}</Text>
-                </View>
-                <View style={styles.groupInfoStatItem}>
-                  <Ionicons name="star-outline" size={20} color={COLORS.textGray} />
-                  <Text style={styles.groupInfoStatLabel}>Rating</Text>
+                  <Text style={styles.groupInfoStatLabel}>Mis Turnos</Text>
                   <Text style={styles.groupInfoStatValue}>
-                    {selectedGroup.stats?.averageRating?.toFixed(1) || '0.0'}
+                    {/* Contar días separados por '•' en availableDays */}
+                    {userData?.availableDays ? userData.availableDays.split('•').filter(d => d.trim()).length : 0}
                   </Text>
                 </View>
               </View>
             </View>
 
-            {/* Contenido adicional del grupo */}
-            <View style={styles.contentCard}>
-              <Text style={styles.contentCardTitle}>Próximos turnos</Text>
-              <View style={styles.emptyState}>
-                <Ionicons name="calendar-outline" size={48} color={COLORS.textGray} />
-                <Text style={styles.emptyStateText}>
-                  No hay turnos programados
-                </Text>
-              </View>
-            </View>
-
+            {/* Sección de actividad reciente (muestra últimos 3 historiales) */}
             <View style={styles.contentCard}>
               <Text style={styles.contentCardTitle}>Actividad reciente</Text>
-              <View style={styles.emptyState}>
-                <Ionicons name="time-outline" size={48} color={COLORS.textGray} />
-                <Text style={styles.emptyStateText}>
-                  No hay actividad reciente
-                </Text>
-              </View>
+              
+              {/* Renderizar cards de historial si existen registros */}
+              {recentHistory.length > 0 ? (
+                // Mapear cada registro del historial a una card
+                recentHistory.map((item) => (
+                  <View key={item.id} style={styles.historyCard}>
+                    {/* Header de la card: status y fecha */}
+                    <View style={styles.historyCardHeader}>
+                      {/* Status con ícono y texto */}
+                      <View style={styles.historyStatusContainer}>
+                        <Ionicons
+                          name={getStatusIcon(item.status)}
+                          size={24}
+                          color={getStatusColor(item.status)}
+                        />
+                        <Text style={[styles.historyStatusText, { color: getStatusColor(item.status) }]}>
+                          {item.status}
+                        </Text>
+                      </View>
+                      {/* Fecha formateada */}
+                      <Text style={styles.historyCardDate}>
+                        {formatDate(item.approvedAt || item.rejectedAt || item.createdAt)}
+                      </Text>
+                    </View>
+
+                    {/* Cuerpo de la card: detalles de la petición */}
+                    <View style={styles.historyCardBody}>
+                      {/* Puesto solicitado */}
+                      <View style={styles.historyDetailRow}>
+                        <Ionicons name="briefcase-outline" size={16} color={COLORS.textGray} />
+                        <Text style={styles.historyDetailLabel}>Puesto:</Text>
+                        <Text style={styles.historyDetailValue}>{item.position}</Text>
+                      </View>
+
+                      {/* Fecha de la petición */}
+                      <View style={styles.historyDetailRow}>
+                        <Ionicons name="calendar-outline" size={16} color={COLORS.textGray} />
+                        <Text style={styles.historyDetailLabel}>Fecha solicitada:</Text>
+                        <Text style={styles.historyDetailValue}>{item.date}</Text>
+                      </View>
+
+                      {/* Hora de inicio */}
+                      <View style={styles.historyDetailRow}>
+                        <Ionicons name="time-outline" size={16} color={COLORS.textGray} />
+                        <Text style={styles.historyDetailLabel}>Hora:</Text>
+                        <Text style={styles.historyDetailValue}>{item.startTime}</Text>
+                      </View>
+
+                      {/* Motivo de la petición */}
+                      <View style={styles.historyDetailRow}>
+                        <Ionicons name="information-circle-outline" size={16} color={COLORS.textGray} />
+                        <Text style={styles.historyDetailLabel}>Motivo:</Text>
+                        <Text style={styles.historyDetailValue}>{item.reason}</Text>
+                      </View>
+
+                      {/* Mostrar remplazo si existe */}
+                      {item.replacementUserId && (
+                        <View style={styles.historyDetailRow}>
+                          <Ionicons name="person-outline" size={16} color={COLORS.textGray} />
+                          <Text style={styles.historyDetailLabel}>Cubierto por:</Text>
+                          <Text style={styles.historyDetailValue}>Usuario asignado</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                ))
+              ) : (
+                // Estado vacío cuando no hay historial
+                <View style={styles.emptyState}>
+                  <Ionicons name="time-outline" size={48} color={COLORS.textGray} />
+                  <Text style={styles.emptyStateText}>
+                    No hay actividad reciente
+                  </Text>
+                </View>
+              )}
             </View>
           </>
         ) : (
+          // Mensaje cuando no hay grupo seleccionado
           <View style={CalendarAdminStyles.noGroupSelected}>
             <Ionicons name="people-outline" size={64} color={COLORS.textGray} />
             <Text style={CalendarAdminStyles.noGroupSelectedTitle}>No hay grupo seleccionado</Text>
@@ -288,7 +521,11 @@ export default function Home({ navigation }) {
         )}
       </ScrollView>
 
-      {/* Modal de Selección de Grupo */}
+      {/* ============================================ */}
+      {/* MODALES */}
+      {/* ============================================ */}
+      
+      {/* Modal para seleccionar un grupo de la lista */}
       <Modal
         visible={showGroupSelectModal}
         transparent
@@ -420,6 +657,12 @@ export default function Home({ navigation }) {
         onClose={() => setShowInfoModal(false)}
         title={infoModalTitle}
         message={infoModalMessage}
+      />
+      
+      {/* Modal de Notificaciones */}
+      <NotificationsModal
+        visible={notificationsVisible}
+        onClose={() => setNotificationsVisible(false)}
       />
 
       {/* Footer */}

@@ -1,46 +1,94 @@
+// 1. Paquetes core de React/React Native
 import React, { useState, useEffect } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, Image, ScrollView, Pressable, Switch, Modal, ActivityIndicator } from 'react-native';
+
+// 2. Bibliotecas de terceros
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+
+// 3. Componentes propios
 import HeaderScreen from "../../components/HeaderScreen";
 import MenuFooter from "../../components/MenuFooter";
 import InfoModal from "../../components/InfoModal";
-import styles, { TOGGLE_COLORS } from "../../styles/screens/user/ProfileStyles";
-import { Ionicons } from '@expo/vector-icons';
+import NotificationsModal from "../../components/NotificationsModal";
+
+// 4. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+
+// 5. Servicios de Firebase
 import { logoutUser, getCurrentUser } from '../../services/authService';
 import { getUserProfile } from '../../services/userService';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebaseConfig';
 
+// 6. Estilos
+import styles, { TOGGLE_COLORS } from "../../styles/screens/user/ProfileStyles";
+
 export default function Profile() {
+  // ============================================
+  // ESTADOS
+  // ============================================
+  
   const navigation = useNavigation();
 
-  // Estados para datos del usuario
+  // Datos completos del perfil del usuario desde Firestore
   const [userData, setUserData] = useState(null);
+  
+  // Control de carga inicial de datos
   const [loading, setLoading] = useState(true);
 
-  // estado simple para el Switch
+  // Estado del toggle de notificaciones
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  // estado y datos para el modal de seleccion de region
+  
+  // Control de visibilidad del modal de selección de región
   const [isRegionModalVisible, setIsRegionModalVisible] = useState(false);
-  // Estados para InfoModal de error
+  
+  // Control de visibilidad del modal de selección de status
+  const [isStatusModalVisible, setIsStatusModalVisible] = useState(false);
+  
+  // Control del modal de errores
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  
+  // Control de visibilidad del modal de notificaciones
+  const [notificationsVisible, setNotificationsVisible] = useState(false);
+  
+  // Región seleccionada actualmente (México por defecto)
   const [selectedRegion, setSelectedRegion] = useState({
     name: "México",
     code: "MX"
   });
+  
+  // Status seleccionado actualmente
+  const [selectedStatus, setSelectedStatus] = useState("Disponible");
 
-  // Cargar datos del usuario al montar el componente y cada vez que la pantalla recibe foco
+  // ============================================
+  // EFECTOS
+  // ============================================
+
+  
+  /**
+   * Cargar datos del usuario cada vez que la pantalla recibe foco
+   * Esto asegura que los datos estén actualizados al regresar de EditProfile
+   */
   useFocusEffect(
     React.useCallback(() => {
       loadUserData();
     }, [])
   );
 
+  // ============================================
+  // FUNCIONES DE CARGA DE DATOS
+  // ============================================
+  
+  /**
+   * Carga el perfil completo del usuario desde Firestore
+   * Incluye datos personales, preferencias y configuración regional
+   */
   const loadUserData = async () => {
     try {
+      // Obtener usuario actualmente autenticado
       const user = getCurrentUser();
       if (!user) {
         setErrorMessage('No hay sesión activa');
@@ -49,19 +97,25 @@ export default function Profile() {
         return;
       }
 
-      // Obtener datos del usuario desde Firestore
+      // Obtener documento completo del usuario desde Firestore
       const userProfile = await getUserProfile(user.uid);
 
       if (userProfile) {
         setUserData(userProfile);
 
-        // Actualizar preferencias y región desde los datos
+        // Actualizar preferencias de notificaciones si existen en el perfil
         if (userProfile.preferences?.notificationsEnabled !== undefined) {
           setNotificationsEnabled(userProfile.preferences.notificationsEnabled);
         }
 
+        // Actualizar región seleccionada si existe en el perfil
         if (userProfile.region) {
           setSelectedRegion(userProfile.region);
+        }
+        
+        // Actualizar status seleccionado si existe en el perfil
+        if (userProfile.status) {
+          setSelectedStatus(userProfile.status);
         }
       } else {
         setErrorMessage('No se encontraron datos del usuario');
@@ -76,11 +130,19 @@ export default function Profile() {
     }
   };
 
-  // Funcion para cerrar sesion con Firebase
+  // ============================================
+  // HANDLERS DE EVENTOS
+  // ============================================
+
+  
+  /**
+   * Cierra la sesión del usuario en Firebase Authentication
+   * Después del logout exitoso, reinicia la navegación a la pantalla de Login
+   */
   const handleLogout = async () => {
     const result = await logoutUser();
     if (result.success) {
-      // Navegar a la pantalla de login después del logout exitoso
+      // Resetear stack de navegación para evitar volver atrás
       navigation.reset({
         index: 0,
         routes: [{ name: 'Login' }],
@@ -92,11 +154,18 @@ export default function Profile() {
     }
   };
 
+  /**
+   * Navega a la pantalla de edición de perfil
+   */
   const handleEditProfile = () => {
     navigation.navigate('EditProfile');
   };
 
-  // Función para actualizar notificaciones en Firestore
+  /**
+   * Actualiza la preferencia de notificaciones en Firestore
+   * Si falla, revierte el cambio en el estado local
+   * @param {boolean} newValue - Nuevo estado del toggle de notificaciones
+   */
   const handleToggleNotifications = async (newValue) => {
     setNotificationsEnabled(newValue);
 
@@ -104,11 +173,12 @@ export default function Profile() {
       const user = getCurrentUser();
       if (!user) return;
 
+      // Actualizar en Firestore usando dot notation
       await updateDoc(doc(db, 'users', user.uid), {
         'preferences.notificationsEnabled': newValue
       });
 
-      // Actualizar también el estado local
+      // Actualizar también el estado local para mantener sincronización
       setUserData(prev => ({
         ...prev,
         preferences: {
@@ -118,19 +188,35 @@ export default function Profile() {
       }));
     } catch (error) {
       console.error('Error al actualizar notificaciones:', error);
-      // Revertir el cambio si falla
+      // Revertir el cambio si la actualización falla
       setNotificationsEnabled(!newValue);
       setErrorMessage('Error al actualizar preferencias de notificaciones');
       setShowErrorModal(true);
     }
   };
 
+  // ============================================
+  // DATOS ESTÁTICOS
+  // ============================================
+
+  
+  // Lista de regiones disponibles para selección
   const regions = [
     { name: "México", code: "MX" },
     { name: "Estados Unidos", code: "US" }
   ];
+  
+  // Lista de status disponibles para selección
+  const statusOptions = [
+    "Disponible",
+    "Ocupado"
+  ];
 
-  // Funcion para seleccionar region en el modal
+  /**
+   * Maneja la selección de una región del modal
+   * Actualiza tanto Firestore como el estado local
+   * @param {Object} region - Objeto con name y code de la región
+   */
   const handleRegionSelect = async (region) => {
     setSelectedRegion(region);
     setIsRegionModalVisible(false);
@@ -139,6 +225,7 @@ export default function Profile() {
       const user = getCurrentUser();
       if (!user) return;
 
+      // Actualizar región en Firestore
       await updateDoc(doc(db, 'users', user.uid), {
         region: {
           code: region.code,
@@ -146,7 +233,7 @@ export default function Profile() {
         }
       });
 
-      // Actualizar también el estado local
+      // Actualizar también el estado local para mantener sincronización
       setUserData(prev => ({
         ...prev,
         region: {
@@ -160,38 +247,84 @@ export default function Profile() {
       setShowErrorModal(true);
     }
   };
+  
+  /**
+   * Maneja la selección de un status del modal
+   * Actualiza tanto Firestore como el estado local
+   * @param {string} status - Nuevo status del usuario
+   */
+  const handleStatusSelect = async (status) => {
+    setSelectedStatus(status);
+    setIsStatusModalVisible(false);
 
+    try {
+      const user = getCurrentUser();
+      if (!user) return;
+
+      // Actualizar status en Firestore
+      await updateDoc(doc(db, 'users', user.uid), {
+        status: status
+      });
+
+      // Actualizar también el estado local para mantener sincronización
+      setUserData(prev => ({
+        ...prev,
+        status: status
+      }));
+    } catch (error) {
+      console.error('Error al actualizar status:', error);
+      setErrorMessage('Error al actualizar status');
+      setShowErrorModal(true);
+    }
+  };
+
+  // ============================================
+  // RENDERIZADO
+  // ============================================
+
+  
+  // Pantalla de carga mostrada mientras se obtienen los datos del perfil
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
+        {/* Header con botón de regreso */}
         <HeaderScreen
           title="Perfil"
           leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
           onLeftPress={() => navigation.goBack()}
         />
+        {/* Indicador de carga centrado */}
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={{ marginTop: 16, color: COLORS.textGray }}>Cargando perfil...</Text>
         </View>
+        {/* Footer con navegación */}
         <MenuFooter />
       </SafeAreaView>
     );
   }
 
+  // Pantalla principal con información del perfil
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header con botones de regreso y notificaciones */}
       <HeaderScreen
         title="Perfil"
         rightIcon={<Ionicons name="notifications-outline" size={24} color="black" />}
+        onRightPress={() => setNotificationsVisible(true)}
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
         onLeftPress={() => navigation.goBack()}
       />
 
       <ScrollView>
-
-        {/* Tarjeta de usuario */}
+        {/* ============================================ */}
+        {/* TARJETA DE PERFIL */}
+        {/* ============================================ */}
+        
         <View style={styles.profileCard}>
+          {/* Header con avatar, nombre y botón de editar */}
           <View style={styles.cardHeader}>
+            {/* Avatar del usuario o icono placeholder */}
             {userData?.avatar ? (
               <Image
                 source={{ uri: userData.avatar }}
@@ -203,11 +336,13 @@ export default function Profile() {
               </View>
             )}
 
+            {/* Nombre y puesto del usuario */}
             <View style={styles.nameAndRole}>
               <Text style={styles.cardName}>{userData?.name || 'Sin nombre'}</Text>
               <Text style={styles.cardRole}>{userData?.position || 'Usuario'}</Text>
             </View>
 
+            {/* Botón de editar perfil */}
             <Pressable
               style={({ pressed }) => [
                 styles.editBtn,
@@ -220,15 +355,37 @@ export default function Profile() {
             </Pressable>
           </View>
 
-          {/* Usuario */}
+          {/* Badge de rol del usuario */}
           <View style={styles.badgeRow}>
             <View style={styles.badge}>
               <Ionicons name="shield-checkmark-outline" size={16} color={COLORS.textBlack} />
               <Text style={styles.badgeText}>{userData?.role || 'user'}</Text>
             </View>
+            <View style={[styles.badge, { 
+              backgroundColor: userData?.status === 'Disponible' ? COLORS.secondary : 
+                              userData?.status === 'Ocupado' ? COLORS.statusPending : 
+                              userData?.status === 'No disponible' ? COLORS.statusRejected : COLORS.secondary 
+            }]}>
+              <Ionicons 
+                name={userData?.status === 'Disponible' ? 'checkmark-circle-outline' : 
+                      userData?.status === 'Ocupado' ? 'time-outline' : 
+                      userData?.status === 'No disponible' ? 'close-circle-outline' : 'help-circle-outline'} 
+                size={16} 
+                color={userData?.status === 'Disponible' ? COLORS.textBlack : 
+                       userData?.status === 'Ocupado' ? '#F57C00' : 
+                       userData?.status === 'No disponible' ? COLORS.textRed : COLORS.textBlack} 
+              />
+              <Text style={[styles.badgeText, {
+                color: userData?.status === 'Disponible' ? COLORS.textBlack : 
+                       userData?.status === 'Ocupado' ? '#F57C00' : 
+                       userData?.status === 'No disponible' ? COLORS.textRed : COLORS.textBlack
+              }]}>
+                {userData?.status || 'Sin estado'}
+              </Text>
+            </View>
           </View>
 
-          {/* Cajas de email y teléfono */}
+          {/* Información de contacto */}
           <View style={styles.infoBox}>
             <Ionicons name="mail-outline" size={20} color={COLORS.textGray} />
             <Text style={styles.infoText}>{userData?.email || 'Sin email'}</Text>
@@ -239,12 +396,19 @@ export default function Profile() {
             <Text style={styles.infoText}>{userData?.phone || 'Sin teléfono'}</Text>
           </View>
 
-          {/* Horarios Laborales */}
+          {/* Experiencia del usuario */}
+          <View style={styles.infoBox}>
+            <Ionicons name="medal-outline" size={20} color={COLORS.textGray} />
+            <Text style={styles.infoText}>{`Experiencia: ${userData?.experience || 'Sin experiencia'}`}</Text>
+          </View>
+
+          {/* Sección de horarios laborales */}
           <View style={{ marginTop: 16 }}>
             <Text style={[styles.sectionTitle, { marginBottom: 12, fontSize: 14, color: COLORS.textGray }]}>
               Horarios Laborales
             </Text>
 
+            {/* Días de trabajo disponibles */}
             <View style={styles.infoBox}>
               <Ionicons name="calendar-outline" size={20} color={COLORS.textGray} />
               <View style={{ flex: 1 }}>
@@ -253,6 +417,7 @@ export default function Profile() {
               </View>
             </View>
 
+            {/* Horario de entrada y salida */}
             <View style={styles.infoBox}>
               <Ionicons name="time-outline" size={20} color={COLORS.textGray} />
               <View style={{ flex: 1 }}>
@@ -265,6 +430,7 @@ export default function Profile() {
               </View>
             </View>
 
+            {/* Hora de comida */}
             <View style={styles.infoBox}>
               <Ionicons name="restaurant-outline" size={20} color={COLORS.textGray} />
               <View style={{ flex: 1 }}>
@@ -275,11 +441,14 @@ export default function Profile() {
           </View>
         </View>
 
-        {/* Preferencias */}
+        {/* ============================================ */}
+        {/* SECCIÓN DE PREFERENCIAS */}
+        {/* ============================================ */}
+        
         <View style={styles.preferencesSection}>
           <Text style={styles.sectionTitle}>Preferencias</Text>
 
-          {/* Notificaciones: implementación simple con Switch */}
+          {/* Toggle de notificaciones */}
           <Pressable
             style={({ pressed }) => [
               styles.preferenceItem,
@@ -295,6 +464,7 @@ export default function Profile() {
               </View>
             </View>
 
+            {/* Switch para activar/desactivar notificaciones */}
             <View style={styles.toggleContainer}>
               <Switch
                 value={notificationsEnabled}
@@ -306,7 +476,7 @@ export default function Profile() {
             </View>
           </Pressable>
 
-          {/* Región y hora */}
+          {/* Selector de región */}
           <Pressable
             style={({ pressed }) => [
               styles.preferenceItem,
@@ -325,21 +495,48 @@ export default function Profile() {
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textGray} />
           </Pressable>
+          
+          {/* Selector de status */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.preferenceItem,
+              pressed && { opacity: 0.7 }
+            ]}
+            onPress={() => setIsStatusModalVisible(true)}
+          >
+            <View style={styles.preferenceLeft}>
+              <Ionicons 
+                name={selectedStatus === 'Disponible' ? 'checkmark-circle-outline' : 'time-outline'} 
+                size={24} 
+                color={COLORS.primary} 
+              />
+              <View style={styles.preferenceTextContainer}>
+                <Text style={styles.preferenceTitle}>Modificar status</Text>
+                <Text style={styles.preferenceSubtitle}>
+                  {selectedStatus || 'Disponible'}
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={COLORS.textGray} />
+          </Pressable>
 
-          {/* Modal de selección de región */}
+          {/* Modal para seleccionar región */}
           <Modal
             visible={isRegionModalVisible}
             transparent={true}
             animationType="fade"
             onRequestClose={() => setIsRegionModalVisible(false)}
           >
+            {/* Fondo semi-transparente que cierra el modal */}
             <Pressable
               style={styles.modalOverlay}
               onPress={() => setIsRegionModalVisible(false)}
             >
+              {/* Contenedor del modal */}
               <View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>Seleccionar región</Text>
 
+                {/* Lista de regiones disponibles */}
                 {regions.map((region) => (
                   <Pressable
                     key={region.code}
@@ -356,7 +553,58 @@ export default function Profile() {
                     ]}>
                       {region.name}
                     </Text>
+                    {/* Checkmark para región seleccionada */}
                     {selectedRegion.code === region.code && (
+                      <Ionicons name="checkmark" size={24} color={COLORS.primary} />
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+            </Pressable>
+          </Modal>
+          
+          {/* Modal para seleccionar status */}
+          <Modal
+            visible={isStatusModalVisible}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setIsStatusModalVisible(false)}
+          >
+            {/* Fondo semi-transparente que cierra el modal */}
+            <Pressable
+              style={styles.modalOverlay}
+              onPress={() => setIsStatusModalVisible(false)}
+            >
+              {/* Contenedor del modal */}
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Seleccionar status</Text>
+
+                {/* Lista de status disponibles */}
+                {statusOptions.map((status) => (
+                  <Pressable
+                    key={status}
+                    style={({ pressed }) => [
+                      styles.regionOption,
+                      selectedStatus === status && styles.regionOptionSelected,
+                      pressed && { opacity: 0.7 }
+                    ]}
+                    onPress={() => handleStatusSelect(status)}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <Ionicons 
+                        name={status === 'Disponible' ? 'checkmark-circle-outline' : 'time-outline'} 
+                        size={20} 
+                        color={selectedStatus === status ? COLORS.primary : COLORS.textGray} 
+                      />
+                      <Text style={[
+                        styles.regionOptionText,
+                        selectedStatus === status && styles.regionOptionTextSelected
+                      ]}>
+                        {status}
+                      </Text>
+                    </View>
+                    {/* Checkmark para status seleccionado */}
+                    {selectedStatus === status && (
                       <Ionicons name="checkmark" size={24} color={COLORS.primary} />
                     )}
                   </Pressable>
@@ -366,10 +614,14 @@ export default function Profile() {
           </Modal>
         </View>
 
-        {/* Sección de cuenta */}
+        {/* ============================================ */}
+        {/* SECCIÓN DE CUENTA */}
+        {/* ============================================ */}
+        
         <View style={styles.accountSection}>
           <Text style={styles.sectionTitle}>Cuenta</Text>
 
+          {/* Opción para cambiar contraseña */}
           <Pressable
             style={({ pressed }) => [
               styles.preferenceItem,
@@ -388,6 +640,7 @@ export default function Profile() {
           </Pressable>
         </View>
 
+        {/* Botón de ayuda */}
         <Pressable
           style={({ pressed }) => [
             styles.helpButton,
@@ -399,6 +652,7 @@ export default function Profile() {
           <Text style={styles.helpButtonText}>Ayuda</Text>
         </Pressable>
 
+        {/* Botón de cerrar sesión */}
         <Pressable
           style={({ pressed }) => [
             styles.signOutButton,
@@ -410,13 +664,21 @@ export default function Profile() {
         </Pressable>
       </ScrollView>
 
+      {/* Modal de errores */}
       <InfoModal
         visible={showErrorModal}
         onClose={() => setShowErrorModal(false)}
         title="Error"
         message={errorMessage}
       />
+      
+      {/* Modal de notificaciones */}
+      <NotificationsModal
+        visible={notificationsVisible}
+        onClose={() => setNotificationsVisible(false)}
+      />
 
+      {/* Footer con navegación */}
       <MenuFooter />
     </SafeAreaView>
   );

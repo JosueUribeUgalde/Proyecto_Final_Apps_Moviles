@@ -8,3 +8,4 @@ export { default as MenuFooterAdmin } from './MenuFooterAdmin';
 export { default as RazonOption } from './RazonOption';
 export { default as InfoModal } from './InfoModal';
 export { default as MenuFooterCompany } from './MenuFooterCompany';
+export { default as ReplacementModal } from './ReplacementModal';

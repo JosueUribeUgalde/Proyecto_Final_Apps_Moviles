@@ -14,6 +14,8 @@ import {
     arrayRemove
 } from "firebase/firestore";
 import { db } from "../config/firebaseConfig";
+import { updateGroupMetrics, getGroupById } from "./groupService";
+import { notifyPetitionApproved, notifyPetitionRejected, notifySubstitutionRequest, notifyAdminNewPetition } from "./notificationService";
 
 /**
  * Crea una nueva petición de ausencia/permiso
@@ -61,6 +63,35 @@ export const createPeticion = async (peticionData) => {
             peticionesPendientesIds: arrayUnion(docRef.id),
             updatedAt: serverTimestamp()
         });
+
+        // Notificar al administrador del grupo sobre la nueva petición
+        try {
+            console.log("🔔 Intentando notificar al admin...");
+            const groupDoc = await getDoc(groupRef);
+            if (groupDoc.exists()) {
+                const groupData = groupDoc.data();
+                const adminId = groupData.idAdmin;
+                console.log("📋 Datos del grupo:", { groupId, adminId, groupName: groupData.name });
+                
+                if (adminId) {
+                    console.log("✅ Enviando notificación al admin:", adminId);
+                    await notifyAdminNewPetition(adminId, {
+                        id: docRef.id,
+                        userName: userName,
+                        date: date,
+                        reason: reason
+                    });
+                    console.log("✅ Notificación enviada exitosamente");
+                } else {
+                    console.log("⚠️ No se encontró adminId en el grupo");
+                }
+            } else {
+                console.log("⚠️ El grupo no existe:", groupId);
+            }
+        } catch (notifError) {
+            console.error("❌ Error al notificar al admin:", notifError);
+            // No lanzar error - la petición ya fue creada exitosamente
+        }
 
         return docRef.id;
     } catch (error) {
@@ -129,7 +160,76 @@ export const getPeticionesByIds = async (peticionIds) => {
 };
 
 /**
+ * Crea una solicitud de sustitución en la colección peticionesSustitucion
+ * @param {Object} sustitucionData - Datos de la solicitud de sustitución
+ * @returns {Promise<string>} - ID de la solicitud creada
+ */
+export const createSustitucionRequest = async (sustitucionData) => {
+    try {
+        const {
+            idAdmin,
+            idPeticion,
+            idUserSolicitado,
+            userName,
+            userPosition,
+            reason,
+            date,
+            startTime,
+            groupId
+        } = sustitucionData;
+
+        // Validaciones
+        if (!idAdmin || !idPeticion || !idUserSolicitado || !userName || !date || !groupId) {
+            throw new Error("Todos los campos requeridos deben estar presentes");
+        }
+
+        // Estructura de la solicitud de sustitución
+        const sustitucion = {
+            idAdmin: idAdmin,
+            idPeticion: idPeticion,
+            idUserSolicitado: idUserSolicitado,
+            userName: userName,
+            userPosition: userPosition || "Sin posición",
+            reason: reason || "No especificado",
+            date: date,
+            startTime: startTime || "N/A",
+            groupId: groupId,
+            status: "Pendiente",
+            createdAt: serverTimestamp(),
+            respondedAt: null
+        };
+
+        // Crear el documento en la colección "peticionesSustitucion"
+        const docRef = await addDoc(collection(db, "peticionesSustitucion"), sustitucion);
+
+        console.log("✅ Solicitud de sustitución creada con ID:", docRef.id);
+
+        // Crear notificación de solicitud de sustitución para el usuario solicitado
+        try {
+            await notifySubstitutionRequest(idUserSolicitado, {
+                id: docRef.id,
+                petitionId: idPeticion,
+                userName: userName,
+                userPosition: userPosition || "Sin posición",
+                date: date,
+                startTime: startTime || "N/A",
+                reason: reason || "No especificado"
+            });
+        } catch (notifError) {
+            console.warn("⚠️ Advertencia al crear notificación de sustitución:", notifError);
+            // No lanzar error, solo advertencia
+        }
+
+        return docRef.id;
+    } catch (error) {
+        console.error("❌ Error al crear solicitud de sustitución:", error);
+        throw error;
+    }
+};
+
+/**
  * Aprueba una petición - la mueve a historial y la elimina de pendientes
+ * También actualiza las métricas del grupo
  * @param {string} peticionId - ID de la petición
  * @param {string} groupId - ID del grupo
  * @param {string} replacementUserId - ID del usuario que cubre (opcional)
@@ -174,6 +274,30 @@ export const approvePeticion = async (peticionId, groupId, replacementUserId = n
             updatedAt: serverTimestamp()
         });
 
+        // Actualizar métricas del grupo
+        try {
+            const groupData = await getGroupById(groupId);
+            const historial = await getHistorialByGroupId(groupId);
+            await updateGroupMetrics(groupId, historial, groupData.memberCount);
+        } catch (metricsError) {
+            console.warn("Advertencia al actualizar métricas del grupo:", metricsError);
+            // No lanzar error, solo advertencia para no interrumpir el flujo
+        }
+
+        // Crear notificación de aprobación para el usuario
+        try {
+            await notifyPetitionApproved(peticionData.userId, {
+                id: peticionId,
+                userName: peticionData.userName,
+                date: peticionData.date,
+                startTime: peticionData.startTime,
+                reason: peticionData.reason
+            });
+        } catch (notifError) {
+            console.warn("Advertencia al crear notificación:", notifError);
+            // No lanzar error, solo advertencia
+        }
+
     } catch (error) {
         console.error("Error al aprobar petición:", error);
         throw error;
@@ -182,6 +306,7 @@ export const approvePeticion = async (peticionId, groupId, replacementUserId = n
 
 /**
  * Rechaza una petición - la mueve a historial y la elimina de pendientes
+ * También actualiza las métricas del grupo
  * @param {string} peticionId - ID de la petición
  * @param {string} groupId - ID del grupo
  * @returns {Promise<void>}
@@ -223,6 +348,30 @@ export const rejectPeticion = async (peticionId, groupId) => {
             peticionesPendientesIds: arrayRemove(peticionId),
             updatedAt: serverTimestamp()
         });
+
+        // Actualizar métricas del grupo
+        try {
+            const groupData = await getGroupById(groupId);
+            const historial = await getHistorialByGroupId(groupId);
+            await updateGroupMetrics(groupId, historial, groupData.memberCount);
+        } catch (metricsError) {
+            console.warn("Advertencia al actualizar métricas del grupo:", metricsError);
+            // No lanzar error, solo advertencia para no interrumpir el flujo
+        }
+
+        // Crear notificación de rechazo para el usuario
+        try {
+            await notifyPetitionRejected(peticionData.userId, {
+                id: peticionId,
+                userName: peticionData.userName,
+                date: peticionData.date,
+                startTime: peticionData.startTime,
+                reason: peticionData.reason
+            });
+        } catch (notifError) {
+            console.warn("Advertencia al crear notificación:", notifError);
+            // No lanzar error, solo advertencia
+        }
 
     } catch (error) {
         console.error("Error al rechazar petición:", error);
@@ -294,5 +443,59 @@ export const getHistorialByIds = async (historialIds) => {
     } catch (error) {
         console.error("Error al obtener historial por IDs:", error);
         throw error;
+    }
+};
+
+/**
+ * Calcula el estado de peticiones (pendientes, aprobadas, rechazadas)
+ * Filtra por últimos 7 días si se especifica daysFilter
+ * @param {Array} historial - Array de decisiones del historial
+ * @param {number} pendingCount - Total de peticiones pendientes actuales
+ * @param {number} daysFilter - Filtrar últimos N días (default: 7)
+ * @returns {Object} - { pending, approved, rejected, total }
+ */
+export const calculatePeticionStatus = (historial, pendingCount = 0, daysFilter = 7) => {
+    try {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - daysFilter);
+        sevenDaysAgo.setHours(0, 0, 0, 0);
+
+        // Filtrar registros de los últimos 7 días
+        const recentRecords = historial.filter(record => {
+            const recordDate = record.approvedAt?.toDate?.() || 
+                             record.rejectedAt?.toDate?.() || 
+                             record.createdAt?.toDate?.() || 
+                             new Date(record.approvedAt || record.rejectedAt || record.createdAt);
+            return recordDate >= sevenDaysAgo;
+        });
+
+        // Contar por estado
+        const approved = recentRecords.filter(r => r.status === 'Aprobada').length;
+        const rejected = recentRecords.filter(r => r.status === 'Rechazada').length;
+        const total = pendingCount + approved + rejected;
+
+        const result = {
+            pending: pendingCount,
+            approved: approved,
+            rejected: rejected,
+            total: total,
+            pendingPercent: total > 0 ? Math.round((pendingCount / total) * 100) : 0,
+            approvedPercent: total > 0 ? Math.round((approved / total) * 100) : 0,
+            rejectedPercent: total > 0 ? Math.round((rejected / total) * 100) : 0
+        };
+
+        console.log("📋 Estado de Peticiones (Últimos 7 días):", result);
+        return result;
+    } catch (error) {
+        console.error("Error al calcular estado de peticiones:", error);
+        return {
+            pending: pendingCount,
+            approved: 0,
+            rejected: 0,
+            total: pendingCount,
+            pendingPercent: 100,
+            approvedPercent: 0,
+            rejectedPercent: 0
+        };
     }
 };

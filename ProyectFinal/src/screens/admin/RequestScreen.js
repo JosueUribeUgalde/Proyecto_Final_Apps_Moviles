@@ -8,6 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 // 3. Componentes propios
 import { HeaderScreen, MenuFooterAdmin, ButtonRequest } from "../../components";
+import ReplacementModal from "../../components/ReplacementModal";
+import NotificationsModal from "../../components/NotificationsModal";
 
 // 4. Constantes y utilidades
 import { COLORS } from '../../components/constants/theme';
@@ -17,13 +19,14 @@ import { getCurrentUser } from "../../services/authService";
 import { getAdminProfile } from "../../services/companyService";
 import { getGroupsByIds } from "../../services/groupService";
 import { getPeticionesByIds, approvePeticion, rejectPeticion, getHistorialByGroupId } from "../../services/peticionService";
+import { getAdminNotifications } from "../../services/notificationService";
+import { setBadgeCount } from "../../services/pushNotificationService";
 
 // 6. Estilos
 import styles from "../../styles/screens/admin/RequestStyles";
 
 export default function RequestScreen({ navigation }) {
   // Estados de UI
-
   const [selectedFilter, setSelectedFilter] = useState('Pendientes');
   const [searchQuery, setSearchQuery] = useState('');
   const [showThisWeek, setShowThisWeek] = useState(false);
@@ -38,12 +41,37 @@ export default function RequestScreen({ navigation }) {
   const [allDecisions, setAllDecisions] = useState([]);
   const [processingRequest, setProcessingRequest] = useState(null);
 
+  // Estados para ReplacementModal
+  const [showReplacementModal, setShowReplacementModal] = useState(false);
+  const [requestForReplacement, setRequestForReplacement] = useState(null);
+  const [requestGroupId, setRequestGroupId] = useState(null);
+
+  // Estados para notificaciones
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const filters = ['Pendientes', 'Aprobadas', 'Rechazadas', 'Todas'];
 
   // Cargar datos del admin y sus grupos
   useEffect(() => {
     loadAdminData();
+    loadNotifications();
   }, []);
+
+  // Función para cargar notificaciones
+  const loadNotifications = async () => {
+    try {
+      const user = getCurrentUser();
+      if (user) {
+        const notifications = await getAdminNotifications(user.uid);
+        const unread = notifications.filter(n => !n.read).length;
+        setUnreadCount(unread);
+        await setBadgeCount(unread);
+      }
+    } catch (error) {
+      console.error('Error al cargar notificaciones:', error);
+    }
+  };
 
   const loadAdminData = async () => {
     try {
@@ -168,17 +196,35 @@ export default function RequestScreen({ navigation }) {
     if (processingRequest) return;
 
     try {
+      console.log("👆 Clic en Aprobar - Petición:", {
+        id: request.id,
+        userName: request.userName,
+        groupId: request.groupId
+      });
+      
       setProcessingRequest(request.id);
-      await approvePeticion(request.id, request.groupId);
-
-
-
-      // Recargar datos
-      await loadAdminData();
+      // Mostrar modal de remplazo en lugar de aprobar directamente
+      setRequestForReplacement(request);
+      setRequestGroupId(request.groupId);
+      
+      console.log("🎯 Abriendo ReplacementModal...");
+      setShowReplacementModal(true);
     } catch (error) {
-      console.error("Error al aprobar:", error);
+      console.error("❌ Error:", error);
+      setProcessingRequest(null);
+    }
+  };
 
-    } finally {
+  const handleReplacementSuccess = async (selectedMemberId) => {
+    console.log("🎉 Remplazo procesado exitosamente:", selectedMemberId);
+    try {
+      // Recargar datos
+      console.log("🔄 Recargando datos del admin...");
+      await loadAdminData();
+      setProcessingRequest(null);
+      console.log("✅ Datos recargados");
+    } catch (error) {
+      console.error("❌ Error al recargar datos:", error);
       setProcessingRequest(null);
     }
   };
@@ -214,9 +260,8 @@ export default function RequestScreen({ navigation }) {
         leftIcon={<Ionicons name="arrow-back" size={24} color={COLORS.textBlack} />}
         rightIcon={<Ionicons name="notifications-outline" size={24} color="black" />}
         onLeftPress={() => navigation.goBack()}
-        onRightPress={() => {
-          //   AQUI SE VA A REDIRECCIONAR A NOTIFICACIONES (proxima de crear)
-        }}
+        onRightPress={() => setShowNotifications(true)}
+        badgeCount={unreadCount}
       />
 
 
@@ -369,6 +414,7 @@ export default function RequestScreen({ navigation }) {
                 <Text style={styles.decisionStatus}>{decision.status}</Text>
                 <Text style={styles.decisionRole}>{decision.position}</Text>
               </View>
+              <Text style={styles.decisionName}>{decision.userName}</Text>
               <Text style={styles.decisionDate}>
                 {formatDate(decision.approvedAt || decision.rejectedAt || decision.createdAt)}
               </Text>
@@ -474,6 +520,31 @@ export default function RequestScreen({ navigation }) {
       <View style={styles.footerContainer}>
         <MenuFooterAdmin />
       </View>
+
+      {/* Modal de Selección de Remplazo */}
+      <ReplacementModal
+        visible={showReplacementModal}
+        onClose={() => {
+          console.log("❌ ReplacementModal cerrado");
+          setShowReplacementModal(false);
+          setRequestForReplacement(null);
+          setRequestGroupId(null);
+        }}
+        request={requestForReplacement}
+        groupId={requestGroupId}
+        groupMembers={requestGroupId ? groups.find(g => g.id === requestGroupId)?.memberIds : []}
+        onSuccess={handleReplacementSuccess}
+      />
+
+      {/* Modal de Notificaciones */}
+      <NotificationsModal
+        visible={showNotifications}
+        onClose={() => {
+          setShowNotifications(false);
+          loadNotifications();
+        }}
+        userRole="admin"
+      />
     </SafeAreaView>
   );
 }

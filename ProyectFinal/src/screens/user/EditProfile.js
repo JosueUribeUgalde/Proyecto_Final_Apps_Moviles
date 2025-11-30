@@ -1,5 +1,5 @@
+// 1. Paquetes core de React/React Native
 import React, { useState, useEffect } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
 import {
   View,
   Text,
@@ -12,50 +12,81 @@ import {
   KeyboardAvoidingView,
   Platform
 } from "react-native";
+
+// 2. Bibliotecas de terceros
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import profileStyles from "../../styles/screens/user/ProfileStyles";
-import styles from "../../styles/screens/user/EditProfileStyles";
+import * as ImagePicker from "expo-image-picker";
+
+// 3. Componentes propios
 import HeaderScreen from "../../components/HeaderScreen";
 import MenuFooter from "../../components/MenuFooter";
 import InfoModal from "../../components/InfoModal";
+
+// 4. Constantes y utilidades
 import { COLORS } from "../../components/constants/theme";
+
+// 5. Servicios de Firebase
 import { getCurrentUser } from "../../services/authService";
 import { getUserProfile, updateUserProfile } from "../../services/userService";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { storage } from "../../config/firebaseConfig";
-import * as ImagePicker from "expo-image-picker";
+
+// 6. Estilos
+import profileStyles from "../../styles/screens/user/ProfileStyles";
+import styles from "../../styles/screens/user/EditProfileStyles";
 
 export default function EditProfile() {
+  // ============================================
+  // ESTADOS
+  // ============================================
+  
   const navigation = useNavigation();
 
-  // Estados para datos del usuario
+  // Datos del usuario cargados desde Firestore
   const [userData, setUserData] = useState(null);
+  
+  // Control de carga y guardado
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Estados editables
+  // Estados editables por el usuario
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [avatar, setAvatar] = useState(null);
   const [avatarChanged, setAvatarChanged] = useState(false);
 
-  // Estados de solo lectura (cargados desde Firestore)
+  // Estados de solo lectura (no editables)
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
   const [position, setPosition] = useState("");
   const [experience, setExperience] = useState("");
 
-  // Estados para modal de error/éxito
+  // Control del modal de mensajes (error/éxito)
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
 
-  // Cargar datos del usuario al montar
+  // ============================================
+  // EFECTOS
+  // ============================================
+
+  /**
+   * Cargar datos del usuario al montar el componente
+   */
   useEffect(() => {
     loadUserData();
   }, []);
 
+  // ============================================
+  // FUNCIONES DE CARGA DE DATOS
+  // ============================================
+
+  /**
+   * Carga el perfil completo del usuario desde Firestore
+   * Inicializa todos los estados con los datos del usuario
+   */
   const loadUserData = async () => {
     try {
       const user = getCurrentUser();
@@ -93,7 +124,16 @@ export default function EditProfile() {
     }
   };
 
-  // Funcion para subir imagen a Firebase Storage
+  // ============================================
+  // FUNCIONES DE FIREBASE STORAGE
+  // ============================================
+
+  /**
+   * Sube una imagen al Firebase Storage en la ruta users/{userId}/profile.jpg
+   * @param {string} uri - URI local de la imagen seleccionada
+   * @param {string} userId - ID del usuario autenticado
+   * @returns {Promise<string>} URL de descarga de la imagen subida
+   */
   const uploadImageToStorage = async (uri, userId) => {
     try {
       const response = await fetch(uri);
@@ -110,7 +150,10 @@ export default function EditProfile() {
     }
   };
 
-  // Funcion para eliminar foto anterior de Storage
+  /**
+   * Elimina la foto de perfil anterior del usuario en Firebase Storage
+   * @param {string} userId - ID del usuario autenticado
+   */
   const deleteOldAvatar = async (userId) => {
     try {
       const storageRef = ref(storage, `users/${userId}/profile.jpg`);
@@ -121,7 +164,15 @@ export default function EditProfile() {
     }
   };
 
-  //Funcion para guardar cambios
+  // ============================================
+  // HANDLERS DE EVENTOS
+  // ============================================
+
+  /**
+   * Guarda los cambios del perfil en Firestore
+   * Si se cambió el avatar, lo sube a Storage primero
+   * Valida que el nombre no esté vacío
+   */
   const handleSave = async () => {
     if (!name.trim()) {
       setModalTitle("Error");
@@ -174,12 +225,18 @@ export default function EditProfile() {
     }
   };
 
-  //Funcion para cancelar cambios y regresar a perfil
+  /**
+   * Cancela los cambios y regresa a la pantalla de perfil
+   */
   const handleRemove = () => {
     navigation.goBack();
   };
 
-  // Funcion para cambiar avatar
+  /**
+   * Abre la galería de imágenes para seleccionar un nuevo avatar
+   * Solicita permisos si es necesario
+   * Permite editar la imagen en aspecto 1:1
+   */
   const changeAvatar = async () => {
     try {
       // Pedir permisos
@@ -213,14 +270,21 @@ export default function EditProfile() {
     }
   };
 
+  // ============================================
+  // RENDERIZADO
+  // ============================================
+
+  // Pantalla de carga mientras se obtienen los datos del usuario
   if (loading) {
     return (
       <SafeAreaView edges={["top", "bottom"]} style={profileStyles.container}>
+        {/* Header con botón de regreso */}
         <HeaderScreen
           title="Editar perfil"
           leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
           onLeftPress={() => navigation.goBack()}
         />
+        {/* Indicador de carga centrado */}
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
           <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={{ marginTop: 16, color: COLORS.textGray }}>
@@ -232,23 +296,30 @@ export default function EditProfile() {
     );
   }
 
+  // Pantalla principal de edición de perfil
   return (
     <SafeAreaView edges={["top", "bottom"]} style={profileStyles.container}>
+      {/* Header con botón de regreso */}
       <HeaderScreen
         title="Editar perfil"
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
         onLeftPress={() => navigation.goBack()}
       />
 
+      {/* KeyboardAvoidingView para evitar que el teclado tape los inputs */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Parte de perfil*/}
+          {/* ============================================ */}
+          {/* SECCIÓN DE AVATAR */}
+          {/* ============================================ */}
           <View style={profileStyles.profileCard}>
+            {/* Header con avatar y nombre */}
             <View style={profileStyles.cardHeader}>
+              {/* Avatar del usuario o icono placeholder */}
               {avatar ? (
                 <Image
                   source={{ uri: avatar }}
@@ -259,12 +330,14 @@ export default function EditProfile() {
                   <Ionicons name="person" size={40} color={COLORS.textGray} />
                 </View>
               )}
+              {/* Nombre y puesto del usuario */}
               <View style={profileStyles.nameAndRole}>
                 <Text style={profileStyles.cardName}>{name || 'Sin nombre'}</Text>
                 <Text style={profileStyles.cardRole}>{position || 'Usuario'}</Text>
               </View>
             </View>
 
+            {/* Botón para cambiar imagen de perfil */}
             <Pressable
               onPress={changeAvatar}
               style={({ pressed }) => [
@@ -277,10 +350,13 @@ export default function EditProfile() {
             </Pressable>
           </View>
 
-          {/* Informacion de perfil */}
+          {/* ============================================ */}
+          {/* SECCIÓN DE INFORMACIÓN PERSONAL */}
+          {/* ============================================ */}
           <View style={profileStyles.profileCard}>
             <Text style={profileStyles.sectionTitle}>Información</Text>
 
+            {/* Campo editable: Nombre completo */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Nombre completo</Text>
               <View style={[profileStyles.infoBox, styles.inputBox]}>
@@ -296,6 +372,7 @@ export default function EditProfile() {
               </View>
             </View>
 
+            {/* Campo de solo lectura: Puesto */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Puesto</Text>
               <View style={[profileStyles.infoBox, styles.inputBoxDisabled]}>
@@ -308,6 +385,7 @@ export default function EditProfile() {
               </View>
             </View>
 
+            {/* Campo de solo lectura: Experiencia */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Experiencia</Text>
               <View style={[profileStyles.infoBox, styles.inputBoxDisabled]}>
@@ -321,10 +399,13 @@ export default function EditProfile() {
             </View>
           </View>
 
-          {/* Contacto */}
+          {/* ============================================ */}
+          {/* SECCIÓN DE CONTACTO */}
+          {/* ============================================ */}
           <View style={profileStyles.profileCard}>
             <Text style={profileStyles.sectionTitle}>Contacto</Text>
 
+            {/* Campo de solo lectura: Email */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Correo electrónico</Text>
               <View style={[profileStyles.infoBox, styles.inputBoxDisabled]}>
@@ -338,6 +419,7 @@ export default function EditProfile() {
               </View>
             </View>
 
+            {/* Campo editable: Teléfono */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Teléfono</Text>
               <View style={[profileStyles.infoBox, styles.inputBox]}>
@@ -355,8 +437,11 @@ export default function EditProfile() {
             </View>
           </View>
 
-          {/* Guarda y cancela */}
+          {/* ============================================ */}
+          {/* BOTONES DE ACCIÓN */}
+          {/* ============================================ */}
           <View style={styles.actionsRow}>
+            {/* Botón para guardar cambios */}
             <Pressable
               style={({ pressed }) => [
                 styles.saveBtn,
@@ -376,6 +461,7 @@ export default function EditProfile() {
               </Text>
             </Pressable>
 
+            {/* Botón para cancelar y regresar */}
             <Pressable
               style={({ pressed }) => [
                 styles.removeBtn,
@@ -392,6 +478,7 @@ export default function EditProfile() {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* Modal para mostrar mensajes de éxito o error */}
       <InfoModal
         visible={showModal}
         onClose={() => setShowModal(false)}
@@ -399,6 +486,7 @@ export default function EditProfile() {
         message={modalMessage}
       />
 
+      {/* Footer con navegación */}
       <MenuFooter />
     </SafeAreaView>
   );

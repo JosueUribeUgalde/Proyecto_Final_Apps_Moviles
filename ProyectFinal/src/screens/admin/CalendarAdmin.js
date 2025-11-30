@@ -15,6 +15,7 @@ import ViewShot from 'react-native-view-shot';
 // 3. Componentes propios
 import { HeaderScreen, Banner, MenuFooterAdmin, ButtonLogin } from "../../components";
 import InfoModal from "../../components/InfoModal";
+import NotificationsModal from "../../components/NotificationsModal";
 
 // 4. Constantes y utilidades
 import { COLORS, RADIUS } from '../../components/constants/theme';
@@ -22,8 +23,10 @@ import { COLORS, RADIUS } from '../../components/constants/theme';
 // 4.5 Servicios de Firebase
 import { getCurrentUser } from "../../services/authService";
 import { getAdminProfile } from "../../services/companyService";
-import { getGroupsByIds } from "../../services/groupService";
-import { getPeticionesByIds } from "../../services/peticionService";
+import { getGroupsByIds, calculateWeeklyAttendanceData } from "../../services/groupService";
+import { getPeticionesByIds, getHistorialByGroupId, calculatePeticionStatus } from "../../services/peticionService";
+import { getAdminNotifications } from "../../services/notificationService";
+import { setBadgeCount } from "../../services/pushNotificationService";
 
 // 5. Estilos
 import styles from "../../styles/screens/admin/CalendarAdminStyles";
@@ -63,6 +66,13 @@ export default function CalendarAdmin({ navigation }) {
   const [adminData, setAdminData] = useState(null);
   const [groups, setGroupsData] = useState([]);
   const [allPendingRequests, setAllPendingRequests] = useState([]);
+  const [metricsData, setMetricsData] = useState(null);
+  const [attendanceChartData, setAttendanceChartData] = useState(null);
+  const [peticionStatus, setPeticionStatus] = useState(null);
+  
+  // Estados para notificaciones
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   
   // Referencias para capturar las gráficas como imágenes
   const lineChartRef = useRef();
@@ -72,7 +82,23 @@ export default function CalendarAdmin({ navigation }) {
   // Cargar datos del admin y sus peticiones al montar
   useEffect(() => {
     loadAdminDataAndPetitions();
+    loadNotifications();
   }, []);
+
+  // Función para cargar notificaciones del admin
+  const loadNotifications = async () => {
+    try {
+      const user = getCurrentUser();
+      if (user) {
+        const notifications = await getAdminNotifications(user.uid);
+        const unread = notifications.filter(n => !n.read).length;
+        setUnreadCount(unread);
+        await setBadgeCount(unread);
+      }
+    } catch (error) {
+      console.error('Error al cargar notificaciones:', error);
+    }
+  };
 
   const loadAdminDataAndPetitions = async () => {
     try {
@@ -132,7 +158,7 @@ export default function CalendarAdmin({ navigation }) {
 
   // Datos para las gráficas (después se conectarán con Firebase)
   // Simulando datos reales de asistencia - NÚMEROS ABSOLUTOS
-  const attendanceTrendData = {
+  const attendanceTrendData = attendanceChartData || {
     labels: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
     datasets: [
       {
@@ -253,6 +279,16 @@ export default function CalendarAdmin({ navigation }) {
           }
         }
         
+        // Calcular datos dinámicos para el reporte
+        const totalMembers = (selectedGroup?.memberIds && selectedGroup.memberIds.length > 0) ? selectedGroup.memberIds.length : 0;
+        const attendanceData = attendanceChartData?.data || [];
+        const attendanceLabels = attendanceChartData?.labels || ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+        
+        // Calcular porcentajes de asistencia
+        const attendancePercentages = attendanceData.map(count => 
+          totalMembers > 0 ? Math.round((count / totalMembers) * 100) : 0
+        );
+
         // Generar contenido HTML del reporte
         const html = `
           <html>
@@ -283,7 +319,7 @@ export default function CalendarAdmin({ navigation }) {
                 }
                 .metrics-grid {
                   display: grid;
-                  grid-template-columns: repeat(2, 1fr);
+                  grid-template-columns: repeat(3, 1fr);
                   gap: 15px;
                   margin-bottom: 30px;
                 }
@@ -348,8 +384,9 @@ export default function CalendarAdmin({ navigation }) {
             <body>
               <h1>Reporte de Asistencia</h1>
               <div class="header-info">
-                <p><strong>Grupo:</strong> ${selectedGroup ? selectedGroup.name : 'Todos los grupos'}</p>
-                <p><strong>Período:</strong> ${selectedFilter}</p>
+                <p><strong>Grupo:</strong> ${selectedGroup ? selectedGroup.name : 'Sin grupo seleccionado'}</p>
+                <p><strong>Total de Miembros:</strong> ${totalMembers}</p>
+                <p><strong>Período:</strong> Últimos 7 días</p>
                 <p><strong>Fecha de generación:</strong> ${new Date().toLocaleDateString('es-ES', { 
                   year: 'numeric', 
                   month: 'long', 
@@ -362,23 +399,18 @@ export default function CalendarAdmin({ navigation }) {
               <h2>Resumen General</h2>
               <div class="metrics-grid">
                 <div class="metric-card">
-                  <div class="metric-label">Asistencia Semanal</div>
-                  <div class="metric-value">92%</div>
-                  <div class="metric-sub">Esta Semana</div>
-                </div>
-                <div class="metric-card">
                   <div class="metric-label">Tasa de Cobertura</div>
-                  <div class="metric-value">96%</div>
+                  <div class="metric-value">${metricsData?.coverageRate || 0}%</div>
                   <div class="metric-sub">Ausencias cubiertas</div>
                 </div>
                 <div class="metric-card">
                   <div class="metric-label">Tiempo de Respuesta</div>
-                  <div class="metric-value">14m</div>
-                  <div class="metric-sub">Tiempo de reemplazo</div>
+                  <div class="metric-value">${metricsData?.avgResponseTime || 0}m</div>
+                  <div class="metric-sub">Promedio de atención</div>
                 </div>
                 <div class="metric-card">
                   <div class="metric-label">Reasignaciones</div>
-                  <div class="metric-value">38</div>
+                  <div class="metric-value">${metricsData?.reassignments || 0}</div>
                   <div class="metric-sub">Últimos 7 días</div>
                 </div>
               </div>
@@ -398,102 +430,78 @@ export default function CalendarAdmin({ navigation }) {
                   </tr>
                 </thead>
                 <tbody>
+                  ${attendanceLabels.map((day, index) => `
                   <tr>
-                    <td>Lunes</td>
-                    <td>23 / 25</td>
-                    <td>92%</td>
+                    <td>${day}</td>
+                    <td>${attendanceData[index] || 0} / ${totalMembers}</td>
+                    <td>${attendancePercentages[index] || 0}%</td>
                   </tr>
-                  <tr>
-                    <td>Martes</td>
-                    <td>22 / 25</td>
-                    <td>88%</td>
-                  </tr>
-                  <tr>
-                    <td>Miércoles</td>
-                    <td>24 / 25</td>
-                    <td>96%</td>
-                  </tr>
-                  <tr>
-                    <td>Jueves</td>
-                    <td>23 / 25</td>
-                    <td>92%</td>
-                  </tr>
-                  <tr>
-                    <td>Viernes</td>
-                    <td>21 / 25</td>
-                    <td>84%</td>
-                  </tr>
-                  <tr>
-                    <td>Sábado</td>
-                    <td>20 / 25</td>
-                    <td>80%</td>
-                  </tr>
-                  <tr>
-                    <td>Domingo</td>
-                    <td>22 / 25</td>
-                    <td>88%</td>
-                  </tr>
+                  `).join('')}
                 </tbody>
               </table>
 
               ${barChartImage ? `
-              <h2>Cobertura por Equipos</h2>
-              <img src="${barChartImage}" class="chart-image" alt="Gráfica de Cobertura" />
+              <h2>Estado de Peticiones</h2>
+              <img src="${barChartImage}" class="chart-image" alt="Gráfica de Estado de Peticiones" />
               ` : ''}
 
-              <h2>Cobertura por Equipos (Datos)</h2>
+              <h2>Estado de Peticiones (Últimos 7 días)</h2>
               <table>
                 <thead>
                   <tr>
-                    <th>Equipo</th>
-                    <th>Porcentaje de Cobertura</th>
+                    <th>Estado</th>
+                    <th>Cantidad</th>
+                    <th>Porcentaje</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td>Recepción</td>
-                    <td>90%</td>
+                    <td>Aprobadas</td>
+                    <td>${peticionStatus?.approved || 0}</td>
+                    <td>${peticionStatus?.approvedPercent || 0}%</td>
                   </tr>
                   <tr>
-                    <td>Cocina</td>
-                    <td>90%</td>
+                    <td>Rechazadas</td>
+                    <td>${peticionStatus?.rejected || 0}</td>
+                    <td>${peticionStatus?.rejectedPercent || 0}%</td>
                   </tr>
                   <tr>
-                    <td>Operaciones</td>
-                    <td>80%</td>
+                    <td>Pendientes</td>
+                    <td>${peticionStatus?.pending || 0}</td>
+                    <td>${peticionStatus?.pendingPercent || 0}%</td>
+                  </tr>
+                  <tr style="background-color: #E8F5E9;">
+                    <td><strong>Total</strong></td>
+                    <td><strong>${peticionStatus?.total || 0}</strong></td>
+                    <td><strong>100%</strong></td>
                   </tr>
                 </tbody>
               </table>
 
-              ${pieChartImage ? `
-              <h2>Métricas Principales</h2>
-              <img src="${pieChartImage}" class="chart-image" alt="Gráfica de Métricas" />
-              ` : ''}
-
-              <h2>Métricas Principales (Detalle)</h2>
+              <h2>Información del Grupo</h2>
               <table>
                 <thead>
                   <tr>
-                    <th>Métrica</th>
-                    <th>Valor</th>
-                    <th>Descripción</th>
+                    <th>Característica</th>
+                    <th>Detalle</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td>Tasa de Ausencias</td>
-                    <td>10 / 125</td>
-                    <td>8% de empleados ausentes</td>
+                    <td>Nombre del Grupo</td>
+                    <td>${selectedGroup?.name || 'N/A'}</td>
                   </tr>
                   <tr>
-                    <td>Asignaciones Automáticas</td>
-                    <td>26 / 30</td>
-                    <td>87% de turnos asignados automáticamente</td>
+                    <td>Total de Miembros</td>
+                    <td>${totalMembers}</td>
                   </tr>
                   <tr>
-                    <td>Ajustes Manuales</td>
-                    <td>4 / 34</td>
-                    <td>12% de cambios requirieron ajuste manual</td>
+                    <td>Descripción</td>
+                    <td>${selectedGroup?.description || 'Sin descripción'}</td>
+                  </tr>
+                  <tr>
+                    <td>Última Actualización</td>
+                    <td>${metricsData?.lastUpdated ? new Date(metricsData.lastUpdated.toDate()).toLocaleDateString('es-ES') : 'N/A'}</td>
                   </tr>
                 </tbody>
               </table>
@@ -518,8 +526,6 @@ export default function CalendarAdmin({ navigation }) {
           dialogTitle: 'Exportar Reporte de Asistencia',
           UTI: 'com.adobe.pdf'
         });
-
-        Alert.alert('Éxito', 'Reporte exportado correctamente');
       } catch (error) {
         console.error('Error al exportar PDF:', error);
         Alert.alert('Error', 'No se pudo exportar el reporte');
@@ -573,10 +579,60 @@ export default function CalendarAdmin({ navigation }) {
     return `${day} de ${month}`;
   };
 
-  const handleGroupSelect = (group) => {
+  const handleGroupSelect = async (group) => {
     setSelectedGroup(group);
     setShowGroupModal(false);
-    // Aquí se cargarán los datos específicos del grupo desde Firebase
+    
+    // Cargar métricas del grupo seleccionado
+    if (group && group.metrics) {
+      setMetricsData({
+        weeklyAttendance: group.metrics.weeklyAttendance || 0,
+        coverageRate: group.metrics.coverageRate || 0,
+        avgResponseTime: group.metrics.avgResponseTime || 0,
+        reassignments: group.metrics.reassignments || 0,
+        lastUpdated: group.metrics.lastUpdated
+      });
+    }
+
+    // Cargar datos de asistencia semanal y estado de peticiones
+    try {
+      const historial = await getHistorialByGroupId(group.id);
+      // Obtener el total de miembros - validar que sea > 0
+      const totalMembers = (group.memberIds && group.memberIds.length > 0) ? group.memberIds.length : 25;
+      
+      if (historial && historial.length > 0) {
+        const chartData = calculateWeeklyAttendanceData(historial, totalMembers);
+        setAttendanceChartData(chartData);
+      } else {
+        // Si no hay historial, usar datos por defecto
+        setAttendanceChartData({
+          labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+          data: [25, 25, 25, 25, 25, 25, 25]
+        });
+      }
+
+      // Calcular estado de peticiones
+      const pendingCount = group.peticionesPendientesIds?.length || 0;
+      const statusData = calculatePeticionStatus(historial, pendingCount, 7);
+      setPeticionStatus(statusData);
+    } catch (error) {
+      console.error("Error al cargar datos de asistencia:", error);
+      // Usar valores por defecto si hay error
+      const totalMembers = (group.memberIds && group.memberIds.length > 0) ? group.memberIds.length : 25;
+      setAttendanceChartData({
+        labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+        data: [totalMembers, totalMembers, totalMembers, totalMembers, totalMembers, totalMembers, totalMembers]
+      });
+      setPeticionStatus({
+        pending: group.peticionesPendientesIds?.length || 0,
+        approved: 0,
+        rejected: 0,
+        total: group.peticionesPendientesIds?.length || 0,
+        pendingPercent: 100,
+        approvedPercent: 0,
+        rejectedPercent: 0
+      });
+    }
   };
 
   return (
@@ -586,7 +642,8 @@ export default function CalendarAdmin({ navigation }) {
         leftIcon={<Ionicons name="arrow-back" size={24} color="black" />}
         rightIcon={<Ionicons name="notifications-outline" size={24} color="black" />}
         onLeftPress={() => navigation.goBack()}
-        onRightPress={() => {}}
+        onRightPress={() => setShowNotifications(true)}
+        badgeCount={unreadCount}
       />
       
       {showBanner && (
@@ -732,26 +789,20 @@ export default function CalendarAdmin({ navigation }) {
 
                 <View style={styles.metricsRow}>
                   <View style={styles.metricCard}>
-                    <Text style={styles.metricLabel}>Asistencia Semanal</Text>
-                    <Text style={styles.metricValue}>92%</Text>
-                    <Text style={styles.metricSub}>Esta Semana</Text>
-                  </View>
-
-                  <View style={styles.metricCard}>
                     <Text style={styles.metricLabel}>Tasa de Cobertura</Text>
-                    <Text style={styles.metricValue}>96%</Text>
+                    <Text style={styles.metricValue}>{metricsData?.coverageRate || 0}%</Text>
                     <Text style={styles.metricSub}>Ausencias cubiertas</Text>
                   </View>
 
                   <View style={styles.metricCard}>
                     <Text style={styles.metricLabel}>Tiempo de Respuesta</Text>
-                    <Text style={styles.metricValue}>14m</Text>
-                    <Text style={styles.metricSub}>Tiempo de reemplazo</Text>
+                    <Text style={styles.metricValue}>{metricsData?.avgResponseTime || 0}m</Text>
+                    <Text style={styles.metricSub}>Promedio de atención</Text>
                   </View>
 
                   <View style={styles.metricCard}>
                     <Text style={styles.metricLabel}>Reasignaciones</Text>
-                    <Text style={styles.metricValue}>38</Text>
+                    <Text style={styles.metricValue}>{metricsData?.reassignments || 0}</Text>
                     <Text style={styles.metricSub}>Últimos 7 días</Text>
                   </View>
                 </View>
@@ -769,78 +820,6 @@ export default function CalendarAdmin({ navigation }) {
 
           {selectedGroup && (
             <>
-              {/* GRÁFICOS ANALÍTICOS */}
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Filtros</Text>
-                </View>
-                <View style={styles.filterRow}>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.filterChip,
-                      selectedFilter === 'Esta semana' && styles.filterChipSelected,
-                      pressed && { opacity: 0.7 }
-                    ]}
-                    onPress={() => setSelectedFilter('Esta semana')}
-                  >
-                    <Text style={[
-                      styles.filterText,
-                      selectedFilter === 'Esta semana' && styles.filterTextSelected
-                    ]}>
-                      Esta semana
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.filterChip,
-                      selectedFilter === 'Últimos 30 días' && styles.filterChipSelected,
-                      pressed && { opacity: 0.7 }
-                    ]}
-                    onPress={() => setSelectedFilter('Últimos 30 días')}
-                  >
-                    <Text style={[
-                      styles.filterText,
-                      selectedFilter === 'Últimos 30 días' && styles.filterTextSelected
-                    ]}>
-                      Últimos 30 días
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.filterChip,
-                      selectedFilter === 'Trimestre' && styles.filterChipSelected,
-                      pressed && { opacity: 0.7 }
-                    ]}
-                    onPress={() => setSelectedFilter('Trimestre')}
-                  >
-                    <Text style={[
-                      styles.filterText,
-                      selectedFilter === 'Trimestre' && styles.filterTextSelected
-                    ]}>
-                      Trimestre
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.filterChip,
-                      selectedFilter === 'Año' && styles.filterChipSelected,
-                      pressed && { opacity: 0.7 }
-                    ]}
-                    onPress={() => setSelectedFilter('Año')}
-                  >
-                    <Text style={[
-                      styles.filterText,
-                      selectedFilter === 'Año' && styles.filterTextSelected
-                    ]}>
-                      Año
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-
               {/* Tendencia de Asistencia */}
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
@@ -857,14 +836,28 @@ export default function CalendarAdmin({ navigation }) {
                   style={{ backgroundColor: '#FFFFFF' }}
                 >
                   <View style={styles.chartContainer}>
-                    <LineChart
-                      data={attendanceTrendData}
-                      width={screenWidth * 0.9}
-                      height={220}
-                      chartConfig={chartConfig}
-                      style={styles.chart}
-                    />
-                    <Text style={styles.chartDescription}>Empleados presentes cada día (de 25 totales en el grupo)</Text>
+                    {attendanceChartData ? (
+                      <LineChart
+                        data={{
+                          labels: attendanceChartData.labels,
+                          datasets: [
+                            {
+                              data: attendanceChartData.data,
+                              color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                              strokeWidth: 3
+                            }
+                          ],
+                          legend: [`Empleados presentes (de ${(selectedGroup?.memberIds && selectedGroup.memberIds.length > 0) ? selectedGroup.memberIds.length : 25} totales)`]
+                        }}
+                        width={screenWidth * 0.9}
+                        height={220}
+                        chartConfig={chartConfig}
+                        style={styles.chart}
+                      />
+                    ) : (
+                      <Text style={styles.chartDescription}>Cargando datos de asistencia...</Text>
+                    )}
+                    <Text style={styles.chartDescription}>Empleados presentes cada día (de {(selectedGroup?.memberIds && selectedGroup.memberIds.length > 0) ? selectedGroup.memberIds.length : 25} totales en el grupo)</Text>
                   </View>
                 </ViewShot>
               </View>
@@ -872,7 +865,7 @@ export default function CalendarAdmin({ navigation }) {
               {/* Cobertura por Equipo */}
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Porcentaje de cobertura por grupos</Text>
+                  <Text style={styles.sectionTitle}>Estado de Peticiones - Últimos 7 días</Text>
                 </View>
 
                 <ViewShot 
@@ -885,92 +878,39 @@ export default function CalendarAdmin({ navigation }) {
                   style={{ backgroundColor: '#FFFFFF' }}
                 >
                   <View style={styles.chartContainer}>
-                    <BarChart
-                      data={teamCoverageData}
-                      width={screenWidth * 0.9}
-                      height={220}
-                      chartConfig={chartConfigWhite}
-                      style={styles.chart}
-                      showValuesOnTopOfBars
-                      fromZero
-                      yAxisSuffix="%"
-                    />
-                    <Text style={styles.chartDescription}>Porcentaje de ausencias cubiertas por cada grupo</Text>
+                    {peticionStatus ? (
+                      <BarChart
+                        data={{
+                          labels: ["Aprobadas", "Rechazadas", "Pendientes"],
+                          datasets: [
+                            {
+                              data: [
+                                peticionStatus.approved || 0,
+                                peticionStatus.rejected || 0,
+                                peticionStatus.pending || 0
+                              ]
+                            }
+                          ]
+                        }}
+                        width={screenWidth * 0.9}
+                        height={220}
+                        chartConfig={{
+                          ...chartConfigWhite,
+                          formatYLabel: () => '',
+                          yAxisLabelWidth: 0
+                        }}
+                        style={styles.chart}
+                        showValuesOnTopOfBars
+                        fromZero
+                      />
+                    ) : (
+                      <Text style={styles.chartDescription}>Cargando estado de peticiones...</Text>
+                    )}
+                    <Text style={styles.chartDescription}>Distribución de peticiones por estado</Text>
                   </View>
                 </ViewShot>
-
-                <View style={styles.topMetricsContainer}>
-                  <View style={styles.topMetricsHeader}>
-                    <Text style={styles.sectionTitle}>Métricas Principales</Text>
-                  </View>
-
-                  <ViewShot 
-                    ref={pieChartRef} 
-                    options={{ 
-                      format: 'jpg', 
-                      quality: 0.9,
-                      result: 'tmpfile'
-                    }}
-                    style={{ backgroundColor: '#FFFFFF' }}
-                  >
-                    <View style={styles.chartContainer}>
-                      <PieChart
-                        data={[
-                          {
-                            name: 'Ausencias',
-                            population: 10,
-                            color: COLORS.error,
-                            legendFontColor: COLORS.textBlack,
-                            legendFontSize: 12
-                          },
-                          {
-                            name: 'Asig. Auto',
-                            population: 26,
-                            color: COLORS.textGray,
-                            legendFontColor: COLORS.textBlack,
-                            legendFontSize: 12
-                          },
-                          {
-                            name: 'Ajustes',
-                            population: 4,
-                            color: COLORS.textGreen,
-                            legendFontColor: COLORS.textBlack,
-                            legendFontSize: 12
-                          }
-                        ]}
-                        width={screenWidth * 0.9}
-                        height={200}
-                        chartConfig={{
-                          color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                          labelColor: (opacity = 1) => COLORS.textBlack,
-                        }}
-                        accessor="population"
-                        backgroundColor="transparent"
-                        paddingLeft="15"
-                        absolute
-                        style={styles.chart}
-                        hasLegend={true}
-                        center={[10, 0]}
-                      />
-                    </View>
-                  </ViewShot>
-
-                  <View style={styles.metricsLegendContainer}>
-                    <View style={styles.legendItem}>
-                      <View style={[styles.legendDot, { backgroundColor: COLORS.error }]} />
-                      <Text style={styles.legendText}>Tasa Ausencias: 10 de 125 empleados (8%)</Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                      <View style={[styles.legendDot, { backgroundColor: COLORS.textGray }]} />
-                      <Text style={styles.legendText}>Asig. Auto: 26 de 30 turnos (87%)</Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                      <View style={[styles.legendDot, { backgroundColor: COLORS.textGreen }]} />
-                      <Text style={styles.legendText}>Ajustes Man: 4 de 34 cambios (12%)</Text>
-                    </View>
-                  </View>
-                </View>
               </View>
+
             </>
           )}
         </View>
@@ -1030,6 +970,16 @@ export default function CalendarAdmin({ navigation }) {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Modal de Notificaciones */}
+      <NotificationsModal
+        visible={showNotifications}
+        onClose={() => {
+          setShowNotifications(false);
+          loadNotifications();
+        }}
+        userRole="admin"
+      />
     </SafeAreaView>
   );
 }
