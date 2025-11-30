@@ -499,7 +499,7 @@ export default function ReplacementModal({
                             onPress={handleBackFromSelection}
                             disabled={loading}
                           >
-                            <Ionicons name="arrow-back" size={18} color={COLORS.textGray} />
+                            <Ionicons name="arrow-back" size={18} color={COLORS.textGreen} />
                             <Text style={styles.backButtonText}>Volver</Text>
                           </Pressable>
                         </>

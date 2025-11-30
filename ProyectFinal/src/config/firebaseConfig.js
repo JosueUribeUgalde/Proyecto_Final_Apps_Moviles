@@ -15,7 +15,7 @@ import {
   FIREBASE_APP_ID
 } from '@env';
 
-// Tu configuración de Firebase
+// Configuración de Firebase
 const firebaseConfig = {
   apiKey: FIREBASE_API_KEY,
   authDomain: FIREBASE_AUTH_DOMAIN,

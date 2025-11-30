@@ -1,25 +1,45 @@
+// ===========================
+// IMPORTACIONES
+// ===========================
+
+// Hooks de React
 import { useState, useEffect, useMemo } from 'react';
+
+// Componentes nativos de React Native
 import { Text, View, ScrollView, TextInput, Pressable, Modal, FlatList, ActivityIndicator, Image, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// Iconos y herramientas
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+
+// Componentes personalizados
 import { HeaderScreen, InfoModal, MenuFooterAdmin } from "../../components";
 import NotificationsModal from "../../components/NotificationsModal";
+
+// Estilos y tema
 import { COLORS } from '../../components/constants/theme';
 import styles from "../../styles/screens/admin/MembersAdminStyles";
 import CalendarAdminStyles from "../../styles/screens/admin/CalendarAdminStyles";
-// Servicios de Firebase
+
+// ===========================
+// SERVICIOS DE FIREBASE
+// ===========================
 import { getCurrentUser } from "../../services/authService";
-import { doc, getDoc, collection, query, where, getDocs, updateDoc, arrayRemove } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../config/firebaseConfig";
 import { createGroup, getGroupsByIds, updateGroup, deleteGroup, removeMemberFromGroup } from "../../services/groupService";
 import { removeUserFromGroup } from "../../services/userService";
 import { getAdminNotifications } from "../../services/notificationService";
 import { setBadgeCount } from "../../services/pushNotificationService";
 
-// Días de la semana para los chips
+// ===========================
+// CONSTANTES
+// ===========================
+
+// Días de la semana para selección de disponibilidad
 const WEEK_DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 const parseDays = (value) => {
@@ -30,11 +50,19 @@ const parseDays = (value) => {
     .filter(d => d && d !== 'N/A');
 };
 
+/**
+ * Formatea un array de días a una cadena separada por ' • '
+ * Ejemplo: ['Lun', 'Mar', 'Mié'] → "Lun • Mar • Mié"
+ */
 const formatDays = (days) => {
   if (!days || !days.length) return '';
   return days.join(' • ');
 };
 
+/**
+ * Convierte una cadena de tiempo (HH:MM) a un objeto Date
+ * Se usa para los time pickers
+ */
 const parseTimeToDate = (value, fallbackHour = 8) => {
   const date = new Date();
   let hours = fallbackHour;
@@ -54,6 +82,9 @@ const parseTimeToDate = (value, fallbackHour = 8) => {
   return date;
 };
 
+/**
+ * Formatea un objeto Date a una cadena HH:MM
+ */
 const formatTime = (date) => {
   if (!date) return '';
   const h = date.getHours().toString().padStart(2, '0');
@@ -61,6 +92,10 @@ const formatTime = (date) => {
   return `${h}:${m}`;
 };
 
+/**
+ * Convierte una hora (HH:MM) a minutos desde medianoche
+ * Se usa para validar que el horario de inicio sea menor al de fin
+ */
 const timeToMinutes = (value) => {
   if (!value) return null;
   const [h, m = '0'] = value.split(':');
@@ -70,148 +105,105 @@ const timeToMinutes = (value) => {
   return hours * 60 + minutes;
 };
 
-// Mock data para desarrollo
-const MOCK_GROUPS = [
-  { id: 1, name: 'Recepción', memberCount: 12 },
-  { id: 2, name: 'Cocina', memberCount: 8 },
-  { id: 3, name: 'Turno Nocturno', memberCount: 5 },
-  { id: 4, name: 'Limpieza', memberCount: 15 },
-];
+// ===========================
+// COMPONENTE PRINCIPAL
+// ===========================
 
-const MOCK_MEMBERS = [
-  {
-    id: 1,
-    name: 'Alex Johnson',
-    group: 'Recepción',
-    groupId: 1,
-    nextShift: 'Hoy, 2:00 PM - 10:00 PM',
-    experience: '3 años',
-    status: 'Disponible',
-    shiftsThisWeek: 4,
-    lastActive: '1h',
-    avatar: null,
-  },
-  {
-    id: 2,
-    name: 'Priya Patel',
-    group: 'Cocina',
-    groupId: 2,
-    nextShift: 'Mañana, 6:00 AM - 2:00 PM',
-    experience: '5 años',
-    status: 'Libre hoy',
-    shiftsThisWeek: 3,
-    lastActive: '3h',
-    avatar: null,
-  },
-  {
-    id: 3,
-    name: 'Diego Ramos',
-    group: 'Turno Nocturno',
-    groupId: 3,
-    nextShift: 'Viernes, 10:00 PM - 6:00 AM',
-    experience: '2 años',
-    status: 'Permiso solicitado',
-    shiftsThisWeek: 2,
-    lastActive: 'ayer',
-    avatar: null,
-  },
-  {
-    id: 4,
-    name: 'María González',
-    group: 'Limpieza',
-    groupId: 4,
-    nextShift: 'Hoy, 8:00 AM - 4:00 PM',
-    experience: '4 años',
-    status: 'Disponible',
-    shiftsThisWeek: 5,
-    lastActive: '30min',
-    avatar: null,
-  },
-  {
-    id: 5,
-    name: 'John Smith',
-    group: 'Recepción',
-    groupId: 1,
-    nextShift: 'Mañana, 10:00 AM - 6:00 PM',
-    experience: '1 año',
-    status: 'Disponible',
-    shiftsThisWeek: 4,
-    lastActive: '2h',
-    avatar: null,
-  },
-];
-
+/**
+ * MembersAdmin: Pantalla de gestión de miembros del grupo
+ * 
+ * Permite al administrador:
+ * - Ver lista de miembros de un grupo seleccionado
+ * - Buscar miembros por nombre o grupo
+ * - Crear, editar y eliminar grupos
+ * - Editar información de miembros (horarios, puesto, experiencia)
+ * - Remover miembros de un grupo
+ * - Compartir código de invitación del grupo
+ * - Ver advertencias de datos incompletos
+ */
 export default function MembersAdmin({ navigation }) {
-  // Estados para carga de datos
-  const [loading, setLoading] = useState(true);
-  const [adminData, setAdminData] = useState(null);
+  // ===========================
+  // ESTADOS
+  // ===========================
 
-  // Estado para búsqueda y filtros
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedGroupFilter, setSelectedGroupFilter] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState(null);
-  const [showGroupSelectModal, setShowGroupSelectModal] = useState(false);
+  // Estados para carga de datos desde Firebase
+  const [loading, setLoading] = useState(true); // Indica si se están cargando datos iniciales
+  const [adminData, setAdminData] = useState(null); // Datos del administrador logueado
 
-  // Estado para modales
-  const [showManageGroupsModal, setShowManageGroupsModal] = useState(false);
-  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
-  const [showEditGroupModal, setShowEditGroupModal] = useState(false);
-  const [showDeleteGroupModal, setShowDeleteGroupModal] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [showInviteCodeModal, setShowInviteCodeModal] = useState(false);
+  // Estados para búsqueda y filtros
+  const [searchQuery, setSearchQuery] = useState(''); // Texto de búsqueda de miembros
+  const [selectedGroup, setSelectedGroup] = useState(null); // Grupo actualmente seleccionado
+  const [showGroupSelectModal, setShowGroupSelectModal] = useState(false); // Modal de selección de grupo // Modal de selección de grupo
 
-  // Estado para formularios
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newGroupDescription, setNewGroupDescription] = useState('');
-  const [editingGroup, setEditingGroup] = useState(null);
-  const [deletingGroup, setDeletingGroup] = useState(null);
+  // Estados para control de modales
+  const [showManageGroupsModal, setShowManageGroupsModal] = useState(false); // Modal de gestión general de grupos (con 4 opciones)
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false); // Modal para crear nuevo grupo
+  const [showEditGroupModal, setShowEditGroupModal] = useState(false); // Modal para editar grupo existente
+  const [showDeleteGroupModal, setShowDeleteGroupModal] = useState(false); // Modal para eliminar grupo
+  const [showShareModal, setShowShareModal] = useState(false); // Modal para compartir directorio del equipo
+  const [showInviteCodeModal, setShowInviteCodeModal] = useState(false); // Modal con código de invitación // Modal con código de invitación
 
-  // Estado para modal de información
-  const [showModal, setShowModal] = useState(false);
-  const [modalTitle, setModalTitle] = useState('');
-  const [modalMessage, setModalMessage] = useState('');
+  // Estados para formularios de grupos
+  const [newGroupName, setNewGroupName] = useState(''); // Nombre del nuevo grupo a crear
+  const [newGroupDescription, setNewGroupDescription] = useState(''); // Descripción del nuevo grupo
+  const [editingGroup, setEditingGroup] = useState(null); // Grupo que se está editando
+  const [deletingGroup, setDeletingGroup] = useState(null); // Grupo que se va a eliminar
 
-  // Estado para datos (cargados desde Firebase)
-  const [groups, setGroups] = useState([]);
-  const [members, setMembers] = useState([]);
+  // Estados para modal de información general (InfoModal)
+  const [showModal, setShowModal] = useState(false); // Controla visibilidad del modal
+  const [modalTitle, setModalTitle] = useState(''); // Título del mensaje (Éxito/Error)
+  const [modalMessage, setModalMessage] = useState(''); // Mensaje detallado
+
+  // Estados para datos cargados desde Firebase
+  const [groups, setGroups] = useState([]); // Lista de grupos del administrador
+  const [members, setMembers] = useState([]); // Lista de miembros del grupo seleccionado // Lista de miembros del grupo seleccionado
 
   // Estados para edición de miembros
-  const [showEditMemberModal, setShowEditMemberModal] = useState(false);
-  const [editingMember, setEditingMember] = useState(null);
-  const [editFormData, setEditFormData] = useState({
-    position: '',
-    experience: '',
-    availableDays: '',
-    startTime: '08:00',
-    endTime: '17:00',
-    mealTime: '',
-    daysOff: '',
+  const [showEditMemberModal, setShowEditMemberModal] = useState(false); // Modal de edición de miembro
+  const [editingMember, setEditingMember] = useState(null); // Miembro que se está editando
+  const [editFormData, setEditFormData] = useState({ // Datos del formulario de edición
+    position: '', // Puesto del miembro
+    experience: '', // Años de experiencia
+    availableDays: '', // Días disponibles (formato: "Lun • Mar • Mié")
+    startTime: '08:00', // Hora de inicio de jornada
+    endTime: '17:00', // Hora de fin de jornada
+    mealTime: '', // Hora de comida
+    daysOff: '', // Días libres
   });
-  const [timePickerIOS, setTimePickerIOS] = useState({
-    field: null,
-    value: new Date(),
-    visible: false,
+  const [timePickerIOS, setTimePickerIOS] = useState({ // Estado para time picker en iOS
+    field: null, // Campo que se está editando ('startTime', 'endTime', 'mealTime')
+    value: new Date(), // Valor actual del picker
+    visible: false, // Visibilidad del picker
   });
 
   // Estados para notificaciones
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false); // Modal de notificaciones
+  const [unreadCount, setUnreadCount] = useState(0); // Cantidad de notificaciones no leídas // Cantidad de notificaciones no leídas
 
-  // Días seleccionados (derivados del formulario de edición)
+  // ===========================
+  // VALORES COMPUTADOS (useMemo)
+  // ===========================
+
+  // Días de trabajo seleccionados (parsea availableDays para mostrarlo en chips)
   const selectedWorkDays = useMemo(
     () => parseDays(editFormData.availableDays),
     [editFormData.availableDays],
   );
+  
+  // Días libres seleccionados (parsea daysOff para mostrarlo en chips)
   const selectedOffDays = useMemo(
     () => parseDays(editFormData.daysOff),
     [editFormData.daysOff],
   );
 
+  // ===========================
+  // EFECTOS (useEffect)
+  // ===========================
+
   // Cargar datos del admin al montar el componente
   useEffect(() => {
-    loadAdminData();
-    loadNotifications();
+    loadAdminData(); // Cargar grupos del admin
+    loadNotifications(); // Cargar notificaciones no leídas
   }, []);
 
   // Función para cargar notificaciones
@@ -229,14 +221,10 @@ export default function MembersAdmin({ navigation }) {
     }
   };
 
-  // Recargar miembros cuando cambia el grupo seleccionado
-  useEffect(() => {
-    if (selectedGroup) {
-      loadGroupMembers(selectedGroup.id);
-    }
-  }, [selectedGroup]);
-
-  // Función para cargar datos del administrador y sus grupos
+  /**
+   * Carga los datos del administrador y sus grupos desde Firebase
+   * Se ejecuta al montar el componente
+   */
   const loadAdminData = async () => {
     try {
       const user = getCurrentUser();
@@ -277,7 +265,10 @@ export default function MembersAdmin({ navigation }) {
     }
   };
 
-  // Función para cargar miembros de un grupo específico
+  /**
+   * Carga los miembros de un grupo específico desde Firebase
+   * @param {string} groupId - ID del grupo a cargar
+   */
   const loadGroupMembers = async (groupId) => {
     try {
       // Obtener el grupo para acceder a su array de memberIds
@@ -349,7 +340,14 @@ export default function MembersAdmin({ navigation }) {
     }
   };
 
-  // Funciones de filtrado
+  // ===========================
+  // FUNCIONES DE FILTRADO
+  // ===========================
+
+  /**
+   * Filtra los miembros según el texto de búsqueda
+   * Si no hay búsqueda activa, muestra todos los miembros del grupo seleccionado
+   */
   const filteredMembers = members.filter(member => {
     const matchesSearch = member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (member.group && member.group.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -364,7 +362,14 @@ export default function MembersAdmin({ navigation }) {
     return true;
   });
 
-  // CRUD de grupos
+  // ===========================
+  // FUNCIONES CRUD DE GRUPOS
+  // ===========================
+
+  /**
+   * Crea un nuevo grupo en Firebase
+   * Valida que el nombre no esté vacío
+   */
   const handleCreateGroup = async () => {
     if (!newGroupName.trim()) {
       setModalTitle('Error');
@@ -401,6 +406,10 @@ export default function MembersAdmin({ navigation }) {
     }
   };
 
+  /**
+   * Actualiza un grupo existente en Firebase
+   * Permite cambiar nombre y descripción
+   */
   const handleEditGroup = async () => {
     if (!editingGroup || !editingGroup.name.trim()) {
       setModalTitle('Error');
@@ -436,6 +445,10 @@ export default function MembersAdmin({ navigation }) {
     }
   };
 
+  /**
+   * Elimina un grupo de Firebase
+   * Valida que el grupo no tenga miembros antes de eliminar
+   */
   const handleDeleteGroup = async () => {
     if (!deletingGroup) return;
 
@@ -480,6 +493,10 @@ export default function MembersAdmin({ navigation }) {
     }
   };
 
+  /**
+   * Función placeholder para compartir directorio
+   * TODO: Implementar funcionalidad completa de compartir
+   */
   const handleShare = () => {
     // TODO: Implement share functionality
     setShowShareModal(false);
@@ -488,6 +505,9 @@ export default function MembersAdmin({ navigation }) {
     setShowModal(true);
   };
 
+  /**
+   * Copia el código de invitación del grupo al portapapeles
+   */
   const handleCopyInviteCode = async () => {
     if (selectedGroup?.inviteCode) {
       await Clipboard.setStringAsync(selectedGroup.inviteCode);
@@ -497,7 +517,14 @@ export default function MembersAdmin({ navigation }) {
     }
   };
 
-  // Verificar si un miembro tiene datos incompletos
+  // ===========================
+  // FUNCIONES DE EDICIÓN DE MIEMBROS
+  // ===========================
+
+  /**
+   * Verifica si un miembro tiene datos incompletos
+   * Se usa para mostrar el icono de advertencia en la card
+   */
   const hasIncompleteData = (member) => {
     return !member.position ||
       !member.experience ||
@@ -506,7 +533,10 @@ export default function MembersAdmin({ navigation }) {
       !member.availableDays || member.availableDays === 'N/A';
   };
 
-  // Abrir modal de edición de miembro
+  /**
+   * Abre el modal de edición de miembro
+   * Pre-carga el formulario con los datos actuales del miembro
+   */
   const handleOpenEditMember = (member) => {
     setEditingMember(member);
     setEditFormData({
@@ -521,7 +551,15 @@ export default function MembersAdmin({ navigation }) {
     setShowEditMemberModal(true);
   };
 
-  // Guardar cambios del miembro
+  /**
+   * Guarda los cambios del miembro en Firebase
+   * Valida:
+   * - Puesto no vacío
+   * - Al menos un día de trabajo seleccionado
+   * - Días libres no coincidan con días de trabajo
+   * - Horarios válidos (inicio < fin)
+   * - Horario de comida dentro de la jornada
+   */
   const handleSaveEditMember = async () => {
     const workDays = parseDays(editFormData.availableDays);
     const offDays = parseDays(editFormData.daysOff);
@@ -617,7 +655,10 @@ export default function MembersAdmin({ navigation }) {
     }
   };
 
-  // Remover miembro del grupo
+  /**
+   * Remueve un miembro del grupo actual
+   * Actualiza tanto la colección 'groups' como 'users'
+   */
   const handleRemoveMemberFromGroup = async () => {
     if (!editingMember || !selectedGroup) return;
 
@@ -649,7 +690,14 @@ export default function MembersAdmin({ navigation }) {
     }
   };
 
-  // Time picker genérico (inicio, fin, comida)
+  // ===========================
+  // FUNCIONES DE UI Y UTILIDADES
+  // ===========================
+
+  /**
+   * Abre el time picker nativo según la plataforma (Android/iOS)
+   * @param {string} field - Campo a editar ('startTime', 'endTime', 'mealTime')
+   */
   const openTimePicker = (field) => {
     const currentValue = editFormData[field];
     const initialDate = parseTimeToDate(
@@ -678,6 +726,9 @@ export default function MembersAdmin({ navigation }) {
     }
   };
 
+  /**
+   * Retorna el estilo correspondiente según el estado del miembro
+   */
   const getStatusStyle = (status) => {
     if (status === 'Disponible') return styles.statusAvailable;
     if (status === 'Libre hoy') return styles.statusOff;
@@ -685,6 +736,10 @@ export default function MembersAdmin({ navigation }) {
     return styles.statusDefault;
   };
 
+  /**
+   * Maneja la selección de un grupo desde el modal
+   * Carga automáticamente los miembros del grupo
+   */
   const handleGroupSelect = (group) => {
     setSelectedGroup(group);
     setShowGroupSelectModal(false);
@@ -692,7 +747,14 @@ export default function MembersAdmin({ navigation }) {
     loadGroupMembers(group.id);
   };
 
-  // Render functions for FlatList
+  // ===========================
+  // FUNCIONES DE RENDERIZADO (FlatList)
+  // ===========================
+
+  /**
+   * Renderiza una card de miembro
+   * Muestra diferentes layouts según si hay búsqueda activa o no
+   */
   const renderMemberCard = ({ item: member }) => {
     // Si hay búsqueda activa, mostrar todos los resultados
     if (searchQuery) {
@@ -784,6 +846,14 @@ export default function MembersAdmin({ navigation }) {
     );
   };
 
+  /**
+   * Renderiza el header de la lista
+   * Incluye:
+   * - Barra de búsqueda
+   * - Selector de grupo
+   * - Botones de acción (Crear, Editar, Eliminar, Agregar Miembro)
+   * - Banner de advertencia si hay datos incompletos
+   */
   const renderListHeader = () => (
     <>
       {/* Team Directory Section */}
@@ -922,6 +992,11 @@ export default function MembersAdmin({ navigation }) {
     </>
   );
 
+  /**
+   * Renderiza el footer de la lista
+   * Muestra la distribución de roles por grupo
+   * Si no hay grupo seleccionado, muestra mensaje informativo
+   */
   const renderListFooter = () => {
     // Si hay búsqueda activa, no mostrar distribución
     if (searchQuery) {
@@ -953,7 +1028,7 @@ export default function MembersAdmin({ navigation }) {
         {/* Role Distribution Section */}
         <View style={styles.distributionCard}>
           <View style={styles.distributionHeader}>
-            <Text style={styles.distributionTitle}>Distribución de Roles</Text>
+            <Text style={styles.distributionTitle}>Distribucion de miembros en grupos</Text>
           </View>
           {groups.length > 0 ? (
             groups.map(group => (
@@ -972,6 +1047,13 @@ export default function MembersAdmin({ navigation }) {
     );
   };
 
+  /**
+   * Renderiza el componente cuando la lista está vacía
+   * Muestra mensajes diferentes según el contexto:
+   * - Búsqueda sin resultados
+   * - Grupo sin miembros
+   * - Sin grupo seleccionado
+   */
   const renderEmptyComponent = () => {
     // Si hay búsqueda activa y no hay resultados
     if (searchQuery) {
@@ -1000,7 +1082,11 @@ export default function MembersAdmin({ navigation }) {
     return null;
   };
 
-  // Pantalla de carga mientras se obtienen los datos
+  // ===========================
+  // RENDERIZADO PRINCIPAL
+  // ===========================
+
+  // Pantalla de carga mientras se cargan los datos iniciales
   if (loading) {
     return (
       <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
