@@ -341,7 +341,7 @@ export default StyleSheet.create({
   confirmButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.textGreen,
+    color: COLORS.textWhite,
   },
   
   // Botón cancelar/secundario (borde)

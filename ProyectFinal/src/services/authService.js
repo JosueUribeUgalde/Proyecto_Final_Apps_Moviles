@@ -1,4 +1,17 @@
-// Servicio de Autenticación con Firebase
+/**
+ * authService.js
+ * 
+ * Servicio de Autenticación con Firebase
+ * Gestiona todas las operaciones de autenticación y autorización:
+ * - Login y registro de usuarios
+ * - Login específico para empresas
+ * - Recuperación de contraseñas
+ * - Gestión de sesiones
+ * - Verificación de roles (user, admin, company)
+ * 
+ * Integración con Firebase Authentication y Firestore
+ */
+
 import {
   signInWithEmailAndPassword,
   signOut,
@@ -11,12 +24,20 @@ import { auth, db } from '../config/firebaseConfig';
 
 /**
  * Login de usuario (Admin o User normal)
- * @param {string} email - Correo electrónico
- * @param {string} password - Contraseña
- * @returns {Promise<Object>} - Usuario autenticado
+ * 
+ * Autentica usuarios mediante Firebase Authentication
+ * No verifica rol específico, solo credenciales válidas
+ * 
+ * @param {string} email - Correo electrónico del usuario
+ * @param {string} password - Contraseña del usuario
+ * @returns {Promise<Object>} Objeto con resultado:
+ *   - success: boolean - Indica si el login fue exitoso
+ *   - user: Object|null - Datos del usuario autenticado
+ *   - message: string - Mensaje descriptivo del resultado
  */
 export const loginUser = async (email, password) => {
   try {
+    // Autenticar con Firebase usando email y contraseña
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return {
       success: true,
@@ -33,20 +54,31 @@ export const loginUser = async (email, password) => {
 };
 
 /**
- * Login de empresa: exige que exista documento en la coleccion companies
- * @param {string} email - Correo de la empresa
- * @param {string} password - Contrasena
- * @returns {Promise<Object>} - Resultado de autenticacion
+ * Login de empresa: exige que exista documento en la colección companies
+ * 
+ * Autentica empresas verificando que exista un perfil de empresa en Firestore
+ * Si las credenciales son válidas pero no existe perfil de empresa,
+ * cierra la sesión automáticamente para mantener la seguridad
+ * 
+ * @param {string} email - Correo electrónico de la empresa
+ * @param {string} password - Contraseña de la empresa
+ * @returns {Promise<Object>} Objeto con resultado:
+ *   - success: boolean - Indica si el login fue exitoso
+ *   - user: Object|null - Datos del usuario autenticado
+ *   - company: Object - Datos del perfil de empresa (solo si success=true)
+ *   - message: string - Mensaje descriptivo del resultado
  */
 export const loginCompany = async (email, password) => {
   try {
+    // Autenticar con Firebase
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
+    // Verificar que existe documento en la colección 'companies'
     const companySnap = await getDoc(doc(db, 'companies', user.uid));
 
     if (!companySnap.exists()) {
-      // Cerrar sesion para evitar que quede autenticado un usuario sin perfil de empresa
+      // Cerrar sesión para evitar que quede autenticado sin perfil de empresa
       await signOut(auth);
       return {
         success: false,
@@ -72,12 +104,20 @@ export const loginCompany = async (email, password) => {
 
 /**
  * Registro de nuevo usuario (solo para users normales, NO admin)
- * @param {string} email - Correo electrónico
- * @param {string} password - Contraseña
- * @returns {Promise<Object>} - Usuario creado
+ * 
+ * Crea una nueva cuenta en Firebase Authentication
+ * Los administradores deben ser creados mediante proceso separado
+ * 
+ * @param {string} email - Correo electrónico del nuevo usuario
+ * @param {string} password - Contraseña (mínimo 8 caracteres)
+ * @returns {Promise<Object>} Objeto con resultado:
+ *   - success: boolean - Indica si el registro fue exitoso
+ *   - user: Object|null - Datos del usuario creado
+ *   - message: string - Mensaje descriptivo del resultado
  */
 export const registerUser = async (email, password) => {
   try {
+    // Crear nueva cuenta en Firebase Authentication
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     return {
       success: true,
@@ -95,10 +135,17 @@ export const registerUser = async (email, password) => {
 
 /**
  * Cerrar sesión
- * @returns {Promise<Object>}
+ * 
+ * Cierra la sesión actual del usuario en Firebase
+ * Limpia el estado de autenticación y tokens
+ * 
+ * @returns {Promise<Object>} Objeto con resultado:
+ *   - success: boolean - Indica si el cierre fue exitoso
+ *   - message: string - Mensaje descriptivo del resultado
  */
 export const logoutUser = async () => {
   try {
+    // Cerrar sesión en Firebase Authentication
     await signOut(auth);
     return {
       success: true,
@@ -114,11 +161,18 @@ export const logoutUser = async () => {
 
 /**
  * Enviar email para restablecer contraseña
- * @param {string} email - Correo electrónico
- * @returns {Promise<Object>}
+ * 
+ * Envía un correo con enlace para restablecer contraseña
+ * El usuario recibirá un email de Firebase con instrucciones
+ * 
+ * @param {string} email - Correo electrónico del usuario
+ * @returns {Promise<Object>} Objeto con resultado:
+ *   - success: boolean - Indica si el envío fue exitoso
+ *   - message: string - Mensaje descriptivo del resultado
  */
 export const resetPassword = async (email) => {
   try {
+    // Enviar email de recuperación mediante Firebase
     await sendPasswordResetEmail(auth, email);
     return {
       success: true,
@@ -134,7 +188,11 @@ export const resetPassword = async (email) => {
 
 /**
  * Obtener usuario actual
- * @returns {Object|null} - Usuario actual o null
+ * 
+ * Retorna el usuario actualmente autenticado
+ * Si no hay sesión activa, retorna null
+ * 
+ * @returns {Object|null} Usuario actual de Firebase o null si no hay sesión
  */
 export const getCurrentUser = () => {
   return auth.currentUser;
@@ -142,8 +200,13 @@ export const getCurrentUser = () => {
 
 /**
  * Escuchar cambios en el estado de autenticación
+ * 
+ * Observer que se ejecuta cuando el usuario inicia o cierra sesión
+ * Útil para actualizar la UI cuando cambia el estado de autenticación
+ * 
  * @param {Function} callback - Función que se ejecuta cuando cambia el estado
- * @returns {Function} - Función para dejar de escuchar
+ *   Recibe el usuario actual como parámetro (o null si cerró sesión)
+ * @returns {Function} Función unsubscribe para dejar de escuchar cambios
  */
 export const onAuthChange = (callback) => {
   return onAuthStateChanged(auth, callback);
@@ -151,13 +214,19 @@ export const onAuthChange = (callback) => {
 
 /**
  * Obtener el rol del usuario autenticado
- * Verifica en las colecciones: users, admins y companies
- * @param {string} userId - ID del usuario autenticado
- * @returns {Promise<Object>} - {role: string, data: Object}
+ * 
+ * Verifica en las colecciones de Firestore para determinar el tipo de usuario
+ * Orden de verificación: users → admins → companies
+ * 
+ * @param {string} userId - ID del usuario autenticado (UID de Firebase)
+ * @returns {Promise<Object>} Objeto con:
+ *   - role: string|null - Tipo de usuario ('user', 'admin', 'company' o null)
+ *   - data: Object|null - Datos del perfil del usuario
+ *   - error: string - Mensaje de error (solo si hubo error)
  */
 export const getUserRole = async (userId) => {
   try {
-    // 1. Verificar si es usuario normal (colección users)
+    // Verificación 1: Buscar en colección 'users' (usuarios normales/empleados)
     const userDoc = await getDoc(doc(db, 'users', userId));
     if (userDoc.exists()) {
       return {
@@ -166,7 +235,7 @@ export const getUserRole = async (userId) => {
       };
     }
 
-    // 2. Verificar si es administrador (colección admins)
+    // Verificación 2: Buscar en colección 'admins' (administradores)
     const adminDoc = await getDoc(doc(db, 'admins', userId));
     if (adminDoc.exists()) {
       return {
@@ -175,7 +244,7 @@ export const getUserRole = async (userId) => {
       };
     }
 
-    // 3. Verificar si es empresa (colección companies)
+    // Verificación 3: Buscar en colección 'companies' (empresas)
     const companyDoc = await getDoc(doc(db, 'companies', userId));
     if (companyDoc.exists()) {
       return {
@@ -184,13 +253,14 @@ export const getUserRole = async (userId) => {
       };
     }
 
-    // Si no se encuentra en ninguna colección
+    // Usuario autenticado pero sin perfil en ninguna colección
+    // Esto puede ocurrir si se creó la cuenta pero no se completó el registro
     return {
       role: null,
       data: null
     };
   } catch (error) {
-    console.error('Error al obtener rol del usuario:', error);
+    // Error al consultar Firestore (problemas de red, permisos, etc.)
     return {
       role: null,
       data: null,
@@ -200,33 +270,44 @@ export const getUserRole = async (userId) => {
 };
 
 
-//Esta funcion va estar en modo prueba-Josue owner
 /**
  * Verificar si un email es de administrador
- * En producción, esto debería verificarse contra Firestore o una base de datos
- * Por ahora, verificamos el dominio del email o una lista específica
- * @param {string} email - Correo electrónico
- * @returns {boolean}
+ * 
+ * NOTA: Esta función está en modo prueba
+ * En producción, se debe verificar contra Firestore o base de datos
+ * Actualmente usa lista hardcodeada de emails permitidos
+ * 
+ * @param {string} email - Correo electrónico a verificar
+ * @returns {boolean} true si es email de admin, false en caso contrario
+ * 
+ * @todo Migrar a verificación en Firestore para producción
+ * @author Josue (owner)
  */
 export const isAdminEmail = (email) => {
-  // Lista de emails de admin permitidos
+  // Lista estática de emails de administrador permitidos
+  // TODO: Reemplazar con consulta a Firestore en producción
   const adminEmails = [
     'admin@empresa.com',
     'admin@correo.com',
-    // Agrega más emails de admin aquí
+    // Agregar más emails de admin según necesidad
   ];
 
-  // Verificar si el email está en la lista de admins
+  // Verificar si el email (normalizado a minúsculas) está en la lista
   return adminEmails.includes(email.toLowerCase());
-
 };
 
 /**
  * Obtener mensaje de error en español
- * @param {string} errorCode - Código de error de Firebase
- * @returns {string} - Mensaje de error
+ * 
+ * Traduce códigos de error de Firebase a mensajes amigables en español
+ * Mejora la experiencia de usuario mostrando errores comprensibles
+ * 
+ * @param {string} errorCode - Código de error de Firebase Authentication
+ * @returns {string} Mensaje de error traducido y descriptivo
+ * @private
  */
 const getErrorMessage = (errorCode) => {
+  // Mapeo de códigos de error de Firebase a mensajes en español
   const errorMessages = {
     'auth/invalid-email': 'El correo electrónico no es válido',
     'auth/user-disabled': 'Esta cuenta ha sido deshabilitada',
