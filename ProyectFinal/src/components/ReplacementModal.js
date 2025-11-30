@@ -6,6 +6,7 @@ import { getDoc, doc } from "firebase/firestore";
 import { db } from "../config/firebaseConfig";
 import { createSustitucionRequest, approvePeticion } from "../services/peticionService";
 import { getCurrentUser } from "../services/authService";
+import { suggestBestReplacement } from "../services/aiService";
 import styles from "../styles/screens/admin/ReplacementModalStyles";
 
 export default function ReplacementModal({
@@ -19,7 +20,9 @@ export default function ReplacementModal({
   const [step, setStep] = useState('options');
   const [selectedMember, setSelectedMember] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingAI, setLoadingAI] = useState(false);
   const [sortedMembers, setSortedMembers] = useState([]);
+  const [aiSuggestion, setAiSuggestion] = useState(null);
   const currentUser = getCurrentUser();
 
   useEffect(() => {
@@ -30,6 +33,7 @@ export default function ReplacementModal({
     } else {
       setStep('options');
       setSelectedMember(null);
+      setAiSuggestion(null);
     }
   }, [visible, groupId]);
 
@@ -82,12 +86,33 @@ export default function ReplacementModal({
     }
   };
 
-  const handleOptionSelect = (option) => {
+  const handleOptionSelect = async (option) => {
     if (option === 'manual') {
       setStep('manual-selection');
       setSelectedMember(null);
+      setAiSuggestion(null);
     } else if (option === 'ia') {
-      alert('Sugerencia de IA - Funcionalidad en desarrollo');
+      // Sugerencia de IA
+      setLoadingAI(true);
+      setStep('ai-suggestion');
+      
+      try {
+        const result = await suggestBestReplacement(sortedMembers, request);
+        
+        if (result.success) {
+          setAiSuggestion(result.suggestion);
+          setSelectedMember(result.suggestion.memberId);
+        } else {
+          alert('No se pudo obtener sugerencia de IA: ' + result.error);
+          setStep('options');
+        }
+      } catch (error) {
+        console.error('Error al obtener sugerencia:', error);
+        alert('Error al conectar con el servicio de IA');
+        setStep('options');
+      } finally {
+        setLoadingAI(false);
+      }
     } else if (option === 'sin-asignar') {
       handleConfirmReplacement(null);
     }
@@ -146,8 +171,8 @@ export default function ReplacementModal({
       ? item.availableDays.split('•').map(d => d.trim()).join(', ')
       : 'N/A';
 
-    const scheduleStart = item.scheduleStart || 'N/A';
-    const scheduleEnd = item.scheduleEnd || 'N/A';
+    const scheduleStart = item.startTime || 'N/A';
+    const scheduleEnd = item.endTime || 'N/A';
 
     return (
       <View
@@ -221,6 +246,12 @@ export default function ReplacementModal({
   const handleBackFromSelection = () => {
     setStep('options');
     setSelectedMember(null);
+    setAiSuggestion(null);
+  };
+
+  const handleBackFromAI = () => {
+    setStep('manual-selection');
+    setAiSuggestion(null);
   };
 
   return (
@@ -240,7 +271,9 @@ export default function ReplacementModal({
         >
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
-              {step === 'options' ? 'Asignar Remplazo' : 'Seleccionar Miembro'}
+              {step === 'options' ? 'Asignar Remplazo' : 
+               step === 'ai-suggestion' ? 'Sugerencia de IA' : 
+               'Seleccionar Miembro'}
             </Text>
             <Pressable
               style={styles.closeButton}
@@ -250,6 +283,7 @@ export default function ReplacementModal({
             </Pressable>
           </View>
 
+          {/* STEP 1: Opciones */}
           {step === 'options' ? (
             <View style={styles.optionsContainer}>
               <Pressable
@@ -271,16 +305,31 @@ export default function ReplacementModal({
               <Pressable
                 style={styles.optionButton}
                 onPress={() => handleOptionSelect('ia')}
+                disabled={sortedMembers.length === 0}
               >
-                <View style={[styles.optionIconContainer, styles.optionIconContainerDisabled]}>
-                  <Ionicons name="sparkles" size={24} color={COLORS.textGray} />
+                <View style={[
+                  styles.optionIconContainer,
+                  sortedMembers.length === 0 && styles.optionIconContainerDisabled
+                ]}>
+                  <Ionicons 
+                    name="sparkles" 
+                    size={24} 
+                    color={sortedMembers.length === 0 ? COLORS.textGray : COLORS.primary} 
+                  />
                 </View>
                 <View style={styles.optionTextContainer}>
                   <Text style={styles.optionTitle}>Sugerencia de IA</Text>
-                  <Text style={[styles.optionSubtitle, styles.optionSubtitleDisabled]}>
-                    Próximamente disponible
+                  <Text style={[
+                    styles.optionSubtitle,
+                    sortedMembers.length === 0 && styles.optionSubtitleDisabled
+                  ]}>
+                    {sortedMembers.length === 0 
+                      ? 'No hay miembros disponibles' 
+                      : 'Deja que la IA sugiera el mejor reemplazo'
+                    }
                   </Text>
                 </View>
+                <Ionicons name="chevron-forward" size={24} color={COLORS.textGray} />
               </Pressable>
 
               <Pressable
@@ -298,6 +347,91 @@ export default function ReplacementModal({
                 </View>
                 <Ionicons name="chevron-forward" size={24} color={COLORS.textGray} />
               </Pressable>
+            </View>
+          ) : step === 'ai-suggestion' ? (
+            <View style={styles.aiContainer}>
+              {loadingAI ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                  <Text style={styles.loadingText}>Analizando miembros con IA...</Text>
+                  <Text style={[styles.loadingText, { fontSize: 14, marginTop: 8 }]}>
+                    Esto puede tomar unos segundos
+                  </Text>
+                </View>
+              ) : aiSuggestion ? (
+                <ScrollView 
+                  style={styles.scrollView}
+                  contentContainerStyle={styles.scrollContent}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={styles.aiSuggestionCard}>
+                    <View style={styles.aiHeader}>
+                      <Ionicons name="sparkles" size={32} color={COLORS.primary} />
+                      <Text style={styles.aiHeaderText}>Recomendación</Text>
+                    </View>
+
+                    <View style={styles.aiConfidenceBadge}>
+                      <Ionicons 
+                        name={
+                          aiSuggestion.confidence === 'alta' ? 'checkmark-circle' :
+                          aiSuggestion.confidence === 'media' ? 'alert-circle' :
+                          'information-circle'
+                        } 
+                        size={16} 
+                        color={
+                          aiSuggestion.confidence === 'alta' ? COLORS.success :
+                          aiSuggestion.confidence === 'media' ? COLORS.warning :
+                          COLORS.info
+                        }
+                      />
+                      <Text style={styles.aiConfidenceText}>
+                        Confianza: {aiSuggestion.confidence.toUpperCase()}
+                      </Text>
+                    </View>
+
+                    <Text style={styles.aiMemberName}>{aiSuggestion.memberName}</Text>
+                    
+                    <View style={styles.aiReasonContainer}>
+                      <Ionicons name="bulb-outline" size={20} color={COLORS.textGray} />
+                      <Text style={styles.aiReason}>{aiSuggestion.reason}</Text>
+                    </View>
+
+                    <View style={styles.aiActionsContainer}>
+                      <Pressable
+                        style={[
+                          styles.actionButton,
+                          styles.confirmButton,
+                          loading && { opacity: 0.6 }
+                        ]}
+                        onPress={() => handleConfirmReplacement(aiSuggestion.memberId)}
+                        disabled={loading}
+                      >
+                        <Ionicons name="checkmark" size={20} color={COLORS.backgroundWhite} />
+                        <Text style={styles.confirmButtonText}>
+                          {loading ? 'Procesando...' : 'Aceptar Sugerencia'}
+                        </Text>
+                      </Pressable>
+
+                      <Pressable
+                        style={[styles.actionButton, styles.cancelButton]}
+                        onPress={handleBackFromAI}
+                        disabled={loading}
+                      >
+                        <Text style={styles.cancelButtonText}>Ver Todos los Miembros</Text>
+                      </Pressable>
+
+                      <Pressable
+                        style={[styles.actionButton, styles.backButton]}
+                        onPress={handleBackFromSelection}
+                        disabled={loading}
+                      >
+                        <Ionicons name="arrow-back" size={18} color={COLORS.textGray} />
+                        <Text style={styles.backButtonText}>Volver</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </ScrollView>
+              ) : null}
             </View>
           ) : (
             <View style={styles.selectionContainer}>
