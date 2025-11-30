@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, where, or } from 'firebase/firestore';
 import { MenuFooterCompany } from '../../components';
 import styles from '../../styles/screens/company/DashboardStyles';
 import { COLORS } from '../../components/constants/theme';
@@ -134,21 +134,55 @@ export default function Dashboard({ navigation }) {
       const data = companyDoc.data();
       setCompanyData(data);
 
-      // Contar administradores
-      const admins = Array.isArray(data.administradores) ? data.administradores.length : 0;
-      setAdminCount(admins);
-
-      // 2) Contar usuarios de la colección "users" que pertenecen a esta empresa
+      // 1b) Contar administradores ligados a esta empresa
+      let admins = 0;
+      let adminIds = [];
       try {
-        const usersQuery = query(collection(db, 'users'), where('companyId', '==', user.uid));
-        const usersSnap = await getDocs(usersQuery);
-        const userCount = usersSnap.size;
-
-        // Total = administradores + usuarios
-        setTotalMembers(admins + userCount);
+        const adminsQuery = query(
+          collection(db, 'admins'),
+          where('companyId', '==', user.uid)
+        );
+        const adminsSnap = await getDocs(adminsQuery);
+        admins = adminsSnap.size;
+        adminIds = adminsSnap.docs.map((docItem) => docItem.id);
+        setAdminCount(admins);
       } catch (error) {
-        console.error('Error al contar usuarios:', error);
-        // Si hay error de permisos, solo mostramos administradores
+        console.error('Error al contar administradores:', error);
+        setAdminCount(0);
+      }
+
+      // 2) Contar usuarios únicos en los grupos ligados a la empresa (memberIds sin duplicados)
+      try {
+        const groupsRef = collection(db, 'groups');
+        const groupsQueries = [];
+
+        // Preferimos filtrar por companyId si está presente en tus docs
+        groupsQueries.push(query(groupsRef, where('companyId', '==', user.uid)));
+
+        // Si no hubiera companyId, también intentamos por adminId (en bloques de 10 por la restricción de Firestore)
+        if (adminIds.length) {
+          const chunkSize = 10;
+          for (let i = 0; i < adminIds.length; i += chunkSize) {
+            const slice = adminIds.slice(i, i + chunkSize);
+            groupsQueries.push(query(groupsRef, where('adminId', 'in', slice)));
+          }
+        }
+
+        const memberSet = new Set();
+        for (const qRef of groupsQueries) {
+          const snap = await getDocs(qRef);
+          snap.forEach((docItem) => {
+            const members = docItem.data()?.memberIds;
+            if (Array.isArray(members)) {
+              members.forEach((m) => memberSet.add(m));
+            }
+          });
+        }
+
+        const uniqueMembers = memberSet.size;
+        setTotalMembers(admins + uniqueMembers);
+      } catch (error) {
+        console.error('Error al contar miembros totales (admins + grupos):', error);
         setTotalMembers(admins);
       }
 

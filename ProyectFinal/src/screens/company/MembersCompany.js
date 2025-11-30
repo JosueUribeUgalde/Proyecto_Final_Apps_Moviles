@@ -3,7 +3,7 @@ import {Text, View, TextInput, Pressable, FlatList, Modal, ScrollView, Switch, P
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, {DateTimePickerAndroid} from '@react-native-community/datetimepicker';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { HeaderScreen, MenuFooterCompany } from '../../components';
 import InfoModal from '../../components/InfoModal';
@@ -28,21 +28,37 @@ const formatDays = (days) => {
   return days.join(' • ');
 };
 
-const parseTimeToDate = (value, fallbackHour = 8) => {
-  const date = new Date();
-  let hours = fallbackHour;
-  let minutes = 0;
+const parseTimeParts = (value, fallbackHour = null, fallbackMinutes = null) => {
+  if (!value) return { hours: fallbackHour, minutes: fallbackMinutes };
 
-  if (value) {
-    const base = value.split('-')[0].trim();
-    const [h, m] = base.split(':');
-    const parsedH = parseInt(h, 10);
-    const parsedM = parseInt(m || '0', 10);
+  let raw = value.trim().toUpperCase();
+  let period = null;
 
-    if (!Number.isNaN(parsedH)) hours = parsedH;
-    if (!Number.isNaN(parsedM)) minutes = parsedM;
+  if (raw.endsWith('AM') || raw.endsWith('PM')) {
+    period = raw.slice(-2);
+    raw = raw.slice(0, -2).trim();
   }
 
+  const base = raw.split('-')[0].trim();
+  const [h, m = '0'] = base.split(':');
+  let hours = parseInt(h, 10);
+  let minutes = parseInt(m, 10);
+
+  const hasValidHours = !Number.isNaN(hours);
+  const hasValidMinutes = !Number.isNaN(minutes);
+
+  if (period === 'PM' && hasValidHours && hours < 12) hours += 12;
+  if (period === 'AM' && hasValidHours && hours === 12) hours = 0;
+
+  if (!hasValidHours) hours = fallbackHour;
+  if (!hasValidMinutes) minutes = fallbackMinutes;
+
+  return { hours, minutes };
+};
+
+const parseTimeToDate = (value, fallbackHour = 8) => {
+  const date = new Date();
+  const { hours, minutes } = parseTimeParts(value, fallbackHour, 0);
   date.setHours(hours, minutes, 0, 0);
   return date;
 };
@@ -55,12 +71,20 @@ const formatTime = (date) => {
 };
 
 const timeToMinutes = (value) => {
-  if (!value) return null;
-  const [h, m = '0'] = value.split(':');
-  const hours = parseInt(h, 10);
-  const minutes = parseInt(m, 10);
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  const { hours, minutes } = parseTimeParts(value, null, null);
+  if (hours === null || minutes === null || Number.isNaN(hours) || Number.isNaN(minutes)) return null;
   return hours * 60 + minutes;
+};
+
+const formatTimeWithPeriod = (value) => {
+  const { hours, minutes } = parseTimeParts(value, null, null);
+  if (hours === null || minutes === null || Number.isNaN(hours) || Number.isNaN(minutes)) return value || '';
+
+  const displayHour = hours % 12 === 0 ? 12 : hours % 12;
+  const period = hours >= 12 ? 'PM' : 'AM';
+  return `${displayHour.toString().padStart(2, '0')}:${minutes
+    .toString()
+    .padStart(2, '0')} ${period}`;
 };
 
 // Formulario vacío
@@ -115,10 +139,10 @@ export default function MembersCompany({ navigation }) {
 
   // Cargar administradores al montar
   useEffect(() => {
-    loadAdministrators();
+    loadMembersData();
   }, []);
 
-  const loadAdministrators = async () => {
+  const loadMembersData = async () => {
     try {
       const user = getCurrentUser();
       if (!user) {
@@ -127,30 +151,75 @@ export default function MembersCompany({ navigation }) {
       }
 
       setCompanyId(user.uid);
-      const companyDoc = await getDoc(doc(db, 'companies', user.uid));
-      
-      if (companyDoc.exists()) {
-        const companyData = companyDoc.data();
-        const adminIds = companyData.administradores || [];
-        
-        // Cargar datos de cada administrador
-        const adminPromises = adminIds.map(async (adminId) => {
-          const adminDoc = await getDoc(doc(db, 'admins', adminId));
-          if (adminDoc.exists()) {
-            return {
-              id: adminDoc.id,
-              ...adminDoc.data()
-            };
-          }
-          return null;
-        });
+      // 1) Cargar administradores por companyId
+      const adminsQuery = query(collection(db, 'admins'), where('companyId', '==', user.uid));
+      const adminsSnap = await getDocs(adminsQuery);
+      const adminsData = adminsSnap.docs.map((docItem) => ({
+        id: docItem.id,
+        ...docItem.data(),
+        role: docItem.data()?.role || 'Admin',
+        isAdmin: true,
+      }));
+      const adminIds = adminsData.map((a) => a.id);
 
-        const adminsData = await Promise.all(adminPromises);
-        setMembers(adminsData.filter(admin => admin !== null));
+      // 2) Cargar miembros (usuarios) de todos los grupos ligados a la empresa
+      const memberIdSet = new Set();
+
+      // 2a) Por companyId en grupos
+      const groupsByCompany = query(collection(db, 'groups'), where('companyId', '==', user.uid));
+      const groupsCompanySnap = await getDocs(groupsByCompany);
+      groupsCompanySnap.forEach((docItem) => {
+        const members = docItem.data()?.memberIds;
+        if (Array.isArray(members)) {
+          members.forEach((m) => memberIdSet.add(m));
+        }
+      });
+
+      // 2b) Por adminId en grupos (para grupos que no tengan companyId grabado)
+      const chunkSize = 10;
+      for (let i = 0; i < adminIds.length; i += chunkSize) {
+        const slice = adminIds.slice(i, i + chunkSize);
+        const groupsByAdmin = query(collection(db, 'groups'), where('adminId', 'in', slice));
+        const groupsAdminSnap = await getDocs(groupsByAdmin);
+        groupsAdminSnap.forEach((docItem) => {
+          const members = docItem.data()?.memberIds;
+          if (Array.isArray(members)) {
+            members.forEach((m) => memberIdSet.add(m));
+          }
+        });
       }
+
+      const memberIds = Array.from(memberIdSet);
+
+      // 3) Traer info básica de los usuarios (en grupos) en chunks de 10
+      const usersData = [];
+      // Filtramos por companyId para respetar reglas de Firestore y luego cruzamos con memberIds
+      const usersByCompany = query(collection(db, 'users'), where('companyId', '==', user.uid));
+      const usersSnap = await getDocs(usersByCompany);
+      usersSnap.forEach((docItem) => {
+        if (!memberIdSet.has(docItem.id)) return;
+        const data = docItem.data() || {};
+        usersData.push({
+          id: docItem.id,
+          name: data.name || data.fullName || 'Sin nombre',
+          email: data.email || 'Sin email',
+          position: data.position || data.title || '',
+          role: data.role || 'Usuario',
+          isAdmin: false,
+        });
+      });
+
+      // 4) Unir admins + usuarios (sin duplicar por si algún id coincide)
+      const combined = [...adminsData];
+      const adminIdSet = new Set(adminIds);
+      usersData.forEach((u) => {
+        if (!adminIdSet.has(u.id)) combined.push(u);
+      });
+
+      setMembers(combined);
     } catch (error) {
-      console.error('Error al cargar administradores:', error);
-      setBannerMessage('Error al cargar administradores');
+      console.error('Error al cargar miembros:', error);
+      setBannerMessage('Error al cargar miembros');
       setBannerType('error');
       setShowBanner(true);
     } finally {
@@ -198,6 +267,12 @@ export default function MembersCompany({ navigation }) {
   };
 
   const openEditMember = (member) => {
+    if (!member?.isAdmin) {
+      setBannerMessage('Solo puedes editar administradores');
+      setBannerType('error');
+      setShowBanner(true);
+      return;
+    }
     setEditingMember(member);
     setFormData({
       ...createEmptyForm(),
@@ -207,6 +282,12 @@ export default function MembersCompany({ navigation }) {
   };
 
   const handleDeleteMember = async (member) => {
+    if (!member?.isAdmin) {
+      setBannerMessage('Solo puedes eliminar administradores desde esta pantalla');
+      setBannerType('error');
+      setShowBanner(true);
+      return;
+    }
     try {
       // Aquí podrías implementar la eliminación del array administradores
       // Por ahora solo actualizamos el estado local
@@ -521,28 +602,32 @@ export default function MembersCompany({ navigation }) {
             <Text style={styles.roleBadgeText}>{item.role}</Text>
           </View>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.iconButton,
-              pressed && { opacity: 0.7 },
-            ]}
-            onPress={() => openEditMember(item)}>
-            <Ionicons
-              name="create-outline"
-              size={18}
-              color={COLORS.textBlack}
-            />
-          </Pressable>
+          {item.isAdmin ? (
+            <>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.iconButton,
+                  pressed && { opacity: 0.7 },
+                ]}
+                onPress={() => openEditMember(item)}>
+                <Ionicons
+                  name="create-outline"
+                  size={18}
+                  color={COLORS.textBlack}
+                />
+              </Pressable>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.iconButton,
-              styles.iconButtonDanger,
-              pressed && { opacity: 0.7 },
-            ]}
-            onPress={() => handleDeleteMember(item)}>
-            <Ionicons name="trash-outline" size={18} color={COLORS.error} />
-          </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.iconButton,
+                  styles.iconButtonDanger,
+                  pressed && { opacity: 0.7 },
+                ]}
+                onPress={() => handleDeleteMember(item)}>
+                <Ionicons name="trash-outline" size={18} color={COLORS.error} />
+              </Pressable>
+            </>
+          ) : null}
         </View>
       </View>
     </View>
@@ -804,7 +889,11 @@ export default function MembersCompany({ navigation }) {
                     <Text style={styles.fieldLabel}>Horario inicio</Text>
                     <Pressable onPress={() => openTimePicker('startTime')}>
                       <View pointerEvents="none">
-                        <TextInput style={styles.fieldInput} placeholder="08:00" value={formData.startTime} editable={false}
+                        <TextInput
+                          style={styles.fieldInput}
+                          placeholder="08:00 AM"
+                          value={formatTimeWithPeriod(formData.startTime)}
+                          editable={false}
                           placeholderTextColor={COLORS.textGray}/>
                       </View>
                     </Pressable>
@@ -813,7 +902,11 @@ export default function MembersCompany({ navigation }) {
                     <Text style={styles.fieldLabel}>Horario fin</Text>
                     <Pressable onPress={() => openTimePicker('endTime')}>
                       <View pointerEvents="none">
-                        <TextInput style={styles.fieldInput} placeholder="17:00" value={formData.endTime} editable={false}
+                        <TextInput
+                          style={styles.fieldInput}
+                          placeholder="05:00 PM"
+                          value={formatTimeWithPeriod(formData.endTime)}
+                          editable={false}
                           placeholderTextColor={COLORS.textGray}/>
                       </View>
                     </Pressable>
@@ -823,7 +916,11 @@ export default function MembersCompany({ navigation }) {
                 <Text style={styles.fieldLabel}>Horario de comida</Text>
                 <Pressable onPress={() => openTimePicker('mealTime')}>
                   <View pointerEvents="none">
-                    <TextInput style={styles.fieldInput} placeholder="Ej. 14:00" value={formData.mealTime} editable={false}
+                    <TextInput
+                      style={styles.fieldInput}
+                      placeholder="Ej. 02:00 PM"
+                      value={formatTimeWithPeriod(formData.mealTime)}
+                      editable={false}
                       placeholderTextColor={COLORS.textGray}/>
                   </View>
                 </Pressable>

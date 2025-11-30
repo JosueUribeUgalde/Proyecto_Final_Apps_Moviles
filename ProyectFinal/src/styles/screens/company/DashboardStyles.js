@@ -157,7 +157,12 @@ export default StyleSheet.create({
     ...SHADOWS.light,
   },
   metricIconWrap: { position: 'absolute', right: 10, top: 10, opacity: 0.6 },
-  metricTitle: { fontSize: FONTS.small, color: COLORS.textGray, marginBottom: 4 },
+  metricTitle: {
+    fontSize: FONTS.small,
+    color: COLORS.textGray,
+    marginBottom: 4,
+    paddingRight: 26, // deja espacio para el icono en la esquina
+  },
   metricNumber: { fontSize: 26, fontWeight: '700', color: COLORS.textBlack, marginBottom: 2 },
   metricSub: { fontSize: FONTS.small, color: COLORS.textGray },
   sectionTitle: {
