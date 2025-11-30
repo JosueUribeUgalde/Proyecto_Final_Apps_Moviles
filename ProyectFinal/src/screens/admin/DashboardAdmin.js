@@ -242,7 +242,6 @@ export default function DashboardAdmin({ navigation }) {
       setInfoModalTitle('Error');
       setInfoModalMessage('Error al procesar la solicitud. Inténtalo de nuevo.');
       setShowInfoModal(true);
-    } finally {
       setProcessingRequest(null);
     }
   };
@@ -649,6 +648,7 @@ export default function DashboardAdmin({ navigation }) {
         onClose={() => {
           setShowReplacementModal(false);
           setRequestForReplacement(null);
+          setProcessingRequest(null);
         }}
         request={requestForReplacement}
         groupId={selectedGroup?.id}

@@ -529,6 +529,7 @@ export default function RequestScreen({ navigation }) {
           setShowReplacementModal(false);
           setRequestForReplacement(null);
           setRequestGroupId(null);
+          setProcessingRequest(null);
         }}
         request={requestForReplacement}
         groupId={requestGroupId}
