@@ -205,4 +205,123 @@ export default StyleSheet.create({
     marginTop: 12,
     fontStyle: 'italic',
   },
+
+  // ========== ESTILOS PARA TURNOS CONFIGURADOS ==========
+
+  // Sin turnos configurados
+  noShiftsConfigured: {
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    padding: 32,
+    alignItems: 'center',
+    ...SHADOWS.light,
+  },
+  noShiftsConfiguredTitle: {
+    fontSize: FONTS.large,
+    fontWeight: '600',
+    color: COLORS.textBlack,
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  noShiftsConfiguredText: {
+    fontSize: FONTS.regular,
+    color: COLORS.textGray,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginTop: 8,
+  },
+
+  // Tarjeta de turno del día
+  shiftHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  shiftTitle: {
+    fontSize: FONTS.large,
+    fontWeight: '600',
+    color: COLORS.textBlack,
+  },
+  shiftDetails: {
+    gap: 12,
+  },
+  shiftRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  shiftTime: {
+    fontSize: FONTS.regular,
+    color: COLORS.textBlack,
+  },
+  shiftMeal: {
+    fontSize: FONTS.regular,
+    color: COLORS.textBlack,
+  },
+
+  // ========== ESTILOS PARA PRÓXIMOS TURNOS ==========
+
+  // Sección de próximos turnos
+  upcomingSection: {
+    marginTop: 24,
+    marginBottom: 30,
+  },
+  upcomingList: {
+    flexGrow: 0,
+  },
+
+  // Tarjeta de próximo turno
+  upcomingShiftCard: {
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.borderSecondary,
+    ...SHADOWS.light,
+  },
+  upcomingShiftHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  upcomingShiftDate: {
+    fontSize: FONTS.regular,
+    fontWeight: '600',
+    color: COLORS.textBlack,
+  },
+  upcomingShiftDetails: {
+    gap: 8,
+  },
+  upcomingShiftRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  upcomingShiftTime: {
+    fontSize: FONTS.regular,
+    color: COLORS.textGray,
+  },
+  upcomingShiftMeal: {
+    fontSize: FONTS.regular,
+    color: COLORS.textGray,
+  },
+
+  // Sin próximos turnos
+  noUpcomingShifts: {
+    backgroundColor: COLORS.backgroundWhite,
+    borderRadius: RADIUS.md,
+    padding: 24,
+    alignItems: 'center',
+    ...SHADOWS.light,
+  },
+  noUpcomingShiftsText: {
+    fontSize: FONTS.regular,
+    color: COLORS.textGray,
+    marginTop: 12,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
 });
