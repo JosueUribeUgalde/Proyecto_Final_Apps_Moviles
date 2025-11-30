@@ -96,9 +96,20 @@ IMPORTANTE: Responde SOLO el JSON, sin texto adicional.
 
     const suggestion = JSON.parse(jsonText);
 
-    // Validar que tenga los campos requeridos
-    if (!suggestion.memberId || !suggestion.memberName || !suggestion.reason) {
-      throw new Error('Respuesta de IA incompleta');
+    // Validar respuesta - Si la IA dice que no hay miembros adecuados
+    if (!suggestion.memberId || !suggestion.memberName) {
+      console.log('⚠️ La IA indica que no hay miembros adecuados');
+      return {
+        success: false,
+        noSuitableMembers: true,
+        reason: suggestion.reason || 'No se encontraron miembros adecuados para esta sustitución',
+        confidence: suggestion.confidence || 'baja'
+      };
+    }
+
+    // Validar que tenga la razón
+    if (!suggestion.reason) {
+      throw new Error('Respuesta de IA sin razón explicativa');
     }
 
     console.log('✅ Sugerencia procesada:', suggestion);

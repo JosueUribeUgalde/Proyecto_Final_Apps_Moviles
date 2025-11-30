@@ -100,9 +100,20 @@ export default function ReplacementModal({
         const result = await suggestBestReplacement(sortedMembers, request);
         
         if (result.success) {
+          // La IA encontró un miembro adecuado
           setAiSuggestion(result.suggestion);
           setSelectedMember(result.suggestion.memberId);
+        } else if (result.noSuitableMembers) {
+          // La IA determinó que no hay miembros adecuados
+          setAiSuggestion({
+            memberId: null,
+            memberName: 'Sin recomendación',
+            confidence: result.confidence,
+            reason: result.reason,
+            noSuitable: true
+          });
         } else {
+          // Error general de la IA
           alert('No se pudo obtener sugerencia de IA: ' + result.error);
           setStep('options');
         }
@@ -264,10 +275,12 @@ export default function ReplacementModal({
       <Pressable
         style={styles.overlay}
         onPress={onClose}
+        activeOpacity={1}
       >
         <Pressable
           style={styles.modalContainer}
           onPress={(e) => e.stopPropagation()}
+          activeOpacity={1}
         >
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
@@ -362,7 +375,12 @@ export default function ReplacementModal({
                 <ScrollView 
                   style={styles.scrollView}
                   contentContainerStyle={styles.scrollContent}
-                  showsVerticalScrollIndicator={false}
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                  keyboardShouldPersistTaps="handled"
+                  removeClippedSubviews={false}
+                  scrollEventThrottle={16}
+                  bounces={true}
                 >
                   <View style={styles.aiSuggestionCard}>
                     <View style={styles.aiHeader}>
@@ -389,45 +407,103 @@ export default function ReplacementModal({
                       </Text>
                     </View>
 
-                    <Text style={styles.aiMemberName}>{aiSuggestion.memberName}</Text>
+                    {!aiSuggestion.noSuitable && (
+                      <Text style={styles.aiMemberName}>{aiSuggestion.memberName}</Text>
+                    )}
                     
-                    <View style={styles.aiReasonContainer}>
-                      <Ionicons name="bulb-outline" size={20} color={COLORS.textGray} />
-                      <Text style={styles.aiReason}>{aiSuggestion.reason}</Text>
+                    <View style={[
+                      styles.aiReasonContainer,
+                      aiSuggestion.noSuitable && { backgroundColor: '#FFF3CD', borderWidth: 1, borderColor: '#FFC107' }
+                    ]}>
+                      <Ionicons 
+                        name={aiSuggestion.noSuitable ? "alert-circle-outline" : "bulb-outline"} 
+                        size={20} 
+                        color={aiSuggestion.noSuitable ? '#856404' : COLORS.textGray} 
+                      />
+                      <Text style={[
+                        styles.aiReason,
+                        aiSuggestion.noSuitable && { color: '#856404' }
+                      ]}>
+                        {aiSuggestion.reason}
+                      </Text>
                     </View>
 
                     <View style={styles.aiActionsContainer}>
-                      <Pressable
-                        style={[
-                          styles.actionButton,
-                          styles.confirmButton,
-                          loading && { opacity: 0.6 }
-                        ]}
-                        onPress={() => handleConfirmReplacement(aiSuggestion.memberId)}
-                        disabled={loading}
-                      >
-                        <Ionicons name="checkmark" size={20} color={COLORS.backgroundWhite} />
-                        <Text style={styles.confirmButtonText}>
-                          {loading ? 'Procesando...' : 'Aceptar Sugerencia'}
-                        </Text>
-                      </Pressable>
+                      {aiSuggestion.noSuitable ? (
+                        // Si no hay miembros adecuados, mostrar opciones alternativas
+                        <>
+                          <Pressable
+                            style={[styles.actionButton, styles.cancelButton]}
+                            onPress={handleBackFromAI}
+                            disabled={loading}
+                          >
+                            <Ionicons name="list" size={20} color={COLORS.primary} />
+                            <Text style={[styles.cancelButtonText, { color: COLORS.primary }]}>
+                              Ver Todos los Miembros
+                            </Text>
+                          </Pressable>
 
-                      <Pressable
-                        style={[styles.actionButton, styles.cancelButton]}
-                        onPress={handleBackFromAI}
-                        disabled={loading}
-                      >
-                        <Text style={styles.cancelButtonText}>Ver Todos los Miembros</Text>
-                      </Pressable>
+                          <Pressable
+                            style={[
+                              styles.actionButton,
+                              styles.confirmButton,
+                              { backgroundColor: COLORS.backgroundWhite, borderWidth: 1, borderColor: COLORS.borderSecondary },
+                              loading && { opacity: 0.6 }
+                            ]}
+                            onPress={() => handleConfirmReplacement(null)}
+                            disabled={loading}
+                          >
+                            <Ionicons name="close-circle" size={20} color={COLORS.backgroundWhite} />
+                            <Text style={styles.confirmButtonText}>
+                              {loading ? 'Procesando...' : 'Aprobar Sin Asignar'}
+                            </Text>
+                          </Pressable>
 
-                      <Pressable
-                        style={[styles.actionButton, styles.backButton]}
-                        onPress={handleBackFromSelection}
-                        disabled={loading}
-                      >
-                        <Ionicons name="arrow-back" size={18} color={COLORS.textGray} />
-                        <Text style={styles.backButtonText}>Volver</Text>
-                      </Pressable>
+                          <Pressable
+                            style={[styles.actionButton, styles.backButton]}
+                            onPress={handleBackFromSelection}
+                            disabled={loading}
+                          >
+                            <Ionicons name="arrow-back" size={18} color={COLORS.textGreen} />
+                            <Text style={styles.backButtonText}>Volver</Text>
+                          </Pressable>
+                        </>
+                      ) : (
+                        // Si hay sugerencia válida, mostrar opciones normales
+                        <>
+                          <Pressable
+                            style={[
+                              styles.actionButton,
+                              styles.confirmButton,
+                              loading && { opacity: 0.6 }
+                            ]}
+                            onPress={() => handleConfirmReplacement(aiSuggestion.memberId)}
+                            disabled={loading}
+                          >
+                            <Ionicons name="checkmark" size={20} color={COLORS.backgroundWhite} />
+                            <Text style={styles.confirmButtonText}>
+                              {loading ? 'Procesando...' : 'Aceptar Sugerencia'}
+                            </Text>
+                          </Pressable>
+
+                          <Pressable
+                            style={[styles.actionButton, styles.cancelButton]}
+                            onPress={handleBackFromAI}
+                            disabled={loading}
+                          >
+                            <Text style={styles.cancelButtonText}>Ver Todos los Miembros</Text>
+                          </Pressable>
+
+                          <Pressable
+                            style={[styles.actionButton, styles.backButton]}
+                            onPress={handleBackFromSelection}
+                            disabled={loading}
+                          >
+                            <Ionicons name="arrow-back" size={18} color={COLORS.textGray} />
+                            <Text style={styles.backButtonText}>Volver</Text>
+                          </Pressable>
+                        </>
+                      )}
                     </View>
                   </View>
                 </ScrollView>
@@ -438,7 +514,12 @@ export default function ReplacementModal({
               <ScrollView 
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+                keyboardShouldPersistTaps="handled"
+                removeClippedSubviews={false}
+                scrollEventThrottle={16}
+                bounces={true}
               >
                 {loading ? (
                   <View style={styles.loadingContainer}>
@@ -523,7 +604,7 @@ export default function ReplacementModal({
                   }}>
                     <Ionicons name="information-circle" size={20} color={COLORS.textGray} />
                     <Text style={{
-                      color: COLORS.textGray,
+                      color: COLORS.textBlack,
                       fontWeight: '600',
                       flex: 1
                     }}>
