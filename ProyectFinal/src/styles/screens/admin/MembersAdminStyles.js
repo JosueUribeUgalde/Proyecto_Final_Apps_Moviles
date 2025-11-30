@@ -591,7 +591,7 @@ export default StyleSheet.create({
   // Contador de miembros (no visible cuando está activo)
   groupSelectCount: {
     fontSize: FONTS.small,
-    color: COLORS.textGray,
+    color: COLORS.textWhite,
   },
 
   // ============================================
