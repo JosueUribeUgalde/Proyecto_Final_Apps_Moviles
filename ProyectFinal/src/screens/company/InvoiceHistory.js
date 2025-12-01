@@ -18,7 +18,8 @@ import styles from "../../styles/screens/company/InvoiceHistoryStyles";
 import { useNavigation } from "@react-navigation/native";
 import { getCurrentUser } from "../../services/authService";
 import { db } from "../../config/firebaseConfig";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, orderBy, query as fsQuery } from "firebase/firestore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Etiquetas de estado
 const STATUS_LABELS = {
@@ -38,7 +39,7 @@ const money = (n) =>
 export default function InvoiceHistory() {
   const navigation = useNavigation();
 
-  const [query, setQuery] = useState("");
+  const [search, setSearch] = useState("");
   const [period, setPeriod] = useState("12m");
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [stateFilter, setStateFilter] = useState("all");
@@ -62,7 +63,7 @@ export default function InvoiceHistory() {
       }
 
       const col = collection(db, "companies", user.uid, "invoices");
-      const snap = await getDocs(query(col, orderBy("issuedAt", "desc")));
+      const snap = await getDocs(fsQuery(col, orderBy("issuedAt", "desc")));
       const list = snap.docs.map((docSnap) => {
         const data = docSnap.data();
         return {
@@ -77,9 +78,22 @@ export default function InvoiceHistory() {
         };
       });
       setInvoices(list);
+      await AsyncStorage.setItem("invoice_history_cache", JSON.stringify(list));
     } catch (error) {
       console.error("Error cargando facturas:", error);
-      Alert.alert("Error", "No se pudieron cargar las facturas.");
+      try {
+        const cached = await AsyncStorage.getItem("invoice_history_cache");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          setInvoices(Array.isArray(parsed) ? parsed : []);
+          Alert.alert("Modo sin conexión", "Mostrando facturas guardadas.");
+        } else {
+          Alert.alert("Error", "No se pudieron cargar las facturas.");
+        }
+      } catch (cacheError) {
+        console.error("Error leyendo cache facturas:", cacheError);
+        Alert.alert("Error", "No se pudieron cargar las facturas.");
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -129,12 +143,12 @@ export default function InvoiceHistory() {
   // Filtrado local por texto, estado y periodo
   const filteredData = useMemo(() => {
     return invoices.filter((inv) => {
-      const hayTexto = `${inv.id} ${inv.title}`.toLowerCase().includes(query.trim().toLowerCase());
+      const hayTexto = `${inv.id} ${inv.title}`.toLowerCase().includes(search.trim().toLowerCase());
       const hayEstado = stateFilter === "all" ? true : inv.status === stateFilter;
       const hayPeriodo = ["12m", "6m", "3m"].includes(period);
       return hayTexto && hayEstado && hayPeriodo;
     });
-  }, [query, stateFilter, period, invoices]);
+  }, [search, stateFilter, period, invoices]);
 
   // Renderizado de cada factura
   const renderItem = useCallback(
@@ -218,8 +232,8 @@ export default function InvoiceHistory() {
         <View style={styles.searchChip}>
           <Ionicons name="search-outline" size={16} color={COLORS.textGray} />
           <TextInput
-            value={query}
-            onChangeText={setQuery}
+            value={search}
+            onChangeText={setSearch}
             placeholder="Buscar factura, #, correo..."
             placeholderTextColor={COLORS.textGray}
             style={styles.searchInput}
