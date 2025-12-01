@@ -9,10 +9,11 @@
  * Límites: 15 RPM / 1500 RPD
  */
 
+import {GOOGLE_API_KEY} from '@env';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Inicializar cliente de Google Gemini con API Key
-const genAI = new GoogleGenerativeAI('AIzaSyBy2x9ltsSNdURlqCM4ip9WINFXj9LKb_A');
+const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
 
 /**
  * Sugiere el mejor miembro para sustituir usando IA
