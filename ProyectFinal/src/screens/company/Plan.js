@@ -468,6 +468,7 @@ export default function Plan({ navigation }) {
                   }
                   const invoiceId = `INV-${Date.now()}`;
                   const amountNumber = typeof selectedPlan.priceValue === "number" ? selectedPlan.priceValue : 0;
+                  const now = new Date();
 
                   const paymentUpdate = useSavedCard && savedPayment
                     ? {
@@ -514,8 +515,8 @@ export default function Plan({ navigation }) {
                       amount: amountNumber,
                       plan: selectedPlan.id,
                       status: "pagada",
-                      issuedAt: serverTimestamp(),
-                      paidAt: serverTimestamp(),
+                      issuedAt: now,
+                      paidAt: now,
                       period: "mensual",
                     }),
                   });

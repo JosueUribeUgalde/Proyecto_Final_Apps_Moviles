@@ -49,6 +49,12 @@ export default function RegisterCompany({ navigation }) {
 
     const PLACES_API_KEY = process.env.EXPO_PUBLIC_PLACES_API_KEY || process.env.PLACES_API_KEY || "";
 
+    const sanitizeRFCInput = (text) =>
+        (text || "")
+            .replace(/[^A-Za-zÁÉÍÓÚÜÑ&0-9]/g, "")
+            .toUpperCase()
+            .slice(0, 13);
+
     const normalizeStr = (s) =>
         (s || "")
             .toLowerCase()
@@ -140,7 +146,7 @@ export default function RegisterCompany({ navigation }) {
         if (!hasPermission) return;
 
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: 'images',
             allowsEditing: true,
             aspect: [4, 3],
             quality: 1,
@@ -171,7 +177,7 @@ export default function RegisterCompany({ navigation }) {
             allowsEditing: false,
             aspect: [4, 3],
             quality: 0.8,
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: 'images',
         });
 
         if (!result.canceled) {
@@ -193,7 +199,7 @@ export default function RegisterCompany({ navigation }) {
             allowsEditing: false,
             aspect: [4, 3],
             quality: 0.8,
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: 'images',
         });
 
         if (!result.canceled) {
@@ -410,7 +416,15 @@ export default function RegisterCompany({ navigation }) {
         </View>
     );
 
-    const renderInputWithError = (label, field, value, onChangeText, keyboardType = 'default', multiline = false) => (
+    const renderInputWithError = (
+        label,
+        field,
+        value,
+        onChangeText,
+        keyboardType = 'default',
+        multiline = false,
+        extraProps = {}
+    ) => (
         <View style={styles.group}>
             <Text style={styles.label}>{label}</Text>
             <InputLogin 
@@ -420,6 +434,7 @@ export default function RegisterCompany({ navigation }) {
                 onChangeText={onChangeText}
                 multiline={multiline}
                 numberOfLines={multiline ? 2 : 1}
+                {...extraProps}
                 style={{
                     borderColor: validationErrors[field] ? '#f44336' : undefined,
                     borderWidth: validationErrors[field] ? 1.5 : undefined
@@ -521,7 +536,10 @@ export default function RegisterCompany({ navigation }) {
                                 'RFC',
                                 'rfc',
                                 formData.rfc,
-                                (text) => setFormData(prev => ({...prev, rfc: text.toUpperCase().slice(0, 13)}))
+                                (text) => setFormData(prev => ({...prev, rfc: sanitizeRFCInput(text)})),
+                                'default',
+                                false,
+                                { autoCapitalize: 'characters', autoCorrect: false, maxLength: 13 }
                             )}
 
                             <View style={styles.group}>
