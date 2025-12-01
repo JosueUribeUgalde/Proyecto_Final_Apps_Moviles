@@ -310,7 +310,7 @@ export default function MembersAdmin({ navigation }) {
             membersData.push({
               id: userDoc.id,
               name: userData.name || 'Sin nombre',
-              group: selectedGroup?.name || 'Sin grupo',
+              group: userData.position || 'Sin Puesto',
               groupId: groupId,
               nextShift: 'Sin turno asignado',
               experience: userData.experience || 'N/A',

@@ -422,8 +422,10 @@ export default function Home({ navigation }) {
                   <Ionicons name="calendar-outline" size={20} color={COLORS.textGray} />
                   <Text style={styles.groupInfoStatLabel}>Mis Turnos</Text>
                   <Text style={styles.groupInfoStatValue}>
-                    {/* Contar días separados por '•' en availableDays */}
-                    {userData?.availableDays ? userData.availableDays.split('•').filter(d => d.trim()).length : 0}
+                    {/* Contar días separados por '•' en availableDays, excluyendo 'n/a' y 'N/A' */}
+                    {userData?.availableDays && userData.availableDays !== 'n/a' && userData.availableDays !== 'N/A'
+                      ? userData.availableDays.split('•').filter(d => d.trim() && d.trim().toLowerCase() !== 'n/a').length 
+                      : 0}
                   </Text>
                 </View>
               </View>
