@@ -21,7 +21,7 @@ import InfoModal from "../../components/InfoModal";
 
 // Firebase
 import { db } from "../../config/firebaseConfig";
-import { collection, onSnapshot, query, orderBy, updateDoc, doc, serverTimestamp, getDoc, arrayUnion } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, updateDoc, doc, serverTimestamp, getDoc, arrayUnion, setDoc } from "firebase/firestore";
 import { getCurrentUser } from "../../services/authService";
 
 // Seleccionador de pestañas
@@ -469,6 +469,7 @@ export default function Plan({ navigation }) {
                   const invoiceId = `INV-${Date.now()}`;
                   const amountNumber = typeof selectedPlan.priceValue === "number" ? selectedPlan.priceValue : 0;
                   const now = new Date();
+                  const dueAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
                   const paymentUpdate = useSavedCard && savedPayment
                     ? {
@@ -519,6 +520,18 @@ export default function Plan({ navigation }) {
                       paidAt: now,
                       period: "mensual",
                     }),
+                  });
+
+                  await setDoc(doc(db, "companies", user.uid, "invoices", invoiceId), {
+                    title: `Factura ${selectedPlan.tier}`,
+                    planId: selectedPlan.id,
+                    periodLabel: selectedPlan.period || "mensual",
+                    amount: amountNumber,
+                    status: "pagada",
+                    issuedAt: serverTimestamp(),
+                    paidAt: serverTimestamp(),
+                    dueAt,
+                    failNote: null,
                   });
 
                   setSuccessMessage("Compra realizada por un mes. Plan activado.");
