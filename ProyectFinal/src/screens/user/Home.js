@@ -67,6 +67,9 @@ export default function Home({ navigation }) {
   // Últimos 3 registros del historial del usuario
   const [recentHistory, setRecentHistory] = useState([]);
 
+  // Mapa de IDs de usuarios sustitutos a sus nombres (userId -> nombre completo)
+  const [replacementUsers, setReplacementUsers] = useState({});
+
   // Cargar todos los datos del usuario al montar el componente
   useEffect(() => {
     loadUserData();
@@ -198,12 +201,55 @@ export default function Home({ navigation }) {
         // Tomar solo los primeros 3 registros (más recientes)
         const recentRecords = historialData.slice(0, 3);
         setRecentHistory(recentRecords);
+
+        // Cargar nombres de usuarios sustitutos
+        await loadReplacementUsers(recentRecords);
       } else {
         setRecentHistory([]);
       }
     } catch (error) {
       console.error("Error al cargar historial reciente:", error);
       setRecentHistory([]);
+    }
+  };
+
+  /**
+   * Carga los nombres de los usuarios sustitutos para mostrarlos en el historial
+   * @param {Array} historialData - Array de registros del historial
+   */
+  const loadReplacementUsers = async (historialData) => {
+    try {
+      // Extraer IDs únicos de usuarios sustitutos
+      const userIds = [...new Set(
+        historialData
+          .filter(item => item.replacementUserId)
+          .map(item => item.replacementUserId)
+      )];
+
+      if (userIds.length === 0) return;
+
+      // Cargar datos de cada usuario sustituto
+      const usersData = {};
+      await Promise.all(
+        userIds.map(async (userId) => {
+          try {
+            const userDoc = await getDoc(doc(db, "users", userId));
+            if (userDoc.exists()) {
+              const data = userDoc.data();
+              usersData[userId] = `${data.name || 'Sin nombre'} ${data.lastName || ''}`.trim();
+            } else {
+              usersData[userId] = 'Usuario no encontrado';
+            }
+          } catch (error) {
+            console.error(`Error al cargar usuario ${userId}:`, error);
+            usersData[userId] = 'Error al cargar';
+          }
+        })
+      );
+
+      setReplacementUsers(usersData);
+    } catch (error) {
+      console.error("Error al cargar usuarios sustitutos:", error);
     }
   };
 
@@ -494,7 +540,9 @@ export default function Home({ navigation }) {
                         <View style={styles.historyDetailRow}>
                           <Ionicons name="person-outline" size={16} color={COLORS.textGray} />
                           <Text style={styles.historyDetailLabel}>Cubierto por:</Text>
-                          <Text style={styles.historyDetailValue}>Usuario asignado</Text>
+                          <Text style={styles.historyDetailValue}>
+                            {replacementUsers[item.replacementUserId] || 'Cargando...'}
+                          </Text>
                         </View>
                       )}
                     </View>
