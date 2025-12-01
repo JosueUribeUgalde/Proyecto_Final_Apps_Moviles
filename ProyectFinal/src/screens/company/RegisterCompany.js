@@ -90,13 +90,19 @@ export default function RegisterCompany({ navigation }) {
         const errors = [];
         
         if (password.length < 8) {
-            errors.push('Mínimo 8 caracteres');
+            errors.push('Minimo 8 caracteres');
+        }
+        if (password.length > 32) {
+            errors.push('Maximo 32 caracteres');
         }
         if (!/[A-Z]/.test(password)) {
-            errors.push('Al menos una mayúscula');
+            errors.push('Al menos una mayuscula');
+        }
+        if (!/[0-9]/.test(password)) {
+            errors.push('Al menos un numero');
         }
         if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
-            errors.push('Al menos un carácter especial (!@#$%^&*)');
+            errors.push('Al menos un caracter especial (!@#$%^&*)');
         }
         
         return errors;
@@ -756,3 +762,4 @@ export default function RegisterCompany({ navigation }) {
         </SafeAreaView>
     );
 }
+
