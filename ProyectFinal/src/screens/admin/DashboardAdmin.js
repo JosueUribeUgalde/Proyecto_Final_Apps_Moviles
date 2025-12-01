@@ -213,9 +213,69 @@ export default function DashboardAdmin({ navigation }) {
       } else {
         setPendingRequests([]);
       }
+
+      // Calcular turnos totales de todos los miembros del grupo
+      await calculateGroupTotalShifts(groupData);
     } catch (error) {
       console.error("Error al cargar peticiones del grupo:", error);
       setPendingRequests([]);
+    }
+  };
+
+  /**
+   * Calcula el total de turnos de todos los miembros del grupo
+   * @param {Object} groupData - Datos del grupo con memberIds
+   */
+  const calculateGroupTotalShifts = async (groupData) => {
+    try {
+      if (!groupData.memberIds || groupData.memberIds.length === 0) {
+        // Actualizar el grupo con 0 turnos si no hay miembros
+        setSelectedGroup(prev => ({
+          ...prev,
+          stats: {
+            ...prev?.stats,
+            totalShifts: 0
+          }
+        }));
+        return;
+      }
+
+      let totalShifts = 0;
+
+      // Obtener datos de cada miembro y sumar sus turnos
+      await Promise.all(
+        groupData.memberIds.map(async (memberId) => {
+          try {
+            const memberDoc = await getDoc(doc(db, "users", memberId));
+            if (memberDoc.exists()) {
+              const memberData = memberDoc.data();
+              const availableDays = memberData.availableDays;
+
+              // Contar turnos solo si no es 'n/a' o 'N/A'
+              if (availableDays && availableDays !== 'n/a' && availableDays !== 'N/A') {
+                const shifts = availableDays
+                  .split('•')
+                  .filter(d => d.trim() && d.trim().toLowerCase() !== 'n/a')
+                  .length;
+                totalShifts += shifts;
+              }
+            }
+          } catch (error) {
+            console.error(`Error al cargar miembro ${memberId}:`, error);
+          }
+        })
+      );
+
+      // Actualizar el estado del grupo seleccionado con el total calculado
+      setSelectedGroup(prev => ({
+        ...prev,
+        stats: {
+          ...prev?.stats,
+          totalShifts
+        }
+      }));
+    } catch (error) {
+      console.error("Error al calcular turnos totales:", error);
     }
   };
 
