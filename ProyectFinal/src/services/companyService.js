@@ -48,7 +48,14 @@ export const registerCompany = async (formData) => {
     const proofOfAddressUrl = await uploadFile(formData.proofOfAddress, `companies/${uid}/proofOfAddress.jpg`);
 
     // 3) Armar doc EXACTO con la estructura que quieres
-    const planType = selectedPlanType || 'basic';
+    const planType = selectedPlanType || 'free';
+    const resolveMaxUsers = (type) => {
+      if (type === 'free') return 10;
+      if (type === 'basic') return 10;
+      if (type === 'plus') return 25;
+      if (type === 'pro') return 50;
+      return 100;
+    };
 
     const companyDoc = {
       companyName,
@@ -84,7 +91,7 @@ export const registerCompany = async (formData) => {
         type: planType,
         status: 'active',
         features: ['analytics', 'reports', 'api'],
-        maxUsers: planType === 'basic' ? 10 : planType === 'plus' ? 25 : planType === 'pro' ? 50 : 100,
+        maxUsers: resolveMaxUsers(planType),
         startDate: serverTimestamp(),
         endDate: null,
       },

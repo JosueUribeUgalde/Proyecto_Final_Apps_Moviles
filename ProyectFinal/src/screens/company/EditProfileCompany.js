@@ -43,6 +43,12 @@ export default function EditProfileCompany() {
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
 
+  const sanitizeRFCInput = (text) =>
+    (text || "")
+      .replace(/[^A-Za-zÁÉÍÓÚÜÑ&0-9]/g, "")
+      .toUpperCase()
+      .slice(0, 13);
+
   useEffect(() => {
     loadCompanyData();
   }, []);
@@ -165,7 +171,7 @@ export default function EditProfileCompany() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: 'images',
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -347,10 +353,12 @@ export default function EditProfileCompany() {
               <TextInput 
                 style={styles.input} 
                 value={rfc} 
-                onChangeText={(text) => setRfc(text.toUpperCase())} 
+                onChangeText={(text) => setRfc(sanitizeRFCInput(text))} 
                 placeholder="RFC de la empresa" 
                 placeholderTextColor={COLORS.textGray}
                 autoCapitalize="characters"
+                autoCorrect={false}
+                maxLength={13}
               />
             </View>
           </View>

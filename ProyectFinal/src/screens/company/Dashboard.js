@@ -9,7 +9,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { doc, getDoc, collection, getDocs, query, where, or } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+  or,
+} from 'firebase/firestore';
 import { MenuFooterCompany } from '../../components';
 import styles from '../../styles/screens/company/DashboardStyles';
 import { COLORS } from '../../components/constants/theme';
@@ -108,6 +118,10 @@ export default function Dashboard({ navigation }) {
   const [totalMembers, setTotalMembers] = useState(0); // total de administradores + usuarios
   const [adminCount, setAdminCount] = useState(0); // solo administradores
   const [loading, setLoading] = useState(true);
+  const [latestPending, setLatestPending] = useState(null);
+  const [latestSubstitution, setLatestSubstitution] = useState(null);
+  const [isAdminAuth, setIsAdminAuth] = useState(false);
+  const [companyGroupIds, setCompanyGroupIds] = useState([]);
 
   useEffect(() => {
     loadCompanyData();
@@ -137,6 +151,7 @@ export default function Dashboard({ navigation }) {
       // 1b) Contar administradores ligados a esta empresa
       let admins = 0;
       let adminIds = [];
+      let authAdminGroups = [];
       try {
         const adminsQuery = query(
           collection(db, 'admins'),
@@ -146,9 +161,21 @@ export default function Dashboard({ navigation }) {
         admins = adminsSnap.size;
         adminIds = adminsSnap.docs.map((docItem) => docItem.id);
         setAdminCount(admins);
+
+        // Verificar si el usuario autenticado es un admin
+        const authAdminSnap = await getDoc(doc(db, 'admins', user.uid));
+        if (authAdminSnap.exists()) {
+          setIsAdminAuth(true);
+          authAdminGroups = Array.isArray(authAdminSnap.data()?.groupIds)
+            ? authAdminSnap.data().groupIds
+            : [];
+        } else {
+          setIsAdminAuth(false);
+        }
       } catch (error) {
         console.error('Error al contar administradores:', error);
         setAdminCount(0);
+        setIsAdminAuth(false);
       }
 
       // 2) Contar usuarios únicos en los grupos ligados a la empresa (memberIds sin duplicados)
@@ -169,10 +196,12 @@ export default function Dashboard({ navigation }) {
         }
 
         const memberSet = new Set();
+        const collectedGroupIds = new Set();
         for (const qRef of groupsQueries) {
           const snap = await getDocs(qRef);
           snap.forEach((docItem) => {
             const members = docItem.data()?.memberIds;
+            collectedGroupIds.add(docItem.id);
             if (Array.isArray(members)) {
               members.forEach((m) => memberSet.add(m));
             }
@@ -181,9 +210,11 @@ export default function Dashboard({ navigation }) {
 
         const uniqueMembers = memberSet.size;
         setTotalMembers(admins + uniqueMembers);
+        setCompanyGroupIds(Array.from(collectedGroupIds));
       } catch (error) {
         console.error('Error al contar miembros totales (admins + grupos):', error);
         setTotalMembers(admins);
+        setCompanyGroupIds([]);
       }
 
       // 3) A partir del tipo de plan de la empresa, leer su plan en /planes
@@ -196,6 +227,94 @@ export default function Dashboard({ navigation }) {
             setPlanData(planSnap.data());
           }
         }
+      }
+
+      // 4) Última petición pendiente
+      const pendingGroupIds = isAdminAuth ? authAdminGroups : companyGroupIds;
+      if (pendingGroupIds.length) {
+        try {
+          const groupsChunks = [];
+          const chunkSize = 10;
+          for (let i = 0; i < pendingGroupIds.length; i += chunkSize) {
+            groupsChunks.push(pendingGroupIds.slice(i, i + chunkSize));
+          }
+
+          let latestDoc = null;
+          for (const chunk of groupsChunks) {
+            const pendQ = query(
+              collection(db, 'peticionesPendientes'),
+              where('groupId', 'in', chunk),
+              orderBy('createdAt', 'desc'),
+              limit(1)
+            );
+            const pendSnap = await getDocs(pendQ);
+            if (!pendSnap.empty) {
+              const docItem = { id: pendSnap.docs[0].id, ...pendSnap.docs[0].data() };
+              const createdAt = docItem.createdAt?.toDate?.() || docItem.createdAt || null;
+              if (!latestDoc) {
+                latestDoc = { ...docItem, createdAt };
+              } else {
+                const prevDate = latestDoc.createdAt?.toDate?.() || latestDoc.createdAt || null;
+                if (createdAt && (!prevDate || createdAt > prevDate)) {
+                  latestDoc = { ...docItem, createdAt };
+                }
+              }
+            }
+          }
+          setLatestPending(latestDoc);
+        } catch (error) {
+          console.error('Error al cargar peticiones pendientes:', error);
+          setLatestPending(null);
+        }
+      } else {
+        setLatestPending(null);
+      }
+
+      // 5) Última petición de sustitución (admin o empresa con grupos)
+      const substitutionGroupIds = isAdminAuth ? authAdminGroups : companyGroupIds;
+      if (isAdminAuth || substitutionGroupIds.length) {
+        try {
+          let latestDoc = null;
+
+          if (isAdminAuth) {
+            const sustQ = query(
+              collection(db, 'peticionesSustitucion'),
+              where('idAdmin', '==', user.uid),
+              orderBy('createdAt', 'desc'),
+              limit(1)
+            );
+            const sustSnap = await getDocs(sustQ);
+            if (!sustSnap.empty) {
+              latestDoc = { id: sustSnap.docs[0].id, ...sustSnap.docs[0].data() };
+            }
+          }
+
+          if (!latestDoc && substitutionGroupIds.length) {
+            const chunkSize = 10;
+            for (let i = 0; i < substitutionGroupIds.length; i += chunkSize) {
+              const chunk = substitutionGroupIds.slice(i, i + chunkSize);
+              const sustQ = query(
+                collection(db, 'peticionesSustitucion'),
+                where('groupId', 'in', chunk),
+                orderBy('createdAt', 'desc'),
+                limit(1)
+              );
+              const sustSnap = await getDocs(sustQ);
+              if (!sustSnap.empty) {
+                const docItem = { id: sustSnap.docs[0].id, ...sustSnap.docs[0].data() };
+                latestDoc = docItem;
+                break;
+              }
+            }
+          }
+
+          setLatestSubstitution(latestDoc);
+        } catch (error) {
+          console.error('Error al cargar peticiones de sustitución:', error);
+          setLatestSubstitution(null);
+        }
+      } else {
+        setLatestSubstitution(null);
       }
     } catch (error) {
       console.error('Error al cargar datos de empresa:', error);
@@ -384,7 +503,9 @@ export default function Dashboard({ navigation }) {
               color={COLORS.primary}
             />
             <Text style={styles.listItemText}>
-              IA reasignó 2 turnos por ausencia
+              {latestPending
+                ? `${latestPending.userName || 'Usuario'}: ${latestPending.reason || 'Pendiente'}`
+                : 'Sin peticiones pendientes'}
             </Text>
             <Ionicons
               name="chevron-forward"
@@ -400,7 +521,9 @@ export default function Dashboard({ navigation }) {
               color={COLORS.primary}
             />
             <Text style={styles.listItemText}>
-              Próximo turno crítico en 1h
+              {latestSubstitution
+                ? `${latestSubstitution.userName || 'Usuario'}: ${latestSubstitution.reason || 'Sustitución'}`
+                : 'Sin peticiones de sustitución'}
             </Text>
             <Ionicons
               name="chevron-forward"
