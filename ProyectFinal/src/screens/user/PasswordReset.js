@@ -1,21 +1,23 @@
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, Image, KeyboardAvoidingView, ScrollView, Platform } from "react-native";
+import { View, Text, Image, KeyboardAvoidingView, ScrollView, Platform, ActivityIndicator } from "react-native";
 import HeaderScreen from "../../components/HeaderScreen";
 import InputLogin from "../../components/InputLogin";
 import ButtonLogin from "../../components/ButtonLogin";
 import InfoModal from "../../components/InfoModal";
 import { COLORS } from "../../components/constants/theme";
 import { Ionicons } from '@expo/vector-icons';
+import { resetPassword } from "../../services/authService";
 import styles from "../../styles/screens/user/PasswordResetStyles";
 
 export default function PasswordReset({ navigation }) {
     const [email, setEmail] = useState('');
+    const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [modalTitle, setModalTitle] = useState('');
     const [modalMessage, setModalMessage] = useState('');
 
-    const handlePasswordReset = () => {
+    const handlePasswordReset = async () => {
         // Validar que el email no esté vacío y tenga formato válido
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         
@@ -33,10 +35,26 @@ export default function PasswordReset({ navigation }) {
             return;
         }
         
-        // Si la validación pasa, mostrar mensaje de éxito
-        setModalTitle('Éxito');
-        setModalMessage('Enlace enviado a tu correo');
-        setShowModal(true);
+        // Llamar al servicio de Firebase para enviar el correo
+        setLoading(true);
+        try {
+            const result = await resetPassword(email);
+            
+            if (result.success) {
+                setModalTitle('Éxito');
+                setModalMessage('Enlace de recuperación enviado a tu correo. Revisa tu bandeja de entrada.');
+            } else {
+                setModalTitle('Error');
+                setModalMessage(result.message);
+            }
+            setShowModal(true);
+        } catch (error) {
+            setModalTitle('Error');
+            setModalMessage('Error al enviar el correo. Inténtalo de nuevo.');
+            setShowModal(true);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleBackToLogin = () => {
@@ -101,11 +119,12 @@ export default function PasswordReset({ navigation }) {
 
             <View style={styles.buttonContainer}>
                 <ButtonLogin
-                    title="Enviar enlace"
+                    title={loading ? "Enviando..." : "Enviar enlace"}
                     onPress={handlePasswordReset}
                     backgroundColor={COLORS.primary}
                     textColor={COLORS.textWhite}
                     showBorder={false}
+                    disabled={loading}
                 />
             </View>
 
