@@ -1,0 +1,147 @@
+Documentacion modulo Company
+
+Resumen general
+- Pantallas ubicadas en src/screens/company/** cubren autenticacion, registro, panel, perfil, planes, pagos, facturacion e invitaciones.
+- Datos principales en Firestore: collection companies (plan, payment, preferencias, region, logo, documentos), admins, groups (memberIds, companyId/adminId), users (companyId), planes, subcollection companies/{id}/invoices, peticionesPendientes y peticionesSustitucion.
+- Servicios usados: authService (loginCompany, logoutUser, getCurrentUser, registerUser), companyService (registerCompany) y Firebase Storage para logo.
+
+LoginCompany.js
+- Pantalla de acceso para empresas; pide email y password con opcion de mostrar password y recuperar password (PasswordReset).
+- Valida campos vacios, llama loginCompany y navega a Dashboard en exito; muestra InfoModal con errores del servicio.
+- Incluye acceso rapido a registro (RegisterCompany) y modal de ayuda sobre como crear cuenta.
+- Funciones clave:
+  - handleLogin(): valida campos, invoca loginCompany(email, password) y redirige a Dashboard o muestra InfoModal con el mensaje recibido.
+    - loginCompany (authService) usa Firebase Auth para signInWithEmailAndPassword; si success retorna credential.user con uid, que se usa como key de companies/{uid}.
+  - handleForgotPassword(): abre PasswordReset.
+  - handleShowAccountInfo(): muestra InfoModal con instrucciones para crear cuenta.
+  - handleRegister(): navega a RegisterCompany.
+  - Estado showPassword permite alternar visibilidad del campo de contraseña.
+
+RegisterCompany.js
+- Formulario de alta de empresa con campos: companyName, email, phone (10 digitos), RFC, address, ownerName, password/confirm, logo e imagenes de documentos (INE frente/reverso y comprobante de domicilio).
+- Validaciones propias: regex de email, RFC y telefono, minimo de longitud en direccion/nombres, reglas de password (8-32, mayuscula, numero, caracter especial y coincidencia), exige logo y documentos.
+- Uso de Expo ImagePicker para galeria/camara; permite autocompletar direccion via Google Places (usa API key env).
+- Envio: registerCompany(formData); en exito muestra Banner y redirige a LoginCompany.
+- Funciones clave:
+  - validateForm(): centraliza todas las validaciones y marca errores por campo.
+    - Verifica presencia de logo (uri), officialId.front/back, proofOfAddress; prepara validationErrors que se pinta en UI.
+  - validatePassword(): retorna lista de reglas incumplidas; se usa en vivo.
+  - handleImagePick()/handleCameraCapture()/handleSingleCameraCapture(): capturan logo y documentos desde galeria o camara.
+  - fetchPlaces(): consulta Google Places para autocompletar dirección (requiere PLACES_API_KEY en env).
+  - handleRegister(): evita envíos duplicados (submittingRef), corre validateForm, llama registerCompany y muestra Banner de éxito/error.
+    - registerCompany (companyService) debería crear el usuario en Auth y escribir companies/{uid} con los campos del form: companyName, email, phone, rfc, address, ownerName, plan inicial (usualmente free), documentos (officialId, proofOfAddress), logo (URL) y createdAt. Los files se suben a Storage antes para obtener URL.
+  - DocumentCapture componente interno para mostrar estado de captura de documentos de dos caras.
+
+Dashboard.js
+- Panel principal; al montar lee company por UID, cuenta admins (collection admins) y deduce grupos por companyId o adminId, sumando miembros unicos.
+- Mapea plan.type a documentos en /planes para mostrar maxUsuarios y caracteristicas; calcula estado de automatizacion por plan y fecha de siguiente cobro (startDate + ciclo).
+- Busca ultima peticion pendiente y de sustitucion en colecciones peticionesPendientes/peticionesSustitucion filtrando por grupos del usuario o empresa.
+- UI: tarjetas con logo/nombre, chip de plan, metricas (miembros, turnos activos, admins), resumen de peticiones y boton Cambiar plan (navega a Plan con suggestedUpgrade).
+- Funciones clave:
+  - loadCompanyData(): orquesta la carga de company, admins, grupos, plan y últimas peticiones; calcula totalMembers y setea latestPending/latestSubstitution.
+    - Lee companies/{uid} (uid = auth actual). Campos usados: plan (type, status, startDate), payment.billingCycle, logo, companyName, stats.activeRequests.
+    - Admins: query admins where companyId == uid, cuenta tamaño y guarda sus IDs para filtrar groups.
+    - Grupos: query groups where companyId == uid y, si faltan, where adminId in [chunks de adminIds]; recolecta memberIds únicos para totalMembers.
+    - Plan: mapea plan.type -> PLAN_DOC_IDS -> planes/{planDocId}; usa maxUsuarios y caracteristicas (incluye 'ia').
+    - Peticiones: peticionesPendientes y peticionesSustitucion filtrando por groupId in chunk de groupIds o por idAdmin==uid; toma la más reciente por createdAt.
+  - getPlanKeyFromType()/getPlanName(): normalizan el tipo de plan para mostrar nombre y localizar doc en /planes.
+  - getNextBillingDateLabel(): suma ciclo de facturación mensual/anual a startDate.
+  - handleChangePlan(): navega a Plan con tab plans y sugerencia de upgrade.
+  - displayData(): helper para fallback de textos vacíos.
+
+ProfileCompany.js
+- Vista de perfil de empresa; carga company por UID y refleja logo, companyName, ownerName, email, phone, estado de plan.
+- Preferencias: toggle de notificaciones (actualiza preferences.notificationsEnabled en companies) y selector de region via modal (actualiza region en Firestore).
+- Secciones de facturacion con accesos a PaymentMethod, Plan e InvoiceHistory; acceso a cambio de password y ayuda.
+- Boton Editar abre EditProfileCompany; Cerrar sesion usa logoutUser y resetea navegacion a LoginCompany; errores se muestran con InfoModal.
+- Funciones clave:
+  - loadCompanyData(): obtiene company/{uid}, inicializa toggles y region; en errores muestra InfoModal.
+    - Lee preferences.notificationsEnabled y region (name, code) desde companies/{uid}.
+  - handleToggleNotifications(): actualiza preferencia en Firestore y sincroniza estado local con rollback en error.
+    - updateDoc companies/{uid} set preferences.notificationsEnabled = newValue.
+  - handleRegionSelect(): guarda region en Firestore y estado local.
+    - updateDoc companies/{uid} set region.name, region.code.
+  - handleEditProfile(): navega a EditProfileCompany.
+  - handleLogout(): usa logoutUser y resetea navegación a LoginCompany.
+
+EditProfileCompany.js
+- Permite editar datos basicos: nombre de empresa, representante, telefono, RFC (sanitiza mayusculas sin caracteres extra), direccion fiscal y logo.
+- Campos de solo lectura: rol (Empresa), plan activo y email; muestra estados de documentos (comprobante/INE) en base a company.documents.
+- Cambios se guardan en companies/{uid} con updateDoc tras validar nombre y requerir comprobante activo; muestra modales de exito/error.
+- Cambiar logo: solicita permiso a galeria, sube a Firebase Storage (companies/{uid}/logo.jpg) y guarda downloadURL en Firestore.
+- Funciones clave:
+  - loadCompanyData(): trae datos actuales y setea estados de documentos.
+    - Lee companies/{uid}: companyName, ownerName, phone, rfc, address, email, logo, plan.type para mostrar en UI; documents.proofOfAddress/officialId para estados.
+  - sanitizeRFCInput(): fuerza mayúsculas y elimina caracteres no válidos antes de guardar.
+  - handleSave(): valida nombre y comprobante activo; persiste cambios con updateDoc.
+    - updateDoc companies/{uid} set companyName, ownerName, phone, rfc, address.
+  - changeAvatar(): pide permiso de galería, sube a Storage via uploadBytes y actualiza logo en Firestore.
+  - uploadLogoToStorage(): helper para subir blob y devolver URL.
+
+MembersCompany.js
+- Gestion de administradores/miembros. Carga admins por companyId y usuarios ligados a grupos de la empresa (por companyId o adminIds), combinando sin duplicar.
+- Filtros locales: busqueda por nombre/correo y chip para mostrar solo administradores.
+- Modal de agregar/editar administrador: captura datos basicos, puesto, experiencia, telefono y disponibilidad (dias laborales/libres, horarios con DateTimePicker).
+- Alta de admin nuevo: valida campos, crea usuario de auth con registerUser, graba en collection admins con companyId y actualiza administradores en company (arrayUnion); ofrece enviar credenciales via mailto y muestra modal de seguridad para cerrar sesion actual.
+- Edicion/eliminacion local solo permite admins; accion eliminar solo actualiza estado en memoria (sin persistir).
+- Funciones clave:
+  - loadMembersData(): carga admins y miembros de grupos (por companyId y adminId) y compone lista combinada sin duplicados.
+    - Admins: collection admins where companyId==uid -> campos role, name, email, position, groupIds, preferences.
+    - Miembros: busca groups por companyId==uid y adminId in chunk; recolecta memberIds y luego users where companyId==uid para cruzar ids; combina en lista.
+  - parseDays()/formatDays(): manejan chips de días laborales y libres.
+  - openAddMember()/openEditMember(): preparan formulario y modal; edit solo para admins.
+  - handleSaveMember(): valida campos, controla horarios (inicio<fin, comida dentro), crea admin nuevo (registerUser + setDoc en admins + arrayUnion en companies) o actualiza admin existente.
+    - Nuevo admin: registerUser crea Auth user y retorna uid; setDoc admins/{uid} con name, email, phone, position, experience, availableDays, startTime, endTime, mealTime, daysOff, role=Admin, companyId, preferences.notificationsEnabled=true, groupIds=[]; updateDoc companies/{companyId} administradores arrayUnion(uid).
+    - Edit admin: updateDoc admins/{id} con los campos editados (sin password).
+  - sendCredentialsEmail()/handleShareMember()/submitShare(): usan mailto para compartir credenciales.
+  - openTimePicker(): abre DateTimePicker según plataforma para horarios.
+
+Plan.js
+- Pantalla de planes y pagos con tabs (Selector): planes y metodos de pago (renderiza PaymentMethod).
+- Suscribe en tiempo real a collection planes ordenada por orden; mapea campos (nombre/eslogan/precio/periodo/bloques) a tarjetas PlanCard con badges y limites.
+- Al elegir plan:
+  - Si id business abre WhatsApp a ventas.
+  - Para otros planes abre modal de checkout; permite usar tarjeta guardada (payment en company) o ingresar nueva (validaciones de longitud y formato).
+  - En pago exitoso actualiza companies/{uid}: plan (type/status/features/maxUsers/price/period/startDate), payment (method, lastFourDigits, billingCycle, datos de tarjeta) y agrega invoice en array invoices. Tambien crea documento en subcollection invoices con metadatos y dueAt.
+- Incluye InfoModal para errores y estados de exito en el modal.
+- Funciones clave:
+  - Selector componente: cambia tab entre planes y pagos.
+  - useEffect onSnapshot planes: escucha cambios en /planes y transforma documentos a UI (tone, badges, bloques).
+  - onChoosePlan(): maneja click en plan, abre WhatsApp o checkout modal.
+  - Pago en modal: valida tarjeta si no se usa guardada; construye paymentUpdate y actualiza company.plan + payment + invoices y crea subcollection invoices/{invoiceId}.
+    - updateDoc companies/{uid} plan: {type, status: active, features: selectedPlan.blocks.incluye, maxUsers, priceValue, period, startDate: serverTimestamp()}
+    - payment.*: method=card, lastFourDigits, cardName, exp, billingStreet/city/zip (null si no se ingresa), billingCycle=monthly.
+    - invoices arrayUnion: objeto inline con id, amount, plan, status=pagada, issuedAt/paidAt = now, period="mensual".
+    - setDoc companies/{uid}/invoices/{invoiceId}: {title, planId, periodLabel, amount, status, issuedAt, paidAt, dueAt, failNote}.
+  - Usa PaymentMethod como tab secundaria dentro de la misma pantalla.
+
+PaymentMethod.js
+- Carga metodo de pago guardado desde companies/{uid}.payment; si existe tarjeta muestra resumen y la marca como predeterminada.
+- Formulario para agregar/actualizar tarjeta: valida nombre, 18 digitos de tarjeta, exp MM/AA, CVC 3 digitos y longitud de CP opcional; guarda en Firestore payment.method=card, lastFourDigits y datos de facturacion.
+- Permite eliminar metodo (resetea campos payment) y actualiza UI local; utiliza InfoModal para mensajes.
+- Funciones clave:
+  - loadPayment (useEffect): lee companies/{uid}.payment y setea methods con la tarjeta guardada.
+    - Campos: payment.method, payment.lastFourDigits, payment.billingCycle, payment.cardName, payment.exp, billingStreet/city/zip.
+  - onSaveMethod(): valida inputs, hace updateDoc payment.* y refresca methods local.
+    - updateDoc companies/{uid} set payment.method="card", lastFourDigits=ultimos 4 de cardNumber, billingCycle="monthly", cardName, exp, billingStreet/city/zip.
+  - onRemove(): limpia campos payment en Firestore y borra tarjeta de UI.
+    - updateDoc companies/{uid} set payment.method=null, lastFourDigits=null, billingCycle="monthly", cardName=null, exp=null, billingStreet/city/zip null.
+  - updateWireAccount(): helper para transferencia (placeholder, campo bloqueado).
+
+InvoiceHistory.js
+- Lista de facturas de subcollection companies/{uid}/invoices ordenadas por issuedAt desc; fallback a cache en AsyncStorage si falla la carga (muestra aviso de modo sin conexion).
+- Filtros: texto (id o titulo), rango de tiempo (12m/6m/3m) mediante modal, y ciclo de estado (all/pagada/proximo/fallida).
+- Resumen superior con totales pagado, proximo y cantidad de facturas (formato MXN).
+- Cada tarjeta muestra id/titulo, emitida/vencida o pagada, badge de estado, nota de fallo si existe y acciones (PDF placeholder, reintentar para fallidas).
+- Incluye pull-to-refresh y InfoModal del Header para ayuda rapida.
+- Funciones clave:
+  - loadInvoices(): consulta subcollection invoices ordenada por issuedAt; cachea en AsyncStorage y usa fallback en error.
+    - Lee companies/{uid}/invoices/*. Campos esperados: title, planId, periodLabel, amount, status, issuedAt, paidAt, dueAt, failNote. Formatea fechas con toDate() si vienen como Timestamp.
+    - Guarda JSON en AsyncStorage bajo clave "invoice_history_cache" para offline.
+  - cycleStateFilter(): rota filtro de estado.
+  - handleOpenPDF()/handleRetryPayment(): placeholders de acciones por factura.
+  - filteredData: aplica búsqueda de texto + estado + rango de tiempo seleccionado.
+  - onRefresh: pull-to-refresh que relanza loadInvoices.
+
+Navegacion principal
+- Flujo comun: LoginCompany -> Dashboard. Desde Dashboard se accede a Plan, MembersCompany, ProfileCompany. ProfileCompany enlaza a EditProfileCompany, PaymentMethod, InvoiceHistory, Plan, PasswordReset y Help. RegisterCompany se alcanza desde LoginCompany y regresa a LoginCompany al completar registro.
